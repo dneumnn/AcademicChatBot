@@ -18,4 +18,4 @@ This is the README file of our project.
 - Teams should notify others vai MS Teams when they release a new feature that could be important for teams.
 - To utilize features developed by other teams, a team should merge these updates into their own branch.
 
-![Branching Strategy Image](./media/branching-model.png){ width=75% }
+![Branching Strategy Image](./media/branching-model.png)
