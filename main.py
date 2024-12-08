@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+import requests
 
 app = FastAPI()
 
@@ -22,10 +23,11 @@ def chat():
 def chat_history():
     pass
 
-# placeholder
 @app.post("/analyze")
-def analyze():
-    pass
+def analyze(video_input: str):
+    url = "https://www.youtube.com/oembed?format=json&url=" + video_input
+    response = requests.head(url, allow_redirects=True)
+    print(response.status_code)
 
 # placeholder
 @app.get("/support")
