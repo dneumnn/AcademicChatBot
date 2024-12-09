@@ -4,15 +4,36 @@ from pytube import (
     Playlist
 )
 
-def analyze_function(video_input: str):
-    if "watch" in video_input and "list" not in video_input:
-        print(f"{video_input} is a youtube video")
-    elif "list" in video_input:
-        print(f"{video_input} is a youtube playlist")
+##########################################################
+# Final pipeline function
+##########################################################
+
+def download_pipeline_youtube(url: str):
+    """
+    Download youtube video(s) from playlist or video url
+
+    Args:
+        url (str). URL of the YouTube video or playlist
+
+    Example:
+        download_pipeline_youtube("https://www.youtube.com/watch?v=example")
+    """
+    if "watch" in url and "list" not in url:
+        print(f"{url} is a youtube video")
+        download_youtube_video(url)
+
+    elif "list" in url:
+        print(f"{url} is a youtube playlist")
+
+        video_urls = extract_youtube_video_url_from_playlist(url)
+        for video_url in video_urls:
+            download_youtube_video(video_url)
+
     else:
-        print(f"{video_input} is neither a youtube video nor a playlist")
-    yt = YouTube(video_input)
-    print(yt.streams)
+        print(f"{url} is neither a youtube video nor a playlist")
+
+
+##########################################################
 
 
 def download_youtube_video(url: str, resolution: str="720p"):
@@ -44,6 +65,8 @@ def download_youtube_video(url: str, resolution: str="720p"):
         print(f"Error occurred while downloading the youtube video: {e}")
 
 
+
+
 def extract_youtube_video_url_from_playlist(url: str):
     """
     Extract all YouTube video links from a playlist.
@@ -67,4 +90,3 @@ def extract_youtube_video_url_from_playlist(url: str):
     except Exception as e:
         print(f"Error occurred while fetching playlist links: {e}")
         
-

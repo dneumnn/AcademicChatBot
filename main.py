@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 import requests
-from src.data_processing.app import analyze_function
+from src.data_processing.app import download_pipeline_youtube
 
 app = FastAPI()
 
@@ -29,7 +29,7 @@ def analyze(video_input: str):
     url = "https://www.youtube.com/oembed?format=json&url=" + video_input
     response = requests.head(url, allow_redirects=True)
     if(response.status_code in range(200, 300)):
-        analyze_function(video_input)
+        download_pipeline_youtube(video_input)
     else:
         print(f"error: {response.status_code}")
 
