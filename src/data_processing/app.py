@@ -14,6 +14,9 @@ def download_pipeline_youtube(url: str):
 
     Args:
         url (str). URL of the YouTube video or playlist
+    
+    Returns:
+        status_code (int). The status code that should be returned by Fast API.
 
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
@@ -21,6 +24,7 @@ def download_pipeline_youtube(url: str):
     if "watch" in url and "list" not in url:
         print(f"{url} is a youtube video")
         download_youtube_video(url)
+        return 200
 
     elif "list" in url:
         print(f"{url} is a youtube playlist")
@@ -28,9 +32,11 @@ def download_pipeline_youtube(url: str):
         video_urls = extract_youtube_video_url_from_playlist(url)
         for video_url in video_urls:
             download_youtube_video(video_url)
+        return 200
 
     else:
         print(f"{url} is neither a youtube video nor a playlist")
+        return 415
 
 
 ##########################################################

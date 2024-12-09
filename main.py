@@ -1,6 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 import requests
+import logging
+
 from src.data_processing.app import download_pipeline_youtube
+
+# Set up basic configuration for logging
+logging.basicConfig(level=logging.INFO) # default=INFO (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 
 app = FastAPI()
 
@@ -28,10 +33,15 @@ def chat_history():
 def analyze(video_input: str):
     url = "https://www.youtube.com/oembed?format=json&url=" + video_input
     response = requests.head(url, allow_redirects=True)
-    if(response.status_code in range(200, 300)):
-        download_pipeline_youtube(video_input)
+    if response.status_code in range(200, 300):
+        status_code = download_pipeline_youtube(video_input)
+        if status_code in range(200, 300):
+            return {"message": "YouTube content processed successfully", "status_code": status_code}
+        else:
+            raise HTTPException(status_code=status_code, detail=f"YouTube content could not be processed")
     else:
-        print(f"error: {response.status_code}")
+        logging.error(f"YouTube URL does not exist: {response.status_code}")
+        raise HTTPException(status_code=404, detail=f"YouTube URL does not exist")
 
 # placeholder
 @app.get("/support")
