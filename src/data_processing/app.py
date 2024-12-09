@@ -50,7 +50,7 @@ def download_youtube_video(url: str, resolution: str="720p"):
         download_youtube_video("https://www.youtube.com/watch?v=example", resolution="1080p")
     """
     try:
-        save_path = "AcademicChatBot/media/download_videos/"
+        save_path = "media/videos/"
         os.makedirs(save_path, exist_ok=True)
 
         yt = YouTube(url)
