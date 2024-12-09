@@ -3,6 +3,9 @@ from pytube import (
     YouTube,
     Playlist
 )
+from youtube_transcript_api import YouTubeTranscriptApi
+from deepmultilingualpunctuation import PunctuationModel
+from happytransformer import HappyTextToText
 
 ##########################################################
 # Final pipeline function
@@ -95,4 +98,24 @@ def extract_youtube_video_url_from_playlist(url: str):
     
     except Exception as e:
         print(f"Error occurred while fetching playlist links: {e}")
-        
+
+
+
+def get_youtube_transcript(url: str, language: str="en"):
+    """
+    
+    """
+    try:
+        raw_transcript = YouTubeTranscriptApi.get_transcript(url, languages=["en"])
+        combined_transcript = " ".join(item['text'] for item in raw_transcript)
+
+        model = PunctuationModel()
+        punctuation_transcript = model.restore_punctuation(combined_transcript)
+
+        happy_tt = HappyTextToText("T5", "t5-base")
+        final_transcript = happy_tt.generate_text(punctuation_transcript)
+
+        print(final_transcript)
+    except Exception as e:
+        print(e)
+
