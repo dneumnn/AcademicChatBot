@@ -1,6 +1,6 @@
 # Academic Chat Bot
 
-This is the README file of our project.
+This chatbot functions as an academic tool that processes YouTube videos, enabling users to engage interactively with the content. For instance, after analyzing a playlist on linear algebra, users can ask specific questions such as, *"How do I solve a system of linear equations?"* The bot will then provide explanations based on the video content and direct users to the relevant sections of the video for further information.
 
 ## Basic Project Structure
 
@@ -9,6 +9,22 @@ This is the README file of our project.
 - data_pipeline
 - vector_db
 - graph_db
+
+## Get Started
+
+- Clone project:
+`git clone https://github.com/dneumnn/AcademicChatBot.git`
+- Create a virtual envrionment for the project:
+`conda create -n academic_chat_bot python=3.11`
+- Activate the virtual environment for the project:
+`conda activate academic_chat_bot`
+- Adjust git credentials:
+`git config user.name <your name>`
+`git config user.email <your email>`
+- Install dependencies
+`pip install -r requirements.txt`
+- Start the FastAPI
+`uvicorn main:app --reload`
 
 ## Dependency Managements
 
