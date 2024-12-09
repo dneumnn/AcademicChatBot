@@ -2,7 +2,12 @@ import os
 from pytube import YouTube
 
 def analyze_function(video_input: str):
-    print(f"{video_input} will now get analyzed")
+    if "watch" in video_input and "list" not in video_input:
+        print(f"{video_input} is a youtube video")
+    elif "list" in video_input:
+        print(f"{video_input} is a youtube playlist")
+    else:
+        print(f"{video_input} is neither a youtube video nor a playlist")
     yt = YouTube(video_input)
     print(yt.streams)
 
