@@ -1,5 +1,8 @@
 import os
-from pytube import YouTube
+from pytube import (
+    YouTube,
+    Playlist
+)
 
 def analyze_function(video_input: str):
     if "watch" in video_input and "list" not in video_input:
@@ -38,5 +41,30 @@ def download_youtube_video(url: str, resolution: str="720p"):
         print(f"Video download successfully to {save_path}")
 
     except Exception as e:
-        print(e)
+        print(f"Error occurred while downloading the youtube video: {e}")
+
+
+def extract_youtube_video_url_from_playlist(url: str):
+    """
+    Extract all YouTube video links from a playlist.
+
+    Args:
+        url (str): URL of the YouTube playlist
+
+    Returns:
+        list[str]: List of video URLs from the playlist
+    
+    Example: 
+        extract_youtube_video_url_from_playlist("https://www.youtube.com/playlist?list=PLexample")
+    """
+    try:
+        playlist = Playlist(url)
+        video_urls = [
+            video_url for video_url in playlist.video_urls
+        ]
+        return video_urls
+    
+    except Exception as e:
+        print(f"Error occurred while fetching playlist links: {e}")
+        
 
