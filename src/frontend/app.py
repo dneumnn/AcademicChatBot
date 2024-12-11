@@ -194,14 +194,14 @@ if "themes" not in st.session_state:
                               "theme.secondaryBackgroundColor": "#5591f5",
                               "theme.textColor": "white",
                               "theme.textColor": "white",
-                              "button_face": "🌜"},
+                              "button_face": "🌞"},
 
                     "dark":  {"theme.base": "light",
                               "theme.backgroundColor": "white",
                               "theme.primaryColor": "#5591f5",
                               "theme.secondaryBackgroundColor": "#82E1D7",
                               "theme.textColor": "#0a1464",
-                              "button_face": "🌞"},
+                              "button_face": "🌜"},
                     }
 
 # Session management
@@ -223,6 +223,7 @@ if st.session_state.rerun:
     st.session_state.rerun = False
     st.rerun()  
 
+#TO-DO: change behavior of on_change logging in -> prioritize register? 
 # Login/Register Page
 if st.session_state.page == "Login":
     st.title("Login")
