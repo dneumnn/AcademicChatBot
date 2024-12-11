@@ -125,6 +125,23 @@ def get_all_support_requests():
     conn.close()
     return requests
 
+def ChangeTheme():
+    # Toggle the current theme
+    if st.session_state.themes["current_theme"] == "light":
+        st.session_state.themes["current_theme"] = "dark"
+    else:
+        st.session_state.themes["current_theme"] = "light"
+
+    # Get the theme dictionary for the new theme
+    tdict = st.session_state.themes[st.session_state.themes["current_theme"]]
+
+    # Apply the theme settings
+    for vkey, vval in tdict.items():
+        if vkey.startswith("theme"):
+            st._config.set_option(vkey, vval)
+
+    st.rerun()
+    
 # Streamed response
 def response():
     response = random.choice(
@@ -140,6 +157,26 @@ def response():
 # Initialize Database
 init_db()
 
+if "themes" not in st.session_state: 
+  st.session_state.themes = {"current_theme": "light",
+                    "refreshed": True,
+                    
+                    "light": {"theme.base": "dark",
+                              "theme.backgroundColor": "black",
+                              "theme.primaryColor": "#c98bdb",
+                              "theme.secondaryBackgroundColor": "#5591f5",
+                              "theme.textColor": "white",
+                              "theme.textColor": "white",
+                              "button_face": "🌜"},
+
+                    "dark":  {"theme.base": "light",
+                              "theme.backgroundColor": "white",
+                              "theme.primaryColor": "#5591f5",
+                              "theme.secondaryBackgroundColor": "#82E1D7",
+                              "theme.textColor": "#0a1464",
+                              "button_face": "🌞"},
+                    }
+
 # Session management
 if "username" not in st.session_state:
     st.session_state.username = None
@@ -147,7 +184,11 @@ if "username" not in st.session_state:
 if "page" not in st.session_state:
     st.session_state.page = "Login"
 
-# Trigger rerun
+# Dark Mode
+if "dark_mode" not in st.session_state:
+    st.session_state.dark_mode = False
+
+# Rerun trigger
 if "rerun" not in st.session_state:
     st.session_state.rerun = False 
 
@@ -212,6 +253,10 @@ if st.sidebar.button("Logout", key="logout"):
     st.session_state.page = "Login"
     st.session_state.username = None
     st.rerun()
+
+btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
+if st.button(btn_face):
+    ChangeTheme()
 
 # CHAT
 if st.session_state.page == "Chat":
