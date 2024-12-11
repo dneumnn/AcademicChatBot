@@ -3,9 +3,11 @@ import time
 import streamlit as st
 import sqlite3
 import hashlib
+import requests
 
 DB_PATH = "database/chatbot.db"
 MOCKED_MODELS = ["Llama3.2", "gpt-4", "other-llm"]
+BASE_URL = "http://localhost:8000"
 
 # Database Initialization
 def init_db():
@@ -75,6 +77,19 @@ def authenticate_user(username, password):
         return stored_password == hash_password(password)
     return False
 
+def analyze_input(user_input):
+    try:
+        payload = {"input": user_input}
+        response = requests.post(f"{BASE_URL}/analyze", json=payload)
+        if response.status_code == 200:
+            return response.json().get("response", "no response field")
+        else:
+            st.error(f"Error analyzing input: {response.status_code}")
+            return "Error analyzing input."
+    except requests.ConnectionError:
+        st.error("Connection error")
+        return "Connection error"
+
 def save_chat(username, message, response):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -125,6 +140,18 @@ def get_all_support_requests():
     requests = cursor.fetchall()
     conn.close()
     return requests
+
+def get_available_models():
+    try:
+        response = requests.get(f"{BASE_URL}/models")
+        if response.status_code == 200:
+            return response.json().get("models", [])
+        else:
+            st.error(f"Error fetching models: {response.status_code}")
+            return []
+    except requests.ConnectionError:
+        st.error("Unable to connect to the backend.")
+        return []
 
 def ChangeTheme():
     # Toggle the current theme
@@ -288,6 +315,19 @@ if st.session_state.page == "Chat":
             st.session_state.messages.append({"role": "Chatbot", "content": response_content})
 
         save_chat(st.session_state.username, prompt, response_content)
+
+        """ TO-DO: Uncomment this block to use the backend
+        analyzed_response = analyze_input(prompt)
+        with st.chat_message("Chatbot"):
+            response_placeholder = st.empty()
+            response_content = ""
+            for word in analyzed_response.split():
+                response_content += word + " "
+                response_placeholder.markdown(response_content)
+            st.session_state.messages.append({"role": "Chatbot", "content": analyzed_response})
+
+        save_chat(st.session_state.username, prompt, analyzed_response)
+        """
 
 elif st.session_state.page == "Support":
     st.title("Support")
