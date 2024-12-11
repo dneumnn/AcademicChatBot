@@ -77,10 +77,10 @@ def authenticate_user(username, password):
         return stored_password == hash_password(password)
     return False
 
-def analyze_input(user_input):
+def chat(user_input):
     try:
         payload = {"input": user_input}
-        response = requests.post(f"{BASE_URL}/analyze", json=payload)
+        response = requests.post(f"{BASE_URL}/chat", json=payload)
         if response.status_code == 200:
             return response.json().get("response", "no response field")
         else:
@@ -170,8 +170,7 @@ def ChangeTheme():
 
     st.rerun()
 
-# Streamed response
-def response():
+def mocked_response():
     response = random.choice(
         [
             "Hi there, this is our academic chatbot. How can I help you today?",
@@ -179,14 +178,14 @@ def response():
         ]
     )
     for word in response.split():
-        yield word + " "
-        time.sleep(0.05)
+        yield word
 
 # Initialize Database
 init_db()
 
 if "themes" not in st.session_state: 
-  st.session_state.themes = {"current_theme": "light",
+  st.session_state.themes = {
+                    "current_theme": "dark",
                     "refreshed": True,
                     
                     "light": {"theme.base": "dark",
@@ -309,25 +308,27 @@ if st.session_state.page == "Chat":
         with st.chat_message("Chatbot"):
             response_placeholder = st.empty()  #placeholder
             response_content = ""
-            for word in response():
-                response_content += word
+            for word in mocked_response():
+                response_content += word + " "
                 response_placeholder.markdown(response_content)
+                time.sleep(0.05)
             st.session_state.messages.append({"role": "Chatbot", "content": response_content})
 
         save_chat(st.session_state.username, prompt, response_content)
 
-        """ TO-DO: Uncomment this block to use the backend
-        analyzed_response = analyze_input(prompt)
-        with st.chat_message("Chatbot"):
-            response_placeholder = st.empty()
-            response_content = ""
-            for word in analyzed_response.split():
-                response_content += word + " "
-                response_placeholder.markdown(response_content)
-            st.session_state.messages.append({"role": "Chatbot", "content": analyzed_response})
+        # TO-DO: Uncomment this block to use the backend
+        # response = chat(prompt)
+        # with st.chat_message("Chatbot"):
+        #     response_placeholder = st.empty()
+        #     response_content = ""
+        #    for word in response.split():
+        #         response_content += word + " "
+        #         response_placeholder.markdown(response_content)
+        #         time.sleep(0.05)
+        #     st.session_state.messages.append({"role": "Chatbot", "content": response})
 
-        save_chat(st.session_state.username, prompt, analyzed_response)
-        """
+        # save_chat(st.session_state.username, prompt, response)
+        
 
 elif st.session_state.page == "Support":
     st.title("Support")
