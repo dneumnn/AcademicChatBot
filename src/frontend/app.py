@@ -5,6 +5,7 @@ import sqlite3
 import hashlib
 
 DB_PATH = "database/chatbot.db"
+MOCKED_MODELS = ["Llama3.2", "gpt-4", "other-llm"]
 
 # Database Initialization
 def init_db():
@@ -141,7 +142,7 @@ def ChangeTheme():
             st._config.set_option(vkey, vval)
 
     st.rerun()
-    
+
 # Streamed response
 def response():
     response = random.choice(
@@ -231,6 +232,8 @@ if st.session_state.page == "Login":
 
 # Navigation Panel
 st.sidebar.title("Navigation")
+
+model = st.sidebar.selectbox("Select LLM Model", MOCKED_MODELS)
 
 if st.session_state.username == "admin":
     if st.sidebar.button("Admin Panel", key="admin_panel"):
