@@ -26,16 +26,31 @@ def download_pipeline_youtube(url: str):
     """
     if "watch" in url and "list" not in url:
         print(f"{url} is a youtube video")
-        download_youtube_video_pytube(url)
-        return 200
+
+        try:
+            download_youtube_video_pytube(url)
+            return 200
+        except:
+            try:
+                download_youtube_video_yt_dlp(url)
+                return 200
+            except:
+                return 500
 
     elif "list" in url:
         print(f"{url} is a youtube playlist")
 
         video_urls = extract_video_urls_from_playlist(url)
         for video_url in video_urls:
-            download_youtube_video_pytube(video_url)
-        return 200
+            try:
+                download_youtube_video_pytube(video_url)
+                return 200
+            except:
+                try:
+                    download_youtube_video_yt_dlp(url)
+                    return 200
+                except:
+                    return 500
 
     else:
         print(f"{url} is neither a youtube video nor a playlist")
@@ -69,7 +84,7 @@ def download_youtube_video_pytube(url: str, resolution: str="720p"):
         print(f"Video download successfully to {save_path}")
 
     except Exception as e:
-        print(f"Error occurred while downloading the youtube video: {e}")
+        raise e
 
 
 def download_youtube_video_yt_dlp(url: str):
@@ -121,7 +136,8 @@ def extract_video_urls_from_playlist(url: str):
         return video_urls
     
     except Exception as e:
-        print(f"Error occurred while fetching playlist links: {e}")
+        raise e
+    
 
 
 def download_youtube_transcript(url: str, language: str="en"):
@@ -140,5 +156,6 @@ def download_youtube_transcript(url: str, language: str="en"):
 
         print(final_transcript)
     except Exception as e:
-        print(e)
+        raise e
+    
 
