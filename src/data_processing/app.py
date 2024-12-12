@@ -6,6 +6,7 @@ from pytube import (
 from youtube_transcript_api import YouTubeTranscriptApi
 from deepmultilingualpunctuation import PunctuationModel
 from happytransformer import HappyTextToText
+import yt_dlp
 
 ##########################################################
 # Final pipeline function
@@ -25,7 +26,7 @@ def download_pipeline_youtube(url: str):
     """
     if "watch" in url and "list" not in url:
         print(f"{url} is a youtube video")
-        download_youtube_video(url)
+        download_youtube_video_pytube(url)
         return 200
 
     elif "list" in url:
@@ -33,7 +34,7 @@ def download_pipeline_youtube(url: str):
 
         video_urls = extract_video_urls_from_playlist(url)
         for video_url in video_urls:
-            download_youtube_video(video_url)
+            download_youtube_video_pytube(video_url)
         return 200
 
     else:
@@ -41,9 +42,9 @@ def download_pipeline_youtube(url: str):
         return 415
 
 
-def download_youtube_video(url: str, resolution: str="720p"):
+def download_youtube_video_pytube(url: str, resolution: str="720p"):
     """
-    Download video from YouTube.
+    Download video from YouTube using the pytube library.
 
     Args:
         url (str): URL of the YouTube video.
@@ -69,6 +70,34 @@ def download_youtube_video(url: str, resolution: str="720p"):
 
     except Exception as e:
         print(f"Error occurred while downloading the youtube video: {e}")
+
+
+def download_youtube_video_yt_dlp(url: str):
+    """
+    Download video from YouTube using the pytube library.
+
+    Args:
+        url (str): URL of the YouTube video.
+    
+    Raises:
+        Exception: For errors during download.
+
+    Example:
+        download_youtube_video_yt_dlp("https://www.youtube.com/watch?v=example")
+    """
+
+    ydl_opts = {
+            'format': 'best',
+            'outtmpl': "media/videos/%(title)s.%(ext)s",
+        }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+    except Exception as e:
+        raise e
+
 
 
 def extract_video_urls_from_playlist(url: str):
