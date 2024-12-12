@@ -24,11 +24,24 @@ def download_pipeline_youtube(url: str):
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
     """
+
+    video_urls = []
+
+    # load url(s) in the video_urls list
     if "watch" in url and "list" not in url:
         print(f"{url} is a youtube video")
+        video_urls.append(url)
+    elif "list" in url:
+        print(f"{url} is a youtube playlist")
+        video_urls = extract_video_urls_from_playlist(url)
+    else:
+        print(f"{url} is neither a youtube video nor a playlist")
+        return 415
 
+    # try to download the list of YouTube videos
+    for video_url in video_urls:
         try:
-            download_youtube_video_pytube(url)
+            download_youtube_video_pytube(video_url)
             return 200
         except:
             try:
@@ -36,25 +49,6 @@ def download_pipeline_youtube(url: str):
                 return 200
             except:
                 return 500
-
-    elif "list" in url:
-        print(f"{url} is a youtube playlist")
-
-        video_urls = extract_video_urls_from_playlist(url)
-        for video_url in video_urls:
-            try:
-                download_youtube_video_pytube(video_url)
-                return 200
-            except:
-                try:
-                    download_youtube_video_yt_dlp(url)
-                    return 200
-                except:
-                    return 500
-
-    else:
-        print(f"{url} is neither a youtube video nor a playlist")
-        return 415
 
 
 def download_youtube_video_pytube(url: str, resolution: str="720p"):
@@ -114,7 +108,6 @@ def download_youtube_video_yt_dlp(url: str):
         raise e
 
 
-
 def extract_video_urls_from_playlist(url: str):
     """
     Extract all YouTube video links from a playlist.
@@ -139,7 +132,6 @@ def extract_video_urls_from_playlist(url: str):
         raise e
     
 
-
 def download_youtube_transcript(url: str, language: str="en"):
     """
     
@@ -158,4 +150,3 @@ def download_youtube_transcript(url: str, language: str="en"):
     except Exception as e:
         raise e
     
-
