@@ -7,6 +7,7 @@ from youtube_transcript_api import YouTubeTranscriptApi
 from deepmultilingualpunctuation import PunctuationModel
 from happytransformer import HappyTextToText
 import yt_dlp
+import re
 
 ##########################################################
 # Final pipeline function
@@ -114,20 +115,20 @@ def download_youtube_video_yt_dlp(url: str):
         raise e
 
 
-
 def extract_video_urls_from_playlist(url: str):
     """
     Extract all YouTube video links from a playlist.
 
     Args:
-        url (str): URL of the YouTube playlist
+        url (str): URL of the YouTube playlist.
 
     Returns:
-        list[str]: List of video URLs from the playlist
+        list (str): List of video URLs from the playlist.
     
     Example: 
         extract_youtube_video_url_from_playlist("https://www.youtube.com/playlist?list=PLexample")
     """
+
     try:
         playlist = Playlist(url)
         video_urls = [
@@ -137,7 +138,27 @@ def extract_video_urls_from_playlist(url: str):
     
     except Exception as e:
         raise e
-    
+
+
+def extract_youtube_video_id(url: str):
+    """
+    Extract YouTube video id from YouTube video.
+
+    Args:
+        url (str): URL of a YouTube video.
+
+    Returns:
+        video_id (str): ID of the YouTube video.
+
+    Example: 
+        extract_youtube_video_id("https://www.youtube.com/playlist?v=example")
+    """
+
+    video_id = re.search(r"[?&]v=([a-zA-Z0-9_-]{11})", url)
+    if video_id:
+        return video_id.group(1)
+    else:
+        raise ValueError("YouTube Video ID could not be extracted from the URL")
 
 
 def download_youtube_transcript(url: str, language: str="en"):
@@ -158,4 +179,4 @@ def download_youtube_transcript(url: str, language: str="en"):
     except Exception as e:
         raise e
     
-
+    
