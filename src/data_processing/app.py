@@ -9,7 +9,6 @@ from happytransformer import HappyTextToText
 
 ##########################################################
 # Final pipeline function
-##########################################################
 
 def download_pipeline_youtube(url: str):
     """
@@ -32,7 +31,7 @@ def download_pipeline_youtube(url: str):
     elif "list" in url:
         print(f"{url} is a youtube playlist")
 
-        video_urls = extract_youtube_video_url_from_playlist(url)
+        video_urls = extract_video_urls_from_playlist(url)
         for video_url in video_urls:
             download_youtube_video(video_url)
         return 200
@@ -42,15 +41,13 @@ def download_pipeline_youtube(url: str):
         return 415
 
 
-##########################################################
-
-
 def download_youtube_video(url: str, resolution: str="720p"):
     """
     Download video from YouTube.
 
     Args:
         url (str): URL of the YouTube video.
+        resolution (str, optional): The desired resolution of the video. Defaults to "720p".
     
     Raises:
         Exception: For errors during download.
@@ -74,9 +71,7 @@ def download_youtube_video(url: str, resolution: str="720p"):
         print(f"Error occurred while downloading the youtube video: {e}")
 
 
-
-
-def extract_youtube_video_url_from_playlist(url: str):
+def extract_video_urls_from_playlist(url: str):
     """
     Extract all YouTube video links from a playlist.
 
@@ -100,8 +95,7 @@ def extract_youtube_video_url_from_playlist(url: str):
         print(f"Error occurred while fetching playlist links: {e}")
 
 
-
-def get_youtube_transcript(url: str, language: str="en"):
+def download_youtube_transcript(url: str, language: str="en"):
     """
     
     """
