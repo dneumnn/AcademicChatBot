@@ -154,12 +154,14 @@ def extract_youtube_video_id(url: str):
     else:
         raise ValueError("YouTube Video ID could not be extracted from the URL")
 
+
 def download_youtube_transcript(url: str, language: str="en"):
     """
     
     """
     try:
-        raw_transcript = YouTubeTranscriptApi.get_transcript(url, languages=["en"])
+        video_id = extract_youtube_video_id(url)
+        raw_transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=["en"])
         combined_transcript = " ".join(item['text'] for item in raw_transcript)
 
         model = PunctuationModel()
