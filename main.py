@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 import requests
 import logging
 
-from src.data_processing.app import download_pipeline_youtube
+from src.data_processing.data_pipeline import download_pipeline_youtube
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO) # default=INFO (DEBUG, INFO, WARNING, ERROR, CRITICAL)
