@@ -43,13 +43,17 @@ def download_pipeline_youtube(url: str):
     for video_url in video_urls:
         try:
             download_youtube_video_pytube(video_url)
-            return 200
         except:
             try:
                 download_youtube_video_yt_dlp(url)
-                return 200
             except:
                 return 500
+        try:
+            meta_data = extract_meta_data(url)
+            print(meta_data)
+            return 200
+        except:
+            return 500
 
 
 def download_youtube_video_pytube(url: str, resolution: str="720p"):
@@ -108,23 +112,6 @@ def download_youtube_video_yt_dlp(url: str):
             ydl.download([url])
             result = ydl.extract_info(url, download=False) # Extract info
 
-            # print out metadata
-            print(f"ID {result.get('id')}")
-            print(f"TITLE {result.get('title')}")
-            print(f"DESCRIPTION {result.get('description')}")
-            print(f"UPLOAD DATE {result.get('upload_date')}")
-            print(f"DURATION {result.get('duration')}")
-            print(f"VIEW COUNT {result.get('view_count')}")
-            print(f"UPLOADER URL {result.get('uploader_url')}")
-            print(f"UPLOADER ID {result.get('uploader_id')}")
-            print(f"CHANNEL ID {result.get('channel_id')}")
-            print(f"UPLOADER {result.get('uploader')}")
-            print(f"THUBMNAIL {result.get('thumbnail')}")
-            print(f"LIKE COUNT {result.get('like_count')}")
-            print(f"TAGS {result.get('tags')}")
-            print(f"CATEGORIES {result.get('categories')}")
-            print(f"AGE LIMIT {result.get('age_limit')}")
-
     except Exception as e:
         raise e
 
@@ -153,6 +140,50 @@ def extract_video_urls_from_playlist(url: str):
     except Exception as e:
         raise e
 
+
+def extract_meta_data(url: str):
+    """
+    Extract the relevant meta data for a YouTube video.
+
+    Args:
+        url (str): URL of the YouTube video.
+    
+    Raises:
+        Exception: For errors during meta data extraction.
+    """
+    meta_data = {}
+
+    ydl_opts = {
+            'format': 'best',
+            'outtmpl': "media/videos/%(title)s.%(ext)s",
+            'retries': 3,
+            'geo_bypass': True,
+        }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(url, download=False) # Extract info
+
+            meta_data['id'] = result.get('id')
+            meta_data['title'] = result.get('title')
+            meta_data['description'] = result.get('description')
+            meta_data['upload_date'] = result.get('upload_date')
+            meta_data['duration'] = result.get('duration')
+            meta_data['view_count'] = result.get('view_count')
+            meta_data['uploader_url'] = result.get('uploader_url')
+            meta_data['uploader_id'] = result.get('uploader_id')
+            meta_data['channel_id'] = result.get('channel_id')
+            meta_data['uploader'] = result.get('uploader')
+            meta_data['thumbnail'] = result.get('thumbnail')
+            meta_data['like_count'] = result.get('like_count')
+            meta_data['tags'] = result.get('tags')
+            meta_data['categories'] = result.get('categories')
+            meta_data['age_limit'] = result.get('age_limit')
+
+            return meta_data
+
+    except Exception as e:
+        raise e
 
 def extract_youtube_video_id(url: str):
     """
