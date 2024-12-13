@@ -106,6 +106,24 @@ def download_youtube_video_yt_dlp(url: str):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
+            result = ydl.extract_info(url, download=False) # Extract info
+
+            # print out metadata
+            print(f"ID {result.get('id')}")
+            print(f"TITLE {result.get('title')}")
+            print(f"DESCRIPTION {result.get('description')}")
+            print(f"UPLOAD DATE {result.get('upload_date')}")
+            print(f"DURATION {result.get('duration')}")
+            print(f"VIEW COUNT {result.get('view_count')}")
+            print(f"UPLOADER URL {result.get('uploader_url')}")
+            print(f"UPLOADER ID {result.get('uploader_id')}")
+            print(f"CHANNEL ID {result.get('channel_id')}")
+            print(f"UPLOADER {result.get('uploader')}")
+            print(f"THUBMNAIL {result.get('thumbnail')}")
+            print(f"LIKE COUNT {result.get('like_count')}")
+            print(f"TAGS {result.get('tags')}")
+            print(f"CATEGORIES {result.get('categories')}")
+            print(f"AGE LIMIT {result.get('age_limit')}")
 
     except Exception as e:
         raise e
