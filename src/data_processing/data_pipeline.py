@@ -99,6 +99,8 @@ def download_youtube_video_yt_dlp(url: str):
     ydl_opts = {
             'format': 'best',
             'outtmpl': "media/videos/%(title)s.%(ext)s",
+            'retries': 3,
+            'geo_bypass': True,
         }
 
     try:
