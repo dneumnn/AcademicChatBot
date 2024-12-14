@@ -1,4 +1,7 @@
 from typing import List
+import requests
+import chromadb
+import os
 
 """
 VectorDB -> ChromaDB
@@ -46,10 +49,79 @@ def models() -> List[str]:
 
     Returns:
         List[str]: List of model IDs
-
-    Example:
-        models()
     """
-    return ["model1", "model2"]
+    return get_local_llama_models()
 
 ##########################################################
+
+def get_local_llama_models() -> List[str]:
+    """
+    Query local Llama server for available models
+    
+    Returns:
+        List[str]: List of available model IDs
+    
+    Raises:
+        ConnectionError: If can't connect to Llama server
+    """
+    try:
+        response = requests.get("http://localhost:11434/api/tags")
+        if response.status_code == 200:
+            models = [model["name"] for model in response.json()["models"]]
+            return models
+        return []
+    except requests.exceptions.RequestException:
+        raise ConnectionError("Cannot connect to local Llama server")
+    
+def mock_load_text_to_vectordb(file_path: str, collection_name: str = "alice") -> None:
+    """
+    Load text file into ChromaDB, splitting by paragraphs
+    
+    Args:
+        file_path: Path to text file
+        collection_name: Name for ChromaDB collection
+    """
+    database_path = os.path.join(os.path.dirname(__file__), "mock", "chroma_db")
+    client = chromadb.PersistentClient(path=database_path)
+    
+    collection = client.get_or_create_collection(name=collection_name)
+    
+    with open(file_path, 'r', encoding='utf-8') as f:
+        text = f.read()
+        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+    
+    collection.add(
+        documents=paragraphs,
+        ids=[f"para_{i}" for i in range(len(paragraphs))]
+    )
+
+def query_vectordb(question: str, collection_name: str = "alice", n_results: int = 3) -> List[str]:
+    """
+    Query ChromaDB for relevant text passages based on a question
+    
+    Args:
+        question: Question to search for
+        collection_name: Name of ChromaDB collection
+        n_results: Number of results to return
+    
+    Returns:
+        List of relevant text passages
+    """
+    database_path = os.path.join(os.path.dirname(__file__), "mock", "chroma_db")
+    client = chromadb.PersistentClient(path=database_path)
+    
+    collection = client.get_collection(name=collection_name)
+    results = collection.query(
+        query_texts=[question],
+        n_results=n_results
+    )
+    
+    return results['documents'][0]
+
+if __name__ == "__main__":
+    #alice_path = os.path.join(os.path.dirname(__file__), "mock", "alice.txt")
+    #mock_load_text_to_vectordb(alice_path)
+    results = query_vectordb("Why did allice fall down the rabbit hole?")
+    print("\nRelevant passages about Alice:")
+    for r in results:
+        print(f"\n- {r}")
