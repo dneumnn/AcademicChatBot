@@ -51,6 +51,9 @@ def download_pipeline_youtube(url: str):
         try:
             meta_data = extract_meta_data(url)
             print(meta_data)
+            file_path = "./media/videos/" + meta_data["title"] + ".mp4"
+            print(file_path)
+            replace_spaces_in_filenames("./media/videos/")
             return 200
         except:
             return 500
@@ -110,7 +113,6 @@ def download_youtube_video_yt_dlp(url: str):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
-            result = ydl.extract_info(url, download=False) # Extract info
 
     except Exception as e:
         raise e
@@ -184,6 +186,23 @@ def extract_meta_data(url: str):
 
     except Exception as e:
         raise e
+
+
+def replace_spaces_in_filenames(directory: str):
+    """
+    
+    """
+
+    for filename in os.listdir(directory):
+        if " " in filename:
+            new_filename = filename.replace(" ", "_")
+            encoded_string = new_filename.encode("ascii", "ignore")
+            clean_string = encoded_string.decode("ascii")
+
+            original_file_path = os.path.join(directory, filename)
+            new_file_path = os.path.join(directory, clean_string)
+            os.rename(original_file_path, new_file_path)
+
 
 def extract_youtube_video_id(url: str):
     """
