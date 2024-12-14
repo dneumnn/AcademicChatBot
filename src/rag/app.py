@@ -2,10 +2,11 @@ from typing import List
 import requests
 import chromadb
 import os
-from sentence_transformers import CrossEncoder
+from sentence_transformers import CrossEncoder, SentenceTransformer
 from llama_index.core import Document
 from llama_index.retrievers.bm25 import BM25Retriever
 import Stemmer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # pip install llama-index-retrievers-bm25
 # pip install sentence_transformers
@@ -126,6 +127,7 @@ def query_vectordb(question: str, collection_name: str = "alice", n_results: int
     
     return results['documents'][0]
 
+# Inpired by class notebook
 def rerank_passages_with_cross_encoder(question: str, passages: List[str], top_k: int = 3) -> List[str]:
     """
     Rerank passages using cross-encoder model for semantic similarity scoring
@@ -144,6 +146,7 @@ def rerank_passages_with_cross_encoder(question: str, passages: List[str], top_k
     ranked_passages = [p for _, p in sorted(zip(similarity_scores, passages), reverse=True)]
     return ranked_passages[:top_k]
 
+# Inpired by class notebook
 def rerank_passages_with_bm25(question: str, passages: List[str], top_k: int = 3) -> List[str]:
     """
     Rerank passages using BM25 algorithm for keyword-based relevance scoring
@@ -165,7 +168,28 @@ def rerank_passages_with_bm25(question: str, passages: List[str], top_k: int = 3
     )
     return bm25_retriever.retrieve(question)
 
-if __name__ == "__main__":
+def rerank_passages_with_cosine(question: str, passages: List[str], top_k: int = 3) -> List[str]:
+    """
+    Rerank passages using cosine similarity with sentence embeddings
+    
+    Args:
+        question: Question to search for
+        passages: List of passages to rerank
+        top_k: Number of top passages to return
+    
+    Returns:
+        List of reranked passages sorted by cosine similarity score
+    """
+    model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
+    
+    question_embedding = model.encode([question])
+    passage_embeddings = model.encode(passages)
+
+    similarities = cosine_similarity(question_embedding, passage_embeddings)[0]
+    ranked_passages = [p for _, p in sorted(zip(similarities, passages), reverse=True)]
+    return ranked_passages[:top_k]
+
+def main():
     #alice_path = os.path.join(os.path.dirname(__file__), "mock", "alice.txt")
     #mock_load_text_to_vectordb(alice_path)
     
@@ -183,3 +207,11 @@ if __name__ == "__main__":
     print("\nReranked passages about Alice with BM25:")
     for r in reranked_passages:
         print(f"\n- {r}")
+    
+    reranked_passages = rerank_passages_with_cosine("Why did allice fall down the rabbit hole?", passages, top_k=3)
+    print("\nReranked passages about Alice with cosine similarity:")
+    for r in reranked_passages:
+        print(f"\n- {r}")
+
+if __name__ == "__main__":
+    main()
