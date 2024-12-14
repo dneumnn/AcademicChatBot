@@ -2,6 +2,14 @@ from typing import List
 import requests
 import chromadb
 import os
+from sentence_transformers import CrossEncoder
+from llama_index.core import Document
+from llama_index.retrievers.bm25 import BM25Retriever
+import Stemmer
+
+# pip install llama-index-retrievers-bm25
+# pip install sentence_transformers
+# pip install chromadb
 
 """
 VectorDB -> ChromaDB
@@ -118,10 +126,60 @@ def query_vectordb(question: str, collection_name: str = "alice", n_results: int
     
     return results['documents'][0]
 
+def rerank_passages_with_cross_encoder(question: str, passages: List[str], top_k: int = 3) -> List[str]:
+    """
+    Rerank passages using cross-encoder model for semantic similarity scoring
+    
+    Args:
+        question: Question to search for
+        passages: List of passages to rerank
+        top_k: Number of top passages to return
+    
+    Returns:
+        List of reranked passages sorted by semantic similarity to question
+    """
+    cross_encoder_model = CrossEncoder('cross-encoder/stsb-roberta-base')
+    sentence_pairs = [(question, passage) for passage in passages]
+    similarity_scores = cross_encoder_model.predict(sentence_pairs)
+    ranked_passages = [p for _, p in sorted(zip(similarity_scores, passages), reverse=True)]
+    return ranked_passages[:top_k]
+
+def rerank_passages_with_bm25(question: str, passages: List[str], top_k: int = 3) -> List[str]:
+    """
+    Rerank passages using BM25 algorithm for keyword-based relevance scoring
+    
+    Args:
+        question: Question to search for
+        passages: List of passages to rerank
+        top_k: Number of top passages to return
+    
+    Returns:
+        List of reranked passages sorted by BM25 relevance score
+    """
+    documents = [Document(text=passage) for passage in passages]
+    bm25_retriever = BM25Retriever.from_defaults(
+        nodes=documents,
+        similarity_top_k=top_k,
+        stemmer=Stemmer.Stemmer("english"),
+        language="english"
+    )
+    return bm25_retriever.retrieve(question)
+
 if __name__ == "__main__":
     #alice_path = os.path.join(os.path.dirname(__file__), "mock", "alice.txt")
     #mock_load_text_to_vectordb(alice_path)
-    results = query_vectordb("Why did allice fall down the rabbit hole?")
+    
+    passages = query_vectordb("Why did allice fall down the rabbit hole?")
     print("\nRelevant passages about Alice:")
-    for r in results:
+    for r in passages:
+        print(f"\n- {r}")
+
+    reranked_passages = rerank_passages_with_cross_encoder("Why did allice fall down the rabbit hole?", passages, top_k=3)
+    print("\nReranked passages about Alice with cross-encoder:")
+    for r in reranked_passages:
+        print(f"\n- {r}")
+    
+    reranked_passages = rerank_passages_with_bm25("Why did allice fall down the rabbit hole?", passages, top_k=3)
+    print("\nReranked passages about Alice with BM25:")
+    for r in reranked_passages:
         print(f"\n- {r}")
