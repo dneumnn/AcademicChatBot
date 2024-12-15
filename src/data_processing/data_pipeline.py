@@ -10,10 +10,11 @@ import yt_dlp
 import re
 import google.generativeai as genai
 from dotenv import load_dotenv
+import cv2
+import PIL.Image
 
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
-import cv2
 
 ##########################################################
 # Final pipeline function
@@ -360,3 +361,26 @@ def download_youtube_transcript(url: str, language: str="en", gemini_model: str=
         raise e
     
     
+def create_image_description(image_file_path: str, gemini_model: str="gemini-1.5-flash"):
+    """
+    """
+    genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+    model = genai.GenerativeModel(gemini_model)
+    image_file = PIL.Image.open(image_file_path)
+
+    prompt = (
+        "Please provide a detailed description of the image from the YouTube video, "
+        "focusing on the relevant content, e.g. AI, Machine Learning, "
+        "or other topics shown in the picture. Describe the setting, including the environment, any diagrams, "
+        "charts, equations, or visual aids displayed. If there are visual representations of algorithms, "
+        "models, or data, explain them in detail, including any colors, patterns, or structures. "
+        "If relevant people, such as experts in computer vision or similar fields, are shown in the "
+        "context of the task, briefly mention them and their relevance. Avoid mentioning irrelevant people "
+        "unless they are directly related to the content of the video."
+    )
+
+    response = model.generate_content(
+        [prompt, image_file]
+    )
+    print(response.text)
+
