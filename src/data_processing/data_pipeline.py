@@ -61,10 +61,12 @@ def download_pipeline_youtube(url: str):
         try:
             meta_data = extract_meta_data(url)
             print(meta_data)
-            replace_spaces_in_filenames("./media/videos/") # Fix: needs to be implemented to work with multiple videos
-            new_file_path = get_new_filepath(meta_data['title'])
-            extract_frames_from_video(new_file_path, 2)
-            # write_url_to_already_downloaded(url)
+
+            renamed_files = replace_spaces_in_filenames("./media/videos/") # Fix: needs to be implemented to work with multiple videos
+            if len(renamed_files) == 0:
+                return 500
+            extract_frames_from_video(renamed_files[0], 2)
+            write_url_to_already_downloaded(url)
             return 200
         except Exception as e:
             print(f"/analyze error: {e}")
@@ -200,13 +202,16 @@ def extract_meta_data(url: str):
         raise e
 
 
-def get_new_filepath(filename: str):
+# def get_new_filepath(filename: str):
     
-    clean_filename = clean_up_filename(filename)
+#     clean_filename = clean_up_filename(filename)
 
-    for current_file in os.listdir("./media/videos"):
-        if clean_filename in current_file:
-            return os.path.join("./media/videos/", current_file)
+#     for current_file in os.listdir("./media/videos"):
+#         if clean_filename in current_file:
+#             print(f"New filepath: {filename}")
+#             return os.path.join("./media/videos/", current_file)
+#         else:
+#             print(f"THIS HERE {clean_filename} NOT IN {current_file}")
 
 
 def replace_spaces_in_filenames(directory: str):
@@ -214,13 +219,19 @@ def replace_spaces_in_filenames(directory: str):
     
     """
 
+    renamed_files = []
+
     for filename in os.listdir(directory):
         clean_string = clean_up_filename(filename)
 
         original_file_path = os.path.join(directory, filename)
         new_file_path = os.path.join(directory, clean_string)
         if not os.path.exists(new_file_path):
+            print(f"Renamed {original_file_path} into {new_file_path}")
             os.rename(original_file_path, new_file_path)
+            renamed_files.append(new_file_path)
+    
+    return renamed_files
 
 
 def clean_up_filename(filename: str):
@@ -235,21 +246,22 @@ def clean_up_filename(filename: str):
 
 def extract_frames_from_video(filename: str, extracted_fps: int):
 
+    print("Begin extraction...")
+
     new_filename = filename.replace("./media/videos", "")
     if not os.path.exists(f"./media/frames/{new_filename}"):
         os.makedirs(f"./media/frames/{new_filename}")
 
     cam = cv2.VideoCapture(filename)
     video_fps = cam.get(cv2.CAP_PROP_FPS)
-    interval = video_fps / extracted_fps
+    interval = round(video_fps / extracted_fps)
+    print(f"Calculated interval: {interval}")
 
     success, image = cam.read()
     count = 0
     while success:
-        # print(count)
-        # print(interval)
         if count % interval == 0:
-            # print("TRUE")
+            print(f"Writing frame {count}")
             cv2.imwrite(f"./media/frames/{new_filename}/frame{count}.jpg", image)
         success, image = cam.read()
         count += 1
