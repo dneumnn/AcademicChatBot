@@ -13,8 +13,14 @@ from dotenv import load_dotenv
 import cv2
 import PIL.Image
 
+# Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
+
+# Static variables
+VIDEO_DIRECTORY = "./media/videos/"
+FRAMES_DIRECTORY = "./media/frames"
+EXTRACTED_URLS_PATH = "./src/data_processing/extracted_urls.txt"
 
 ##########################################################
 # Final pipeline function
@@ -63,15 +69,17 @@ def download_pipeline_youtube(url: str):
             meta_data = extract_meta_data(url)
             print(meta_data)
 
-            renamed_files = replace_spaces_in_filenames("./media/videos/") # Fix: needs to be implemented to work with multiple videos
+            renamed_files = clean_up_filenames()
             if len(renamed_files) == 0:
                 return 500
-            extract_frames_from_video(renamed_files[0], 2)
+            video_filepath = renamed_files[0]
+            extract_frames_from_video(video_filepath, 5)
+
             write_url_to_already_downloaded(url)
-            return 200
         except Exception as e:
             print(f"/analyze error: {e}")
             return 500
+    return 200
 
 
 def download_youtube_video_pytube(url: str, resolution: str="720p"):
@@ -203,30 +211,28 @@ def extract_meta_data(url: str):
         raise e
 
 
-# def get_new_filepath(filename: str):
-    
-#     clean_filename = clean_up_filename(filename)
-
-#     for current_file in os.listdir("./media/videos"):
-#         if clean_filename in current_file:
-#             print(f"New filepath: {filename}")
-#             return os.path.join("./media/videos/", current_file)
-#         else:
-#             print(f"THIS HERE {clean_filename} NOT IN {current_file}")
-
-
-def replace_spaces_in_filenames(directory: str):
+def clean_up_filenames():
     """
-    
+    Cleans up all filenames in the video directory by removing spaces and non-ASCII characters. This adjustment ensures that Python can
+    handle these filenames without issues in subsequent operations, as filenames with non-ASCII characters can cause errors.
+
+    Returns:
+        renamed_files (list of str): A list of filenames that have been cleaned. In production execution, this list should contain exactly one filename.
+
     """
 
     renamed_files = []
 
-    for filename in os.listdir(directory):
-        clean_string = clean_up_filename(filename)
+    for filename in os.listdir(VIDEO_DIRECTORY):
+        new_filename = filename
+        if " " in filename:
+            new_filename = filename.replace(" ", "_")
+        encoded_string = new_filename.encode("ascii", "ignore")
+        clean_string = encoded_string.decode("ascii")
 
-        original_file_path = os.path.join(directory, filename)
-        new_file_path = os.path.join(directory, clean_string)
+        original_file_path = os.path.join(VIDEO_DIRECTORY, filename)
+        new_file_path = os.path.join(VIDEO_DIRECTORY, clean_string)
+
         if not os.path.exists(new_file_path):
             print(f"Renamed {original_file_path} into {new_file_path}")
             os.rename(original_file_path, new_file_path)
@@ -235,27 +241,28 @@ def replace_spaces_in_filenames(directory: str):
     return renamed_files
 
 
-def clean_up_filename(filename: str):
-    if " " in filename:
-        filename = filename.replace(" ", "_")
+def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 5):
+    """
+    Extract a certain number of frames of a YouTube video.
 
-    encoded_string = filename.encode("ascii", "ignore")
-    clean_string = encoded_string.decode("ascii")
+    Args:
+        video_filepath (str): The filepath of the video.
+        interval_in_sec (int): Interval in seconds between each frame to be extracted. This specifies how frequently frames are captured from the video.
 
-    return clean_string
-        
-
-def extract_frames_from_video(filename: str, extracted_fps: int):
+    Example: 
+        extract_youtube_video_id("./media/videos/my_example_video.mp4", 5)
+    """
 
     print("Begin extraction...")
 
-    new_filename = filename.replace("./media/videos", "")
-    if not os.path.exists(f"./media/frames/{new_filename}"):
-        os.makedirs(f"./media/frames/{new_filename}")
+    filename = video_filepath.replace(VIDEO_DIRECTORY, "")
+    filename = filename.replace(".mp4", "")
+    if not os.path.exists(f"./media/frames/{filename}"):
+        os.makedirs(f"./media/frames/{filename}")
 
-    cam = cv2.VideoCapture(filename)
+    cam = cv2.VideoCapture(video_filepath)
     video_fps = cam.get(cv2.CAP_PROP_FPS)
-    interval = round(video_fps / extracted_fps)
+    interval = round(video_fps * interval_in_sec)
     print(f"Calculated interval: {interval}")
 
     success, image = cam.read()
@@ -263,17 +270,30 @@ def extract_frames_from_video(filename: str, extracted_fps: int):
     while success:
         if count % interval == 0:
             print(f"Writing frame {count}")
-            cv2.imwrite(f"./media/frames/{new_filename}/frame{count}.jpg", image)
+            cv2.imwrite(f"./media/frames/{filename}/frame{count}.jpg", image)
         success, image = cam.read()
         count += 1
 
 
 def url_already_downloaded(url: str):
+    """
+    Check if the video or playlist with this URL has already been downloaded and processed.
+
+    Args:
+        url (str): URL of a YouTube video or playlist.
+
+    Returns:
+        bool: True if this URL has already been processed, False if not.
+
+    Example:
+        url_already_downloaded("https://www.youtube.com/playlist?v=example")
+    """
+
     # Check if the file exists
-    if not os.path.exists("./src/data_processing/extracted_urls.txt"):
+    if not os.path.exists(EXTRACTED_URLS_PATH):
         return False
 
-    with open("./src/data_processing/extracted_urls.txt", 'r') as file:
+    with open(EXTRACTED_URLS_PATH, 'r') as file:
         for line in file:
             if line.strip() == url:
                 return True
@@ -281,7 +301,16 @@ def url_already_downloaded(url: str):
 
 
 def write_url_to_already_downloaded(url: str):
-    with open("./src/data_processing/extracted_urls.txt", 'a') as file:
+    """
+    Write the URL to the list of already downloaded and processed video or playlists.
+
+    Args:
+        url (str): URL of a YouTube video or playlist.
+
+    Example: 
+        write_url_to_already_downloaded("https://www.youtube.com/playlist?v=example")
+    """
+    with open(EXTRACTED_URLS_PATH, 'a') as file:
         file.write(url + '\n')
 
 
