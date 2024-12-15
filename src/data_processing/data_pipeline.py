@@ -64,7 +64,7 @@ def download_pipeline_youtube(url: str):
             replace_spaces_in_filenames("./media/videos/") # Fix: needs to be implemented to work with multiple videos
             new_file_path = get_new_filepath(meta_data['title'])
             extract_frames_from_video(new_file_path, 2)
-            write_url_to_already_downloaded(url)
+            # write_url_to_already_downloaded(url)
             return 200
         except Exception as e:
             print(f"/analyze error: {e}")
@@ -246,11 +246,11 @@ def extract_frames_from_video(filename: str, extracted_fps: int):
     success, image = cam.read()
     count = 0
     while success:
-        print(count)
-        print(interval)
+        # print(count)
+        # print(interval)
         if count % interval == 0:
-            print("TRUE")
-            cv2.imwrite(f"./media/frames/frame{count}.jpg", image)
+            # print("TRUE")
+            cv2.imwrite(f"./media/frames/{new_filename}/frame{count}.jpg", image)
         success, image = cam.read()
         count += 1
 
