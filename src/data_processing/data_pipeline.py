@@ -55,6 +55,7 @@ def download_pipeline_youtube(url: str):
             file_path = "./media/videos/" + meta_data["title"] + ".mp4"
             print(file_path)
             new_file_name = replace_spaces_in_filenames("./media/videos/")
+            extract_frames_from_video(new_file_name, 2)
             return 200
         except Exception as e:
             print(f"/analyze error: {e}")
@@ -209,6 +210,23 @@ def replace_spaces_in_filenames(directory: str):
         else:
             pass
         return new_file_path
+        
+
+def extract_frames_from_video(filename: str, extracted_fps: int):
+    cam = cv2.VideoCapture(filename)
+    video_fps = cam.get(cv2.CAP_PROP_FPS)
+    interval = video_fps / extracted_fps
+
+    success, image = cam.read()
+    count = 0
+    while success:
+        print(count)
+        print(interval)
+        if count % interval == 0:
+            print("TRUE")
+            cv2.imwrite(f"./media/frames/frame{count}.jpg", image)
+        success, image = cam.read()
+        count += 1
 
 
 def extract_youtube_video_id(url: str):
