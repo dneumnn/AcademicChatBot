@@ -8,6 +8,11 @@ from deepmultilingualpunctuation import PunctuationModel
 from happytransformer import HappyTextToText
 import yt_dlp
 import re
+import google.generativeai as genai
+from dotenv import load_dotenv
+
+load_dotenv() 
+API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 import cv2
 
 ##########################################################
@@ -287,7 +292,7 @@ def extract_youtube_video_id(url: str):
         raise ValueError("YouTube Video ID could not be extracted from the URL")
 
 
-def download_youtube_transcript(url: str, language: str="en"):
+def download_youtube_transcript(url: str, language: str="en", gemini_model: str="gemini-1.5-flash"):
     # TODO insert doc string
     """
     Get transcript of YouTube video.
@@ -307,17 +312,38 @@ def download_youtube_transcript(url: str, language: str="en"):
         model = PunctuationModel()
         punctuation_transcript = model.restore_punctuation(combined_transcript)
 
-        # TODO optimize model
-        happy_tt = HappyTextToText("T5", "t5-large")
-
+        genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+        model = genai.GenerativeModel(gemini_model)
         prompt = (
-            "Please correct the following text for spelling, capitalization, syntax, and transcription errors. Ensure proper sentence structure, adjust for incorrect word usage, and maintain the original meaning: "
+            "Please improve the following transcript by correcting any grammar mistakes, "
+            "fixing capitalization errors, and correcting any misspelled or misheard words. "
+            "Do not modify the formatting in any way—keep it as one continuous block of text "
+            "with no additional headings, paragraphs, or bullet points. Only focus on improving "
+            "the text itself: "
         )
 
         prompt_punctuation_transcript = prompt + punctuation_transcript
-        final_transcript = happy_tt.generate_text(prompt_punctuation_transcript)
+        response = model.generate_content(prompt_punctuation_transcript)
 
-        return final_transcript
+        meta_data = extract_meta_data(url)
+        formatted_title = meta_data['title'].replace(" ", "_")
+
+        with open(f"media/transcripts/{formatted_title}.txt", "w", encoding="utf-8") as datei:
+            datei.write(response.text)
+
+
+        # # TODO optimize model
+        # happy_tt = HappyTextToText("T5", "t5-large")
+
+        # prompt = (
+        #     "Please correct the following text for spelling, capitalization, syntax, and transcription errors. Ensure proper sentence structure, adjust for incorrect word usage, and maintain the original meaning: "
+        # )
+
+        # prompt_punctuation_transcript = prompt + punctuation_transcript
+        # final_transcript = happy_tt.generate_text(prompt_punctuation_transcript)
+
+        # return final_transcript
     except Exception as e:
         raise e
+    
     
