@@ -39,10 +39,6 @@ def download_pipeline_youtube(url: str):
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
     """
 
-    if url_already_downloaded(url):
-        print("ALREADY DOWNLOADED!")
-        return 200
-
     video_urls = []
 
     # load url(s) in the video_urls list
@@ -58,15 +54,19 @@ def download_pipeline_youtube(url: str):
 
     # try to download the list of YouTube videos
     for video_url in video_urls:
+        if url_already_downloaded(video_url):
+            print("This URL was already downloaded and analyzed")
+            continue
         try:
+            print("This URL is new!")
             download_youtube_video_pytube(video_url)
         except:
             try:
-                download_youtube_video_yt_dlp(url)
+                download_youtube_video_yt_dlp(video_url)
             except:
                 return 500
         try:
-            meta_data = extract_meta_data(url)
+            meta_data = extract_meta_data(video_url)
             print(meta_data)
 
             renamed_files = clean_up_filenames()
@@ -75,7 +75,7 @@ def download_pipeline_youtube(url: str):
             video_filepath = renamed_files[0]
             extract_frames_from_video(video_filepath, 5)
 
-            write_url_to_already_downloaded(url)
+            write_url_to_already_downloaded(video_url)
         except Exception as e:
             print(f"/analyze error: {e}")
             return 500
