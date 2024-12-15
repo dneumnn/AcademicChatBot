@@ -56,10 +56,9 @@ def download_pipeline_youtube(url: str):
         try:
             meta_data = extract_meta_data(url)
             print(meta_data)
-            file_path = "./media/videos/" + meta_data["title"] + ".mp4"
-            print(file_path)
-            new_file_name = replace_spaces_in_filenames("./media/videos/")
-            extract_frames_from_video(new_file_name, 2)
+            replace_spaces_in_filenames("./media/videos/") # Fix: needs to be implemented to work with multiple videos
+            new_file_path = get_new_filepath(meta_data['title'])
+            extract_frames_from_video(new_file_path, 2)
             write_url_to_already_downloaded(url)
             return 200
         except Exception as e:
@@ -196,28 +195,44 @@ def extract_meta_data(url: str):
         raise e
 
 
+def get_new_filepath(filename: str):
+    
+    clean_filename = clean_up_filename(filename)
+
+    for current_file in os.listdir("./media/videos"):
+        if clean_filename in current_file:
+            return os.path.join("./media/videos/", current_file)
+
+
 def replace_spaces_in_filenames(directory: str):
     """
     
     """
 
     for filename in os.listdir(directory):
-        if " " in filename:
-            new_filename = filename.replace(" ", "_")
-
-        encoded_string = new_filename.encode("ascii", "ignore")
-        clean_string = encoded_string.decode("ascii")
+        clean_string = clean_up_filename(filename)
 
         original_file_path = os.path.join(directory, filename)
         new_file_path = os.path.join(directory, clean_string)
         if not os.path.exists(new_file_path):
             os.rename(original_file_path, new_file_path)
-        else:
-            pass
-        return new_file_path
+
+
+def clean_up_filename(filename: str):
+    if " " in filename:
+        filename = filename.replace(" ", "_")
+
+    encoded_string = filename.encode("ascii", "ignore")
+    clean_string = encoded_string.decode("ascii")
+
+    return clean_string
         
 
 def extract_frames_from_video(filename: str, extracted_fps: int):
+
+    if not os.path.exists("./media/frames"):
+        os.makedirs("./media/frames")
+
     cam = cv2.VideoCapture(filename)
     video_fps = cam.get(cv2.CAP_PROP_FPS)
     interval = video_fps / extracted_fps
