@@ -235,8 +235,9 @@ def clean_up_filename(filename: str):
 
 def extract_frames_from_video(filename: str, extracted_fps: int):
 
-    if not os.path.exists("./media/frames"):
-        os.makedirs("./media/frames")
+    new_filename = filename.replace("./media/videos", "")
+    if not os.path.exists(f"./media/frames/{new_filename}"):
+        os.makedirs(f"./media/frames/{new_filename}")
 
     cam = cv2.VideoCapture(filename)
     video_fps = cam.get(cv2.CAP_PROP_FPS)
