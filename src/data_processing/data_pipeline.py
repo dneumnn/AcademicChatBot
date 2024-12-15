@@ -29,6 +29,7 @@ def download_pipeline_youtube(url: str):
 
     if url_already_downloaded(url):
         print("ALREADY DOWNLOADED!")
+        return 200
 
     video_urls = []
 
@@ -59,6 +60,7 @@ def download_pipeline_youtube(url: str):
             print(file_path)
             new_file_name = replace_spaces_in_filenames("./media/videos/")
             extract_frames_from_video(new_file_name, 2)
+            write_url_to_already_downloaded(url)
             return 200
         except Exception as e:
             print(f"/analyze error: {e}")
@@ -244,8 +246,9 @@ def url_already_downloaded(url: str):
     return False
 
 
-def write_url_to_already_downloaded():
-    pass
+def write_url_to_already_downloaded(url: str):
+    with open("./src/data_processing/extracted_urls.txt", 'a') as file:
+        file.write(url + '\n')
 
 
 def extract_youtube_video_id(url: str):
