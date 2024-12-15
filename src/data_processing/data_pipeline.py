@@ -27,6 +27,9 @@ def download_pipeline_youtube(url: str):
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
     """
 
+    if url_already_downloaded(url):
+        print("ALREADY DOWNLOADED!")
+
     video_urls = []
 
     # load url(s) in the video_urls list
@@ -227,6 +230,22 @@ def extract_frames_from_video(filename: str, extracted_fps: int):
             cv2.imwrite(f"./media/frames/frame{count}.jpg", image)
         success, image = cam.read()
         count += 1
+
+
+def url_already_downloaded(url: str):
+    # Check if the file exists
+    if not os.path.exists("./src/data_processing/extracted_urls.txt"):
+        return False
+
+    with open("./src/data_processing/extracted_urls.txt", 'r') as file:
+        for line in file:
+            if line.strip() == url:
+                return True
+    return False
+
+
+def write_url_to_already_downloaded():
+    pass
 
 
 def extract_youtube_video_id(url: str):
