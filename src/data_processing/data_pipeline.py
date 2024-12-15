@@ -8,6 +8,7 @@ from deepmultilingualpunctuation import PunctuationModel
 from happytransformer import HappyTextToText
 import yt_dlp
 import re
+import cv2
 
 ##########################################################
 # Final pipeline function
@@ -53,9 +54,10 @@ def download_pipeline_youtube(url: str):
             print(meta_data)
             file_path = "./media/videos/" + meta_data["title"] + ".mp4"
             print(file_path)
-            replace_spaces_in_filenames("./media/videos/")
+            new_file_name = replace_spaces_in_filenames("./media/videos/")
             return 200
-        except:
+        except Exception as e:
+            print(f"/analyze error: {e}")
             return 500
 
 
@@ -196,12 +198,17 @@ def replace_spaces_in_filenames(directory: str):
     for filename in os.listdir(directory):
         if " " in filename:
             new_filename = filename.replace(" ", "_")
-            encoded_string = new_filename.encode("ascii", "ignore")
-            clean_string = encoded_string.decode("ascii")
 
-            original_file_path = os.path.join(directory, filename)
-            new_file_path = os.path.join(directory, clean_string)
+        encoded_string = new_filename.encode("ascii", "ignore")
+        clean_string = encoded_string.decode("ascii")
+
+        original_file_path = os.path.join(directory, filename)
+        new_file_path = os.path.join(directory, clean_string)
+        if not os.path.exists(new_file_path):
             os.rename(original_file_path, new_file_path)
+        else:
+            pass
+        return new_file_path
 
 
 def extract_youtube_video_id(url: str):
