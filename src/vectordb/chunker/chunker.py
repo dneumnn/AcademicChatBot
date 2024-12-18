@@ -13,7 +13,7 @@ def save_chunks(chunks, output_file):
         for i, chunk in enumerate(chunks):
             file.write(f"Chunk {i+1}:\n{chunk}\n\n")
 
-def chunk_text(text, max_sentences_per_chunk, overlap_sentences):
+def chunk_text_nltk(text, max_sentences_per_chunk, overlap_sentences):
     # Text in Absätze aufteilen
     paragraphs = nltk.tokenize.blankline_tokenize(text)
     chunks = []
