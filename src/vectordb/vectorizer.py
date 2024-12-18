@@ -1,6 +1,7 @@
 from openai import OpenAI
-
-client = OpenAI(api_key='your-api-key')
+import os
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+client = OpenAI(api_key=OPENAI_API_KEY)
 from config import EMBEDDING_MODEL
 
 
