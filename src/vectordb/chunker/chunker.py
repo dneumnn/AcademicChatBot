@@ -1,7 +1,6 @@
 import nltk
-from transformers import pipeline
 
-nltk.download('punkt_tab')
+nltk.download('punkt')
 
 def load_text(file_path):
     with open(file_path, 'r', encoding='utf-8') as file:
@@ -14,7 +13,6 @@ def save_chunks(chunks, output_file):
             file.write(f"Chunk {i+1}:\n{chunk}\n\n")
 
 def chunk_text_nltk(text, max_sentences_per_chunk, overlap_sentences):
-    # Text in Absätze aufteilen
     paragraphs = nltk.tokenize.blankline_tokenize(text)
     chunks = []
     for i, paragraph in enumerate(paragraphs):
@@ -25,9 +23,7 @@ def chunk_text_nltk(text, max_sentences_per_chunk, overlap_sentences):
             end = start + max_sentences_per_chunk
             chunk_sentences = sentences[start:end]
             if (i != 0 or j != 0) and overlap_sentences > 0:
-                # Overlap-Sätze hinzufügen
                 if j == 0:
-                    # Overlap vom vorherigen Absatz
                     prev_sentences = nltk.sent_tokenize(paragraphs[i - 1])
                     overlap = prev_sentences[-overlap_sentences:]
                 else:
@@ -38,7 +34,7 @@ def chunk_text_nltk(text, max_sentences_per_chunk, overlap_sentences):
             j += max_sentences_per_chunk
     return chunks
 
-def chunk_text_hf(text, max_sentences_per_chunk, overlap_sentences):
+# def chunk_text_hf(text, max_sentences_per_chunk, overlap_sentences):
     summarizer = pipeline("summarization")
     paragraphs = nltk.tokenize.blankline_tokenize(text)
     chunks = []
