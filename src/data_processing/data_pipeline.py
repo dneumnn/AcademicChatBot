@@ -336,16 +336,12 @@ def extract_youtube_video_id(url: str):
 
 
 def download_youtube_transcript(url: str, language: str="en", gemini_model: str="gemini-1.5-flash"):
-    # TODO insert doc string
     """
     Get transcript of YouTube video.
 
     Args:
         url (str): URL of a YouTube video.
         language (str): Language of the transcript.
-    
-    Returns:
-    Example:
     """
     try:
         video_id = extract_youtube_video_id(url)
@@ -373,19 +369,7 @@ def download_youtube_transcript(url: str, language: str="en", gemini_model: str=
 
         with open(f"media/transcripts/{formatted_title}.txt", "w", encoding="utf-8") as datei:
             datei.write(response.text)
-
-
-        # # TODO optimize model
-        # happy_tt = HappyTextToText("T5", "t5-large")
-
-        # prompt = (
-        #     "Please correct the following text for spelling, capitalization, syntax, and transcription errors. Ensure proper sentence structure, adjust for incorrect word usage, and maintain the original meaning: "
-        # )
-
-        # prompt_punctuation_transcript = prompt + punctuation_transcript
-        # final_transcript = happy_tt.generate_text(prompt_punctuation_transcript)
-
-        # return final_transcript
+            
     except Exception as e:
         raise e
     
