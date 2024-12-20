@@ -7,10 +7,12 @@ from llama_index.core import Document
 from llama_index.retrievers.bm25 import BM25Retriever
 import Stemmer
 from sklearn.metrics.pairwise import cosine_similarity
+from FlagEmbedding import FlagReranker
 
 # pip install llama-index-retrievers-bm25
 # pip install sentence_transformers
 # pip install chromadb
+# pip install FlagEmbedding
 
 """
 VectorDB -> ChromaDB
@@ -189,6 +191,23 @@ def rerank_passages_with_cosine(question: str, passages: List[str], top_k: int =
     ranked_passages = [p for _, p in sorted(zip(similarities, passages), reverse=True)]
     return ranked_passages[:top_k]
 
+def rerank_passages_with_bge(question: str, passages: List[str], top_k: int = 3) -> List[str]:
+    """
+    Rerank passages using BGE reranker model
+    
+    Args:
+        question: Question to search for
+        passages: List of passages to rerank
+        top_k: Number of top passages to return
+    
+    Returns:
+        List of reranked passages sorted by BGE reranker score
+    """
+    reranker = FlagReranker('BAAI/bge-reranker-large', use_fp16=True)
+    scores = reranker.compute_score([[question, p] for p in passages])
+    ranked_passages = [p for _, p in sorted(zip(scores, passages), reverse=True)]
+    return ranked_passages[:top_k]
+
 def main():
     #alice_path = os.path.join(os.path.dirname(__file__), "mock", "alice.txt")
     #mock_load_text_to_vectordb(alice_path)
@@ -210,6 +229,11 @@ def main():
     
     reranked_passages = rerank_passages_with_cosine("Why did allice fall down the rabbit hole?", passages, top_k=3)
     print("\nReranked passages about Alice with cosine similarity:")
+    for r in reranked_passages:
+        print(f"\n- {r}")
+    
+    reranked_passages = rerank_passages_with_bge("Why did allice fall down the rabbit hole?", passages, top_k=3)
+    print("\nReranked passages about Alice with BGE reranker:")
     for r in reranked_passages:
         print(f"\n- {r}")
 
