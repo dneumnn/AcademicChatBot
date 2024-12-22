@@ -1,0 +1,11 @@
+requests
+sentence_transformers
+llama-index-retrievers-bm25
+langchain_core
+langchain_chroma
+langchain_ollama
+chromadb
+fastapi
+langchain_text_splitters
+
+grandalf
