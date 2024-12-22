@@ -7,5 +7,7 @@ langchain_ollama
 chromadb
 fastapi
 langchain_text_splitters
+langchain
+langchain_community
 
 grandalf
