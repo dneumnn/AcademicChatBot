@@ -1,4 +1,5 @@
 import os
+from typing import List
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -47,5 +48,8 @@ def mock_load_text_to_vectordb_with_ollama_embeddings(database_path: str, file_p
 def get_persistent_chroma_db_directory():
     return os.path.join(os.path.dirname(__file__), "mock", "chroma_db")
  
-def format_docs(docs):
-    return "\n\n".join(f"{i}.) {doc.page_content}" for i, doc in enumerate(docs))
+def format_docs(docs: List[Document]) -> List[str]:
+    return [doc.page_content for doc in docs]
+
+def transform_string_list_to_string(docs: List[str]) -> str:
+    return "\n\n".join(docs)

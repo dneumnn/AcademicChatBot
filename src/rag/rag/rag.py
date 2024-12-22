@@ -3,7 +3,8 @@ from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from vectorstore.vectorstore import format_docs
+from rerankers.rerankers import rerank_passages_with_cross_encoder_bge
+from vectorstore.vectorstore import format_docs, transform_string_list_to_string
 
 def rag(database_path: str, collection_name: str, question: str):
     embeddings = OllamaEmbeddings(model="nomic-embed-text")
@@ -13,7 +14,7 @@ def rag(database_path: str, collection_name: str, question: str):
         collection_name=collection_name,
         collection_metadata={"hnsw:space": "cosine"}
     )
-    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 6})
+    retriever = vectorstore.as_retriever(search_type="similarity", search_kwargs={"k": 25})
  
     llm = ChatOllama(model="llama3.2")
  
@@ -26,7 +27,12 @@ def rag(database_path: str, collection_name: str, question: str):
  
     prompt_template = PromptTemplate.from_template(prompt)
  
-    retriever_chain = retriever | format_docs
+    retriever_chain = (
+        retriever 
+        | format_docs 
+        | (lambda docs: rerank_passages_with_cross_encoder_bge(question=question, passages=docs, top_k=5))
+        | transform_string_list_to_string
+    )
     docs = retriever_chain.invoke(question)
     print(docs)
 
