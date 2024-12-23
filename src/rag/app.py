@@ -1,7 +1,7 @@
 import os
 from typing import List
 from models.model import get_available_models
-from graphstore.graphstore import ask_question_to_graphdb, mock_load_text_to_graphdb
+from graphstore.graphstore import ask_question_to_graphdb, ask_question_to_graphdb_OLD, mock_load_text_to_graphdb
 from rag.rag import rag
 
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), "mock", "chroma_db")
@@ -62,7 +62,8 @@ def models() -> List[str]:
 def main():
     #mock_load_text_to_vectordb_with_ollama_embeddings()
     #mock_load_text_to_graphdb(ALICE_PATH)
-    #print(ask_question_to_graphdb("Tell me something about alice?"))
+    #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of? Go only by ids."))
+    #print(ask_question_to_graphdb_OLD("Which book is Lewis Carroll the author of? Go only by ids."))
     rag(DATABASE_PATH, COLLECTION_NAME, "What is allices opinion on getting older?")
  
 if __name__ == "__main__":
