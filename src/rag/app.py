@@ -62,8 +62,8 @@ def models() -> List[str]:
 def main():
     #mock_load_text_to_vectordb_with_ollama_embeddings()
     #mock_load_text_to_graphdb(ALICE_PATH)
-    print(ask_question_to_graphdb("Which book is Lewis Carroll the author of? Go only by ids."))
-    #rag(DATABASE_PATH, COLLECTION_NAME, "What is allices opinion on getting older?")
+    #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
+    rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
  
 if __name__ == "__main__":
     main()

@@ -2,6 +2,13 @@ from langchain_ollama import OllamaEmbeddings
 from langchain.utils.math import cosine_similarity
 from langchain_core.prompts import PromptTemplate
 
+basic_template = """
+    You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. If you don't know the answer, just say that you don't know. Use three sentences maximum and keep the answer concise.
+    Question: {question}
+    Context: {context}
+    Answer:
+"""
+
 physics_template = """
 You are a very smart physics professor.
 You are great at answering questions about physics in a concise and easy to understand manner.
@@ -40,6 +47,9 @@ def semantic_routing(question: str) -> str:
     most_similar = prompt_templates[similarity.argmax()]
 
     return PromptTemplate.from_template(most_similar)
+
+def get_base_template():
+    return PromptTemplate.from_template(basic_template)
 
 def __test__semantic_routing():
     print(semantic_routing("Why does gravity exist?"))
