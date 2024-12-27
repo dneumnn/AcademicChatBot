@@ -12,6 +12,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import cv2
 import PIL.Image
+import json
 
 # Env variables
 load_dotenv() 
@@ -517,4 +518,30 @@ def process_data(data, max_overlap):
         })
 
     return processed_data
+
+def create_chunk_llm(text: str, max_chunk_length: int=500, gemini_model: str="gemini-1.5-flash"):
+    """
+    
+    """
+    genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+    model = genai.GenerativeModel(gemini_model)
+    prompt = (
+        f"""
+        Divide the transcript text into logical chunks, ensuring each chunk 
+        is no longer than {max_chunk_length} characters.
+
+        Preserve the text exactly as it is, including any content within curly 
+        brackets - do not adjust, alter, or reformat it. Ensure no words are 
+        missed or omitted. Return the output in brackets "[]", with each element 
+        containing a single chunk. 
+
+        Transcript text:
+        """
+    )
+    prompt_transcript = prompt + text
+    response = model.generate_content(prompt_transcript)
+    response = response.text
+    response = re.sub(r"```json|```", "", response).strip()
+
+    return response
 
