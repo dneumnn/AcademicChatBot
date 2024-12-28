@@ -71,10 +71,8 @@ def download_pipeline_youtube(url: str):
             meta_data = extract_meta_data(video_url)
             print(meta_data)
 
-            renamed_files = clean_up_filenames()
-            if len(renamed_files) == 0:
-                return 500
-            video_filepath = renamed_files[0]
+            videoid = extract_youtube_video_id(video_url)
+            video_filepath = VIDEO_DIRECTORY + videoid + ".mp4"
             extract_frames_from_video(video_filepath, 5)
 
             write_url_to_already_downloaded(video_url)
@@ -127,10 +125,11 @@ def download_youtube_video_yt_dlp(url: str):
     Example:
         download_youtube_video_yt_dlp("https://www.youtube.com/watch?v=example")
     """
+    videoid = extract_youtube_video_id(url)
 
     ydl_opts = {
             'format': 'best',
-            'outtmpl': "media/videos/%(title)s.%(ext)s",
+            'outtmpl': f"media/videos/{videoid}.%(ext)s",
             'retries': 3,
             'geo_bypass': True,
         }
@@ -178,11 +177,13 @@ def extract_meta_data(url: str):
     Raises:
         Exception: For errors during meta data extraction.
     """
+    videoid = extract_youtube_video_id(url)
+
     meta_data = {}
 
     ydl_opts = {
             'format': 'best',
-            'outtmpl': "media/videos/%(title)s.%(ext)s",
+            'outtmpl': f"media/videos/{videoid}.%(ext)s",
             'retries': 3,
             'geo_bypass': True,
         }
@@ -211,36 +212,6 @@ def extract_meta_data(url: str):
 
     except Exception as e:
         raise e
-
-
-def clean_up_filenames():
-    """
-    Cleans up all filenames in the video directory by removing spaces and non-ASCII characters. This adjustment ensures that Python can
-    handle these filenames without issues in subsequent operations, as filenames with non-ASCII characters can cause errors.
-
-    Returns:
-        renamed_files (list of str): A list of filenames that have been cleaned. In production execution, this list should contain exactly one filename.
-
-    """
-
-    renamed_files = []
-
-    for filename in os.listdir(VIDEO_DIRECTORY):
-        new_filename = filename
-        if " " in filename:
-            new_filename = filename.replace(" ", "_")
-        encoded_string = new_filename.encode("ascii", "ignore")
-        clean_string = encoded_string.decode("ascii")
-
-        original_file_path = os.path.join(VIDEO_DIRECTORY, filename)
-        new_file_path = os.path.join(VIDEO_DIRECTORY, clean_string)
-
-        if not os.path.exists(new_file_path):
-            print(f"Renamed {original_file_path} into {new_file_path}")
-            os.rename(original_file_path, new_file_path)
-            renamed_files.append(new_file_path)
-    
-    return renamed_files
 
 
 def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 5):
