@@ -4,8 +4,8 @@ from pytube import (
     Playlist
 )
 from youtube_transcript_api import YouTubeTranscriptApi
-from deepmultilingualpunctuation import PunctuationModel
-from happytransformer import HappyTextToText
+# from deepmultilingualpunctuation import PunctuationModel
+# from happytransformer import HappyTextToText
 import yt_dlp
 import re
 import google.generativeai as genai
