@@ -96,7 +96,7 @@ def download_pipeline_youtube(url: str):
 
                 df = pd.DataFrame(chunked_text)
                 df = df.rename(columns={"sentence":"chunks"})
-                df.to_csv(TRANSCRIPT_CHUNKS_DIRECTORY + videoid, index=False)
+                df.to_csv(f"{TRANSCRIPT_CHUNKS_DIRECTORY}{videoid}.csv", index=False)
 
             except Exception as e:
                 print(f"Error during transcript: {e}")
