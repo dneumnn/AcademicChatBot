@@ -1,5 +1,5 @@
 from neo4j import GraphDatabase
-from src.db.graph_db.data_insert import create_meta_data_node
+from src.db.graph_db.node_creation import create_meta_data_node
 
 class GraphHandler:
 
