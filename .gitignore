@@ -175,6 +175,7 @@ cython_debug/
 /media/frames
 /media/frames_description
 /media/transcripts
+/media/transcripts_chunks
 
 # Neo4j generated files
 /src/db/graph_db/logs

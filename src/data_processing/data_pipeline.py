@@ -12,6 +12,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import cv2
 import PIL.Image
+import pandas as pd
 
 # Env variables
 load_dotenv() 
@@ -22,6 +23,8 @@ API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 VIDEO_DIRECTORY = "./media/videos/"
 FRAMES_DIRECTORY = "./media/frames"
 EXTRACTED_URLS_PATH = "./src/data_processing/extracted_urls.txt"
+TRANSCRIPT_DIRECTORY = "./media/transcripts/"
+TRANSCRIPT_CHUNKS_DIRECTORY = "./media/transcripts_chunks/"
 
 ##########################################################
 # Final pipeline function
@@ -72,7 +75,7 @@ def download_pipeline_youtube(url: str):
 
             videoid = extract_youtube_video_id(video_url)
             video_filepath = VIDEO_DIRECTORY + videoid + ".mp4"
-            extract_frames_from_video(video_filepath, 5)
+            extract_frames_from_video(video_filepath, 60)
 
             write_url_to_already_downloaded(video_url)
 
@@ -81,6 +84,22 @@ def download_pipeline_youtube(url: str):
             except Exception as e:
                 print(f"Error during creation of Image descriptions: {e}")
 
+            try:
+                download_preprocess_youtube_transcript(video_url)
+
+                with open(f"{TRANSCRIPT_DIRECTORY}{videoid}.txt", "r") as file:
+                    processed_text_transcript = file.read()
+                
+                extracted_tim_sentence = extract_time_and_sentences(processed_text_transcript)
+                merged_sentence = merge_sentences_based_on_length(extracted_tim_sentence, 500)
+                chunked_text = add_chunk_overlap(merged_sentence, 50)
+
+                df = pd.DataFrame(chunked_text)
+                df = df.rename(columns={"sentence":"chunks"})
+                df.to_csv(TRANSCRIPT_CHUNKS_DIRECTORY + videoid, index=False)
+
+            except Exception as e:
+                print(f"Error during transcript: {e}")
         except Exception as e:
             print(f"/analyze error: {e}")
             return 500
@@ -219,7 +238,7 @@ def extract_meta_data(url: str):
         raise e
 
 
-def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 20):
+def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     """
     Extract a certain number of frames of a YouTube video.
 
@@ -469,7 +488,7 @@ def merge_sentences_based_on_length(result, max_chunk_length):
     
     return merged_result
 
-def process_data(data, max_overlap):
+def add_chunk_overlap(data, max_overlap):
     """
     Add overlap to chunks.
 
