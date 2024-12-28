@@ -169,6 +169,7 @@ cython_debug/
 
 # Exclude all videos
 *.mp4
+*.mp4.part
 
 # Exclude generated files by data_processing
 /src/data_processing/extracted_urls.txt
