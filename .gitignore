@@ -169,3 +169,16 @@ cython_debug/
 
 # Exclude all videos
 *.mp4
+
+# Exclude generated files by data_processing
+/src/data_processing/extracted_urls.txt
+/media/frames
+/media/frames_description
+/media/transcripts
+/media/transcripts_chunks
+
+# Neo4j generated files
+/src/db/graph_db/logs
+/src/db/graph_db/config
+/src/db/graph_db/data
+/src/db/graph_db/plugins
