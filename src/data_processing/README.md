@@ -60,4 +60,8 @@ Assuming the **FastAPI server** is running locally on its default port `8000`, y
 
 ---
 
-<img src="/media/images/pre-processing-pipeline.svg" alt="Data Pipeline Image" data-dark="/media/images/pre-processing-pipeline-dark.svg" />
+<picture>
+  <source srcset="/media/images/pre-processing-pipeline-dark.svg" media="(prefers-color-scheme: dark)">
+  <img src="/media/images/pre-processing-pipeline.svg" alt="Data Pipeline Image">
+</picture>
+
