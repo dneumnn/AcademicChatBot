@@ -10,8 +10,7 @@ from src.data_processing.visual_processing import *
 
 # Static variables
 VIDEO_DIRECTORY = "./media/videos/"
-FRAMES_DIRECTORY = "./media/frames"
-EXTRACTED_URLS_PATH = "./src/data_processing/extracted_urls.txt"
+PROCESSED_URLS_FILE = "./src/data_processing/extracted_urls.txt"
 TRANSCRIPT_DIRECTORY = "./media/transcripts/"
 TRANSCRIPT_CHUNKS_DIRECTORY = "./media/transcripts_chunks/"
 
@@ -20,26 +19,39 @@ load_dotenv()
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
 
-##########################################################
-# Final pipeline function
+# ********************************************************
+# * Final pipeline function
 
 def download_pipeline_youtube(url: str):
     """
-    Download youtube video(s) from playlist or video url
+    Pipeline for processing YouTube videos and their content.
+
+    This method defines the pipeline for processing a YouTube video or playlist. It handles downloading the content
+    and processing both the audio and visual elements. It uses multiple modular functions from the data_processing package,
+    ensuring a clear separation between technical implementation details and the overall structural overview.
 
     Args:
-        url (str). URL of the YouTube video or playlist
-    
+        url (str). URL of the YouTube video or playlist.
+
     Returns:
-        status_code (int). The status code that should be returned by Fast API.
+        status_code (int). The status code that should be returned by the Fast API schnittstelle.
+        Check the README of this package for more insights into the possible returned status codes.
 
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
+
+    TODO:
+        - Implement better error handling.
+        - Implement better logging.
+        - Make the directories in the other files matching.
+        - Document in the README all LLMs that are being used.
+        - Add better and more detailed comments.
     """
 
     video_urls = []
 
     # load url(s) in the video_urls list
+    # TODO: Check other types of URLs, e.g. what happens, if an URL is passed, which belongs to a single video which is part of a playlist?
     if "watch" in url and "list" not in url:
         print(f"{url} is a youtube video")
         video_urls.append(url)
@@ -64,6 +76,7 @@ def download_pipeline_youtube(url: str):
             except:
                 return 500
         try:
+            # TODO: Also add a second method for extracting meta data (similar to video download)
             meta_data = extract_meta_data(video_url)
             print(meta_data)
 
@@ -71,8 +84,7 @@ def download_pipeline_youtube(url: str):
             video_filepath = VIDEO_DIRECTORY + videoid + ".mp4"
             extract_frames_from_video(video_filepath, 60)
 
-            write_url_to_already_downloaded(video_url)
-
+            # TODO: Implement better try-catch mechanism. This nested try-catch blocks are not good.
             try:
                 create_image_description(videoid)
             except Exception as e:
@@ -83,14 +95,16 @@ def download_pipeline_youtube(url: str):
 
                 with open(f"{TRANSCRIPT_DIRECTORY}{videoid}.txt", "r") as file:
                     processed_text_transcript = file.read()
-                
-                extracted_tim_sentence = extract_time_and_sentences(processed_text_transcript)
-                merged_sentence = merge_sentences_based_on_length(extracted_tim_sentence, 500)
+
+                extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
+                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, 500)
                 chunked_text = add_chunk_overlap(merged_sentence, 50)
 
                 df = pd.DataFrame(chunked_text)
                 df = df.rename(columns={"sentence":"chunks"})
                 df.to_csv(f"{TRANSCRIPT_CHUNKS_DIRECTORY}{videoid}.csv", index=False)
+
+                write_url_to_already_downloaded(video_url)
 
             except Exception as e:
                 print(f"Error during transcript: {e}")
@@ -115,10 +129,10 @@ def url_already_downloaded(url: str):
     """
 
     # Check if the file exists
-    if not os.path.exists(EXTRACTED_URLS_PATH):
+    if not os.path.exists(PROCESSED_URLS_FILE):
         return False
 
-    with open(EXTRACTED_URLS_PATH, 'r') as file:
+    with open(PROCESSED_URLS_FILE, 'r') as file:
         for line in file:
             if line.strip() == url:
                 return True
@@ -135,6 +149,6 @@ def write_url_to_already_downloaded(url: str):
     Example: 
         write_url_to_already_downloaded("https://www.youtube.com/playlist?v=example")
     """
-    with open(EXTRACTED_URLS_PATH, 'a') as file:
+    with open(PROCESSED_URLS_FILE, 'a') as file:
         file.write(url + '\n')
 
