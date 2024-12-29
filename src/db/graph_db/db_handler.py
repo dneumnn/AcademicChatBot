@@ -14,6 +14,7 @@ class GraphHandler:
         with self.driver.session() as session:
             session.execute_write(create_meta_data_node, meta_data)
 
-    def create_transcript_chunk_session(self, chunk):
+    def create_transcript_chunk_session(self, chunks):
         with self.driver.session() as session:
-            session.execute_write(create_transcript_chunk_node, chunk)
+            for chunk in chunks:
+                session.execute_write(create_transcript_chunk_node, chunk)
