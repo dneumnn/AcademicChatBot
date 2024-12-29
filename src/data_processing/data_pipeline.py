@@ -10,7 +10,7 @@ from .visual_processing import *
 from .logger import log, create_log_file, write_empty_line
 
 # Static variables
-VIDEO_DIRECTORY = "./media/videos/"
+VIDEO_DIRECTORY = "./media/"
 PROCESSED_URLS_FILE = "./src/data_processing/extracted_urls.txt"
 TRANSCRIPT_DIRECTORY = "./media/transcripts/"
 TRANSCRIPT_CHUNKS_DIRECTORY = "./media/transcripts_chunks/"
@@ -88,7 +88,7 @@ def download_pipeline_youtube(url: str):
             # print(meta_data)
 
             videoid = extract_youtube_video_id(video_url)
-            video_filepath = VIDEO_DIRECTORY + videoid + ".mp4"
+            video_filepath = f"{VIDEO_DIRECTORY}/{videoid}/video/{videoid}.mp4"
             extract_frames_from_video(video_filepath, 60)
 
             # TODO: Implement better try-catch mechanism. This nested try-catch blocks are not good.
@@ -101,7 +101,7 @@ def download_pipeline_youtube(url: str):
                 download_preprocess_youtube_transcript(video_url)
 
                 # Read the downloaded transcript into the variable "processed_text_transcript"
-                with open(f"{TRANSCRIPT_DIRECTORY}{videoid}.txt", "r") as file:
+                with open(f"media/{videoid}/transcripts/{videoid}.txt", "r") as file:
                     processed_text_transcript = file.read()
 
                 extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
@@ -111,7 +111,10 @@ def download_pipeline_youtube(url: str):
                 # Rename column "sentence" into "chunks" for the chunked data
                 df = pd.DataFrame(chunked_text)
                 df = df.rename(columns={"sentence":"chunks"})
-                df.to_csv(f"{TRANSCRIPT_CHUNKS_DIRECTORY}{videoid}.csv", index=False)
+                transcript_chunks_path = f"media/{videoid}/transcripts_chunks/"
+                if not os.path.exists(transcript_chunks_path):
+                    os.makedirs(transcript_chunks_path)
+                df.to_csv(f"media/{videoid}/transcripts_chunks/{videoid}.csv", index=False)
 
                 write_url_to_already_downloaded(video_url)
                 log.info(f"download_pipeline_youtube: The video with URL {url} was successfully processed!")

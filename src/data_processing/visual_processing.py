@@ -1,4 +1,5 @@
 import os
+import re
 import PIL.Image
 import cv2
 from dotenv import load_dotenv
@@ -35,10 +36,9 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     log.info("extract_frames_from_video: Begin extraction of video frames...")
 
     # Extract filename from file path
-    filename = video_filepath.replace(VIDEO_DIRECTORY, "")
-    filename = filename.replace(".mp4", "")
-    if not os.path.exists(f"{FRAMES_DIRECTORY}{filename}"):
-        os.makedirs(f"{FRAMES_DIRECTORY}{filename}")
+    filename = re.search(r"video/(.+?)\.mp4", video_filepath).group(1)
+    if not os.path.exists(f"./media/{filename}/frames/"):
+        os.makedirs(f"./media/{filename}/frames/")
 
     # Calculate interval in frames
     cam = cv2.VideoCapture(video_filepath)
@@ -52,7 +52,7 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     while success:
         if count % interval_in_frames == 0:
             log.info(f"extract_frames_from_video: Extracting frame {count} for video {filename}.")
-            cv2.imwrite(f"{FRAMES_DIRECTORY}{filename}/frame{count}.jpg", image)
+            cv2.imwrite(f"./media/{filename}/frames/frame{count}.jpg", image)
         success, image = cam.read()
         count += 1
 
@@ -78,7 +78,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
 
-    path_dir = FRAMES_DIRECTORY + video_id + "/"
+    path_dir = f"./media/{video_id}/frames/"
     all_image_files = os.listdir(path_dir)
 
     # Iterate through all image files
@@ -103,7 +103,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             [prompt, image_file]
         )
 
-        path_dir_frame_desc = f"{IMAGE_DESCRIPTION_DIRECTORY}{video_id}"
+        path_dir_frame_desc = f"./media/{video_id}/frames_description/"
         if not os.path.exists(path_dir_frame_desc):
             os.makedirs(path_dir_frame_desc)
 

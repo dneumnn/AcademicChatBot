@@ -23,7 +23,7 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
         download_youtube_video("https://www.youtube.com/watch?v=example", resolution="1080p")
     """
     try:
-        save_path = "media/videos/"
+        save_path = "media/"
         os.makedirs(save_path, exist_ok=True)
 
         yt = YouTube(url)
@@ -55,7 +55,7 @@ def download_youtube_video_yt_dlp(url: str) -> None:
 
     ydl_opts = {
             'format': 'best',
-            'outtmpl': f"media/videos/{videoid}.%(ext)s",
+            'outtmpl': f"media/{videoid}/video/{videoid}.%(ext)s",
             'retries': 3,
             'geo_bypass': True,
         }
@@ -111,7 +111,7 @@ def extract_meta_data(url: str) -> dict:
 
     ydl_opts = {
             'format': 'best',
-            'outtmpl': f"media/videos/{videoid}.%(ext)s",
+            'outtmpl': f"media/{videoid}/video/{videoid}.%(ext)s",
             'retries': 3,
             'geo_bypass': True,
         }

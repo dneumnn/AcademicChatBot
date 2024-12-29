@@ -175,10 +175,8 @@ cython_debug/
 
 # Exclude generated files by data_processing
 /src/data_processing/extracted_urls.txt
-/media/frames
-/media/frames_description
-/media/transcripts
-/media/transcripts_chunks
+/media/
+! /media/images/
 
 # Neo4j generated files
 /src/db/graph_db/logs

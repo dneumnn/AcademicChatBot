@@ -52,6 +52,10 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
     except Exception as e:
         print(f"Error during transcript correction: {e}")
 
-    with open(f"media/transcripts/{video_id}.txt", "w", encoding="utf-8") as datei:
+    transcript_path = f"media/{video_id}/transcripts/"
+    if not os.path.exists(transcript_path):
+            os.makedirs(transcript_path)
+
+    with open(f"media/{video_id}/transcripts/{video_id}.txt", "w", encoding="utf-8") as datei:
         datei.write(response.text)
 
