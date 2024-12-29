@@ -1,3 +1,4 @@
+# Meta-data node
 def create_meta_data_node(tx, meta_data):
     query = """
     CREATE (m:MetaData {
@@ -30,4 +31,14 @@ def create_meta_data_node(tx, meta_data):
            like_count=meta_data["like_count"], 
            age_limit=meta_data["age_limit"])  
 
-
+# Text-chunk node
+def create_transcript_chunk_node(tx, chunk):
+    query = """
+    CREATE (c:TranscriptChunk {
+        text: $sentence, start_time: $time,
+        length: $length
+    })
+    """
+    tx.run(query, text=chunk["sentence"], 
+           time=chunk["time"],  
+           length=chunk["length"])
