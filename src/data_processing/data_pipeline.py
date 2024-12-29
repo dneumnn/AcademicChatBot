@@ -7,6 +7,7 @@ from src.data_processing.video_metadata_download import *
 from src.data_processing.audio_processing import *
 from src.data_processing.chunk_processing import *
 from src.data_processing.visual_processing import *
+from src.data_processing.logger import log
 
 # Static variables
 VIDEO_DIRECTORY = "./media/videos/"
