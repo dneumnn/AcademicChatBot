@@ -3,11 +3,11 @@ from dotenv import load_dotenv
 import pandas as pd
 
 # Import other functions of the data_processing package
-from src.data_processing.video_metadata_download import *
-from src.data_processing.audio_processing import *
-from src.data_processing.chunk_processing import *
-from src.data_processing.visual_processing import *
-from src.data_processing.logger import log
+from .video_metadata_download import *
+from .audio_processing import *
+from .chunk_processing import *
+from .visual_processing import *
+from .logger import log
 
 # Static variables
 VIDEO_DIRECTORY = "./media/videos/"
