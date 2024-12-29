@@ -10,16 +10,16 @@ These pre-processed outputs are structured for further use by the **GraphDB** an
 
 ## Data Pipeline
 
-**1. URL validation:** Verifies whether the input is a valid YouTube video or playlist URL.
-**2. URL Queue Management:** Adds valid video URLs to a list of pending URLs to be processed.
-**3. Video Download:** Attempts to download the video using **pytube**. If unsuccessful, it falls back to **yt_dlp**.
-**4. Metadata Extraction:** Extracts essential metadata (such as title, channel, or duration) from the video.
-**5. Frame Extraction:** Captures key frames from the video at predefined intervals.
-**6. Frame Description:** Uses a Large Language Model **(LLM)** to generate descriptive captions for each extracted frame.
-**7. Transcript Extraction:** Retrieves the video transcript or subtitles.
-**8. Transcript Enhancement:** Appends a fitting timestamp for each sentence and enhances the transcript quality through a **LLM**.
-**9. Data Chunking:** Combines processed sentences into structured, manageable chunks for downstream tasks.
-**10. Processing Log:** Records the video URL in a list of processed URLs to prevent duplicate processing.
+**1. URL validation:** Verifies whether the input is a valid YouTube video or playlist URL.  
+**2. URL Queue Management:** Adds valid video URLs to a list of pending URLs to be processed.  
+**3. Video Download:** Attempts to download the video using **pytube**. If unsuccessful, it falls back to **yt_dlp**.  
+**4. Metadata Extraction:** Extracts essential metadata (such as title, channel, or duration) from the video.  
+**5. Frame Extraction:** Captures key frames from the video at predefined intervals.  
+**6. Frame Description:** Uses a Large Language Model **(LLM)** to generate descriptive captions for each extracted frame.  
+**7. Transcript Extraction:** Retrieves the video transcript or subtitles.  
+**8. Transcript Enhancement:** Appends a fitting timestamp for each sentence and enhances the transcript quality through a **LLM**.  
+**9. Data Chunking:** Combines processed sentences into structured, manageable chunks for downstream tasks.  
+**10. Processing Log:** Records the video URL in a list of processed URLs to prevent duplicate processing.  
 
 Steps 3 to 10 are repeated for every video that should be processed, if a playlist was passed to the pipeline.
 
@@ -48,7 +48,7 @@ The usage of this package is streamlined and easy. Ensure the **FastAPI server**
 | --- | --- | --- |
 | `video_input` | `string` | The URL of the YouTube video or playlist to analyze. |
 
-### Response
+#### Response
 
 The endpoint will return a status indicating whether the processing was successful. Once completed, the pre-processed data can be found in the `/media` folder.
 
