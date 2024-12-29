@@ -4,6 +4,9 @@ import cv2
 from dotenv import load_dotenv
 import google.generativeai as genai
 
+# Import other functions of the data_processing package
+from src.data_processing.logger import log
+
 # Static variables
 VIDEO_DIRECTORY = "./media/videos/"
 FRAMES_DIRECTORY = "./media/frames/"
@@ -29,7 +32,7 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
         - Extract only the frames that differ significantly from the previous ones.
     """
 
-    print("Begin extraction of video frames...")
+    log.info("extract_frames_from_video: Begin extraction of video frames...")
 
     # Extract filename from file path
     filename = video_filepath.replace(VIDEO_DIRECTORY, "")
@@ -41,14 +44,14 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     cam = cv2.VideoCapture(video_filepath)
     video_fps = cam.get(cv2.CAP_PROP_FPS)
     interval_in_frames = round(video_fps * interval_in_sec)
-    print(f"Calculated frames interval: {interval_in_frames}")
+    log.info(f"extract_frames_from_video: Calculated frames interval = {interval_in_frames}.")
 
     # Extract frames
     success, image = cam.read()
     count = 0
     while success:
         if count % interval_in_frames == 0:
-            print(f"Extracting frame {count} for video {filename}")
+            log.info(f"extract_frames_from_video: Extracting frame {count} for video {filename}.")
             cv2.imwrite(f"{FRAMES_DIRECTORY}{filename}/frame{count}.jpg", image)
         success, image = cam.read()
         count += 1
@@ -68,6 +71,8 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     TODO:
         - Describe only the images that add relevant content. Ignore frames that are unreadable or serve merely as transitions.
     """
+
+    log.info(f"create_image_description: Start creating descriptions for images using {gemini_model} as LLM.")
 
     # Configure and load genai model
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
@@ -106,4 +111,5 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         filename = file.replace(".jpg", "")
         with open(f"{path_dir_frame_desc}/{filename}.txt", "w", encoding="utf-8") as response_file:
             response_file.write(response.text)
+        log.info(f"creating_image_description: Successfully created an image description for file {filename}.")
 
