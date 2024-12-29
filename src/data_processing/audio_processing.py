@@ -1,17 +1,20 @@
 import os
 from dotenv import load_dotenv
-from src.data_processing.video_metadata_download import extract_youtube_video_id
-from youtube_transcript_api import YouTubeTranscriptApi
+
 import google.generativeai as genai
+from youtube_transcript_api import YouTubeTranscriptApi
+
+from .video_metadata_download import extract_youtube_video_id
 
 # Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
 
-def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash"):
+def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash") -> None:
     """
-    Download and add start time information into the transcript. Time information is inserted in curly brackets inbetween the text. 
+    Download and add start time information into the transcript. 
+    Time information is inserted in curly brackets inbetween the text. 
 
     Args:
         url (str): URL of a YouTube video.
@@ -30,20 +33,24 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         text = item['text']
         combinded_transcript.append(f"{start_time} {text}")
     raw_combined_transcript = " ".join(combinded_transcript)
-        
-    genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
-    model = genai.GenerativeModel(gemini_model)
-    prompt = (
-        "Please improve the following transcript by correcting any grammar mistakes, "
-        "fixing capitalization errors, fixing punctuation missings and mistakes, "
-        "and correcting any misspelled or misheard words. Do not modify the formatting "
-        "in any way—keep it as one continuous block of text with no additional headings, "
-        "paragraphs, or bullet points. Only focus on improving the text itself. Ignore all "
-        "curly brackets and the inserted number inside; keep them at the same position "
-        "of the text without adjusting it: "
-    )
-    prompt_transcript = prompt + raw_combined_transcript
-    response = model.generate_content(prompt_transcript)
+    
+    try:
+        genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+        model = genai.GenerativeModel(gemini_model)
+        prompt = (
+            "Please improve the following transcript by correcting any grammar mistakes, "
+            "fixing capitalization errors, fixing punctuation missings and mistakes, "
+            "and correcting any misspelled or misheard words. Do not modify the formatting "
+            "in any way—keep it as one continuous block of text with no additional headings, "
+            "paragraphs, or bullet points. Only focus on improving the text itself. Ignore all "
+            "curly brackets and the inserted number inside; keep them at the same position "
+            "of the text without adjusting it: "
+        )
+        prompt_transcript = prompt + raw_combined_transcript
+        response = model.generate_content(prompt_transcript)
+
+    except Exception as e:
+        print(f"Error during transcript correction: {e}")
 
     with open(f"media/transcripts/{video_id}.txt", "w", encoding="utf-8") as datei:
         datei.write(response.text)

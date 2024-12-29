@@ -8,7 +8,7 @@ load_dotenv()
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
 
-def extract_time_and_sentences(text: str):
+def extract_time_and_sentences(text: str) -> list:
     """
     Extract timestamp for each sentence and convert them into dictionary.
 
@@ -20,7 +20,7 @@ def extract_time_and_sentences(text: str):
     """
     split_text = re.split(r'(?<=[.?!])\s+', text)
     
-    time_pattern = r'\{([^}]+)\}'  
+    time_pattern = r'\{([^}]+)\}' 
     
     result = []
     
@@ -47,7 +47,7 @@ def extract_time_and_sentences(text: str):
     return result
 
 
-def merge_sentences_based_on_length(result, max_chunk_length):
+def merge_sentences_based_on_length(result, max_chunk_length) -> list:
     """
     Combine sentences to chunks to align with max chunk length.
 
@@ -86,7 +86,7 @@ def merge_sentences_based_on_length(result, max_chunk_length):
     return merged_result
 
 
-def add_chunk_overlap(data, max_overlap):
+def add_chunk_overlap(data, max_overlap) -> list:
     """
     Add overlap to chunks.
 
@@ -101,7 +101,6 @@ def add_chunk_overlap(data, max_overlap):
 
     for i, entry in enumerate(data):
         sentences = re.split(r'(?<=[.!?])\s+', entry['sentence'])
-        words = entry['sentence'].split()
 
         if i > 0:  
             previous_entry = processed_data[-1]
@@ -128,9 +127,18 @@ def add_chunk_overlap(data, max_overlap):
     return processed_data
 
 
-def create_chunk_llm(text: str, max_chunk_length: int=500, gemini_model: str="gemini-1.5-flash"):
+def create_chunk_llm(text: str, max_chunk_length: int = 500, gemini_model: str = "gemini-1.5-flash") -> list:
     """
+    Create chunks based on LLM.
+
+    Args:
+        text (str): text input.
+        max_chunk_length (int): max. character length of the chunks.
+        gemini_model (str): version of the gemini model.
     
+    Returns:
+        List of chunks.
+
     """
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)

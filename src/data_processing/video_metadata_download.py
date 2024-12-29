@@ -1,13 +1,13 @@
 import os
+import re
 from pytube import (
     YouTube,
     Playlist
 )
-import re
 import yt_dlp
 
 
-def download_youtube_video_pytube(url: str, resolution: str="720p"):
+def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
     """
     Download video from YouTube using the pytube library.
 
@@ -37,7 +37,7 @@ def download_youtube_video_pytube(url: str, resolution: str="720p"):
         raise e
 
 
-def download_youtube_video_yt_dlp(url: str):
+def download_youtube_video_yt_dlp(url: str) -> None:
     """
     Download video from YouTube using the pytube library.
 
@@ -67,7 +67,7 @@ def download_youtube_video_yt_dlp(url: str):
         raise e
 
 
-def extract_video_urls_from_playlist(url: str):
+def extract_video_urls_from_playlist(url: str) -> list:
     """
     Extract all YouTube video links from a playlist.
 
@@ -91,8 +91,8 @@ def extract_video_urls_from_playlist(url: str):
     except Exception as e:
         raise e
 
-
-def extract_meta_data(url: str):
+# TODO add meta data extraction using Pytube
+def extract_meta_data(url: str) -> dict:
     """
     Extract the relevant meta data for a YouTube video.
 
@@ -139,7 +139,7 @@ def extract_meta_data(url: str):
         raise e
 
 
-def extract_youtube_video_id(url: str):
+def extract_youtube_video_id(url: str) -> str:
     """
     Extract YouTube video id from YouTube video.
 
