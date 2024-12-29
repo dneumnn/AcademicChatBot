@@ -7,7 +7,7 @@ from src.data_processing.video_metadata_download import *
 from src.data_processing.audio_processing import *
 from src.data_processing.chunk_processing import *
 from src.data_processing.visual_processing import *
-from src.data_processing.logger import log
+from src.data_processing.logger import log, create_log_file, write_empty_line
 
 # Static variables
 VIDEO_DIRECTORY = "./media/videos/"
@@ -18,6 +18,9 @@ TRANSCRIPT_CHUNKS_DIRECTORY = "./media/transcripts_chunks/"
 # Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
+
+# Create log file
+create_log_file("src/data_processing/data-processing.log")
 
 
 # ********************************************************
@@ -48,6 +51,7 @@ def download_pipeline_youtube(url: str):
         - Add better and more detailed comments.
     """
 
+    write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
 
     video_urls = []
