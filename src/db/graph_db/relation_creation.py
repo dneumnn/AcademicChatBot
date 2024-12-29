@@ -15,7 +15,7 @@ chunks = [
     {'chunk_id': 'chunk_002', 'text': 'Mir geht es gut, danke!', 'embedding': [0.2, 0.3, 0.4]},
     {'chunk_id': 'chunk_003', 'text': 'Was machst du heute?', 'embedding': [0.1, 0.1, 0.2]},
 ]
-
+"""""
 with driver.session() as session:
     for i in range(len(chunks) - 1):
         session.write_transaction(
@@ -23,3 +23,4 @@ with driver.session() as session:
             chunks[i]['chunk_id'],
             chunks[i + 1]['chunk_id']
         )
+"""
