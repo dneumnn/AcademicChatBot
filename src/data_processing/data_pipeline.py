@@ -12,8 +12,6 @@ from .logger import log, create_log_file, write_empty_line
 # Static variables
 VIDEO_DIRECTORY = "./media/"
 PROCESSED_URLS_FILE = "./src/data_processing/extracted_urls.txt"
-TRANSCRIPT_DIRECTORY = "./media/transcripts/"
-TRANSCRIPT_CHUNKS_DIRECTORY = "./media/transcripts_chunks/"
 
 # Env variables
 load_dotenv() 

@@ -8,11 +8,6 @@ import google.generativeai as genai
 # Import other functions of the data_processing package
 from .logger import log
 
-# Static variables
-VIDEO_DIRECTORY = "./media/videos/"
-FRAMES_DIRECTORY = "./media/frames/"
-IMAGE_DESCRIPTION_DIRECTORY = "./media/frames_description/"
-
 # Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
