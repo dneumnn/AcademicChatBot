@@ -97,7 +97,45 @@ def extract_video_urls_from_playlist(url: str) -> list:
         log.warning(f"Extraction of YouTube URLs from playlist was unsuccessful: {e}")
         raise e
 
-# TODO add meta data extraction using Pytube
+    
+def extract_meta_data_pytube(url: str) -> dict:
+    """
+    Extract the relevant meta data of a YouTube video using pytube.
+
+    Args:
+        url (str): URL of the YouTube video.
+    
+    Raises:
+        Exception: For errors during meta data extraction.
+    """
+    try:
+        yt = YouTube(url)
+
+        meta_data = {}
+        
+        meta_data['id'] = yt.video_id
+        meta_data['title'] = yt.title
+        meta_data['description'] = yt.description
+        meta_data['upload_date'] = yt.publish_date.strftime("%Y-%m-%d") if yt.publish_date else None
+        meta_data['duration'] = yt.length  
+        meta_data['view_count'] = yt.views
+        meta_data['uploader_url'] = yt.channel_url
+        meta_data['uploader_id'] = yt.author
+        meta_data['channel_id'] = None  
+        meta_data['uploader'] = yt.author
+        meta_data['thumbnail'] = yt.thumbnail_url
+        meta_data['like_count'] = None  
+        meta_data['tags'] = yt.keywords
+        meta_data['categories'] = None  
+        meta_data['age_limit'] = None  
+
+        return meta_data
+    
+    except Exception as e:
+        log.warning(f"YouTube meta extraction data using pytube was unsuccessful: {e}")
+        raise e
+
+
 def extract_meta_data(url: str) -> dict:
     """
     Extract the relevant meta data of a YouTube video.
@@ -144,7 +182,7 @@ def extract_meta_data(url: str) -> dict:
             return meta_data
 
     except Exception as e:
-        log.warning(f"YouTube meta data using yt-dlp was unsuccessful: {e}")
+        log.warning(f"YouTube meta extraction data using yt-dlp was unsuccessful: {e}")
         raise e
 
 
