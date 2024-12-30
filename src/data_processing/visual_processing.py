@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 
 # Import other functions of the data_processing package
-from src.data_processing.logger import log
+from .logger import log
 
 # Static variables
 VIDEO_DIRECTORY = "./media/videos/"

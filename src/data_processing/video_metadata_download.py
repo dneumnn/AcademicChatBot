@@ -6,7 +6,7 @@ from pytube import (
 )
 import yt_dlp
 
-from src.data_processing.logger import log
+from .logger import log
 
 def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
     """
@@ -20,7 +20,7 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
         Exception: For errors during download.
 
     Example:
-        download_youtube_video("https://www.youtube.com/watch?v=example", resolution="1080p")
+        download_youtube_video_pytube("https://www.youtube.com/watch?v=example", resolution="1080p")
     """
     try:
         save_path = "media/"
@@ -40,7 +40,7 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
 
 def download_youtube_video_yt_dlp(url: str) -> None:
     """
-    Download video from YouTube using the pytube library.
+    Download video from YouTube using the dlp library.
 
     Args:
         url (str): URL of the YouTube video.
@@ -97,7 +97,7 @@ def extract_video_urls_from_playlist(url: str) -> list:
 # TODO add meta data extraction using Pytube
 def extract_meta_data(url: str) -> dict:
     """
-    Extract the relevant meta data for a YouTube video.
+    Extract the relevant meta data of a YouTube video.
 
     Args:
         url (str): URL of the YouTube video.
