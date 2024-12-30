@@ -67,7 +67,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         - Describe only the images that add relevant content. Ignore frames that are unreadable or serve merely as transitions.
     """
 
-    log.info(f"create_image_description: Start creating descriptions for images using {gemini_model} as LLM.")
+    log.info("create_image_description: Start creating descriptions for images using %s as LLM.", gemini_model)
 
     # Configure and load genai model
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
@@ -106,5 +106,5 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         filename = file.replace(".jpg", "")
         with open(f"{path_dir_frame_desc}/{filename}.txt", "w", encoding="utf-8") as response_file:
             response_file.write(response.text)
-        log.info(f"creating_image_description: Successfully created an image description for file {filename}.")
+        log.info("creating_image_description: Successfully created an image description for file %s.", filename)
 

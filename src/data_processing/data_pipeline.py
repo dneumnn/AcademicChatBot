@@ -57,22 +57,22 @@ def download_pipeline_youtube(url: str):
     # load url(s) in the video_urls list
     # TODO: Check other types of URLs, e.g. what happens, if an URL is passed, which belongs to a single video which is part of a playlist?
     if "watch" in url and "list" not in url:
-        log.info(f"download_pipeline_youtube: {url} is a YouTube video.")
+        log.info("download_pipeline_youtube: %s is a YouTube video.", url)
         video_urls.append(url)
     elif "list" in url:
-        log.info(f"download_pipeline_youtube: {url} is a YouTube playlist.")
+        log.info("download_pipeline_youtube: %s is a YouTube playlist.", url)
         video_urls = extract_video_urls_from_playlist(url)
     else:
-        log.warning(f"download_pipeline_youtube: {url}is neither a YouTube video nor a playlist.")
+        log.warning("download_pipeline_youtube: %s is neither a YouTube video nor a playlist.", url)
         return 415
 
     # try to download the list of YouTube videos
     for video_url in video_urls:
         if url_already_downloaded(video_url):
-            log.warning(f"download_pipeline_youtube: {url} was already downloaded and analyzed.")
+            log.warning("download_pipeline_youtube: %s was already downloaded and analyzed.", url)
             continue
         try:
-            log.info(f"download_pipeline_youtube: {url} is a new URL!")
+            log.info("download_pipeline_youtube: %s is a new URL!", url)
             download_youtube_video_pytube(video_url)
         except:
             try:
@@ -93,7 +93,7 @@ def download_pipeline_youtube(url: str):
             try:
                 create_image_description(videoid)
             except Exception as e:
-                log.error(f"download_pipeline_youtube: Error during creation of image descriptions: {e}")
+                log.error("download_pipeline_youtube: Error during creation of image descriptions: %s", e)
 
             try:
                 download_preprocess_youtube_transcript(video_url)
@@ -115,12 +115,12 @@ def download_pipeline_youtube(url: str):
                 df.to_csv(f"media/{videoid}/transcripts_chunks/{videoid}.csv", index=False)
 
                 write_url_to_already_downloaded(video_url)
-                log.info(f"download_pipeline_youtube: The video with URL {url} was successfully processed!")
+                log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url)
 
             except Exception as e:
-                log.error(f"download_pipeline_youtube: Error during transcript: {e}")
+                log.error("download_pipeline_youtube: Error during transcript: %s", e)
         except Exception as e:
-            log.error(f"download_pipeline_youtube: /analyze error: {e}")
+            log.error(f"download_pipeline_youtube: /analyze error: %s", e)
             return 500
     return 200
 
@@ -162,5 +162,5 @@ def write_url_to_already_downloaded(url: str):
     """
     with open(PROCESSED_URLS_FILE, 'a') as file:
         file.write(url + '\n')
-        log.info(f"write_url_to_already_downloaded: Wrote {url} into list of processed URLs.")
+        log.info("write_url_to_already_downloaded: Wrote %s into list of processed URLs.", url)
 

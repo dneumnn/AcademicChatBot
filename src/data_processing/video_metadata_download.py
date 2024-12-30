@@ -32,10 +32,10 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
             stream = yt.streams.get_highest_resolution()
         
         stream.download(output_path=save_path)
-        log.info(f"download_youtube_video_pytube: PyTube video download successfull. Saved file to {save_path}.")
+        log.info("download_youtube_video_pytube: PyTube video download successfull. Saved file to %s.", save_path)
 
     except Exception as e:
-        log.warning(f"YouTube video download using pytube was unsuccessful: {e}")
+        log.warning("YouTube video download using pytube was unsuccessful: %s", e)
         raise e
 
 
@@ -65,9 +65,9 @@ def download_youtube_video_yt_dlp(url: str) -> None:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        log.info(f"download_youtube_video_yt_dlp: yt_dlp video download successfull. Saved file to /media/videos/{videoid}.mp4.")
+        log.info("download_youtube_video_yt_dlp: yt_dlp video download successfull. Saved file to /media/videos/%s.mp4.", videoid)
     except Exception as e:
-        log.warning(f"YouTube video download using yt-dlp was unsuccessful: {e}")
+        log.warning("YouTube video download using yt-dlp was unsuccessful: %s", e)
         raise e
 
 
@@ -90,11 +90,11 @@ def extract_video_urls_from_playlist(url: str) -> list:
         video_urls = [
             video_url for video_url in playlist.video_urls
         ]
-        log.info(f"extract_video_urls_from_playlist: Extracted {len(video_urls)} videos from the {url} URL.")
+        log.info("extract_video_urls_from_playlist: Extracted %d videos from the %s URL.", len(video_urls), url)
         return video_urls
     
     except Exception as e:
-        log.warning(f"Extraction of YouTube URLs from playlist was unsuccessful: {e}")
+        log.warning("Extraction of YouTube URLs from playlist was unsuccessful: %s", e)
         raise e
 
     
@@ -132,7 +132,7 @@ def extract_meta_data_pytube(url: str) -> dict:
         return meta_data
     
     except Exception as e:
-        log.warning(f"YouTube meta extraction data using pytube was unsuccessful: {e}")
+        log.warning("YouTube meta extraction data using pytube was unsuccessful: %s", e)
         raise e
 
 
@@ -177,12 +177,16 @@ def extract_meta_data(url: str) -> dict:
             meta_data['categories'] = result.get('categories')
             meta_data['age_limit'] = result.get('age_limit')
 
-            log.info(f"extract_meta_data: Extracted meta data for video with title {meta_data['title']} from channel {meta_data['uploader']}.")
+            log.info(
+                "extract_meta_data: Extracted meta data for video with title %s from channel %s.",
+                meta_data['title'], 
+                meta_data['uploader']
+            )
 
             return meta_data
 
     except Exception as e:
-        log.warning(f"YouTube meta extraction data using yt-dlp was unsuccessful: {e}")
+        log.warning("YouTube meta extraction data using yt-dlp was unsuccessful: %s", e)
         raise e
 
 

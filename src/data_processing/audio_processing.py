@@ -51,7 +51,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         response = model.generate_content(prompt_transcript)
 
     except Exception as e:
-        log.warning(f"Error during transcript correction: {e}")
+        log.warning("Error during transcript correction: %s", e)
 
     transcript_path = f"media/{video_id}/transcripts/"
     if not os.path.exists(transcript_path):
