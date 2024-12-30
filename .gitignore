@@ -169,6 +169,7 @@ cython_debug/
 
 # Exclude all videos
 *.mp4
+*.mp4.part
 
 # Exclude bkp files (from draw.io - modelling tool)
 *.bkp
