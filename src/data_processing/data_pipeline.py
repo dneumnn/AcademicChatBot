@@ -13,8 +13,7 @@ from dotenv import load_dotenv
 import cv2
 import PIL.Image
 import json
-from neo4j import GraphDatabase 
-from src.db.graph_db.db_handler import GraphHandler
+
 # Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
@@ -24,10 +23,6 @@ API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 VIDEO_DIRECTORY = "./media/videos/"
 FRAMES_DIRECTORY = "./media/frames"
 EXTRACTED_URLS_PATH = "./src/data_processing/extracted_urls.txt"
-
-uri = "bolt://localhost:7687"
-user = "neo4j"
-password = "this_pw_is_a_test25218###1119jj"
 
 ##########################################################
 # Final pipeline function
@@ -47,8 +42,6 @@ def download_pipeline_youtube(url: str):
     """
 
     video_urls = []
-
-    graph_handler = GraphHandler(uri, user, password)
 
     # load url(s) in the video_urls list
     if "watch" in url and "list" not in url:
@@ -77,8 +70,7 @@ def download_pipeline_youtube(url: str):
         try:
             meta_data = extract_meta_data(video_url)
             print(meta_data)
-            graph_handler.create_meta_data_session(meta_data)
-            graph_handler.close()
+
             videoid = extract_youtube_video_id(video_url)
             video_filepath = VIDEO_DIRECTORY + videoid + ".mp4"
             extract_frames_from_video(video_filepath, 5)
@@ -88,6 +80,7 @@ def download_pipeline_youtube(url: str):
             print(f"/analyze error: {e}")
             return 500
     return 200
+
 
 def download_youtube_video_pytube(url: str, resolution: str="720p"):
     """
