@@ -5,6 +5,7 @@ import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from .video_metadata_download import extract_youtube_video_id
+from .logger import log
 
 # Env variables
 load_dotenv() 
@@ -50,7 +51,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         response = model.generate_content(prompt_transcript)
 
     except Exception as e:
-        print(f"Error during transcript correction: {e}")
+        log.warning(f"Error during transcript correction: {e}")
 
     transcript_path = f"media/{video_id}/transcripts/"
     if not os.path.exists(transcript_path):

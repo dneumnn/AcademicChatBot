@@ -35,6 +35,7 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
         log.info(f"download_youtube_video_pytube: PyTube video download successfull. Saved file to {save_path}.")
 
     except Exception as e:
+        log.warning(f"YouTube video download using pytube was unsuccessful: {e}")
         raise e
 
 
@@ -66,6 +67,7 @@ def download_youtube_video_yt_dlp(url: str) -> None:
 
         log.info(f"download_youtube_video_yt_dlp: yt_dlp video download successfull. Saved file to /media/videos/{videoid}.mp4.")
     except Exception as e:
+        log.warning(f"YouTube video download using yt-dlp was unsuccessful: {e}")
         raise e
 
 
@@ -92,6 +94,7 @@ def extract_video_urls_from_playlist(url: str) -> list:
         return video_urls
     
     except Exception as e:
+        log.warning(f"Extraction of YouTube URLs from playlist was unsuccessful: {e}")
         raise e
 
 # TODO add meta data extraction using Pytube
@@ -141,6 +144,7 @@ def extract_meta_data(url: str) -> dict:
             return meta_data
 
     except Exception as e:
+        log.warning(f"YouTube meta data using yt-dlp was unsuccessful: {e}")
         raise e
 
 
@@ -162,5 +166,6 @@ def extract_youtube_video_id(url: str) -> str:
     if video_id:
         return video_id.group(1)
     else:
+        log.warning("YouTube Video ID could not be extracted from the URL")
         raise ValueError("YouTube Video ID could not be extracted from the URL")
 
