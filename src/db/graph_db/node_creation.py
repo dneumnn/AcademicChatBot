@@ -1,16 +1,16 @@
 # Check if Node already exists
-def check_url_id_exists(tx, url_id):
-    query = """
-    MATCH (m:MetaData {url_id: $url_id})
-    RETURN COUNT(m) > 0 AS exists
+def check_url_id_exists(tx, label, property_name, property_value):
+    query = f"""
+    MATCH (n:{label} {{{property_name}: $property_value}})
+    RETURN COUNT(n) > 0 AS exists
     """
-    result = tx.run(query, url_id=url_id)
+    result = tx.run(query, property_value=property_value)
     return result.single()["exists"]
 
 
 # Meta-data node
 def create_meta_data_node(tx, meta_data):
-    if not check_url_id_exists(tx, meta_data["id"]):
+    if not check_url_id_exists(tx, "MetaData", "url_id", meta_data["id"]):
         query = """
         CREATE (m:MetaData {
             url_id: $url_id, 
@@ -47,7 +47,7 @@ def create_meta_data_node(tx, meta_data):
         
 # Text-chunk node
 def create_transcript_chunk_node(tx, chunk):
-    if not check_url_id_exists(tx, chunk["id"]):
+    if not check_url_id_exists(tx, "TranscriptChunk", "text", chunk["id"]):
         query = """
         CREATE (c:TranscriptChunk {
             text: $sentence, start_time: $time,
