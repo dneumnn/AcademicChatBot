@@ -1,6 +1,7 @@
 from neo4j import GraphDatabase
 from src.db.graph_db.node_creation import create_meta_data_node
 from src.db.graph_db.node_creation import create_transcript_chunk_node
+from src.db.graph_db.relation_creation import create_next_relationship
 
 class GraphHandler:
 
@@ -18,3 +19,11 @@ class GraphHandler:
         with self.driver.session() as session:
             for chunk in chunks:
                 session.execute_write(create_transcript_chunk_node, chunk)
+    
+    def create_chunk_next_relation_session(self, chunks):
+         with self.driver.session() as session:
+            for i in range(len(chunks) - 1):
+                session.execute_write(
+                    create_next_relationship,
+                    chunks[i]['node_id'],
+                    chunks[i + 1]['node_id'])
