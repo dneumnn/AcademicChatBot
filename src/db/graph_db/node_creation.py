@@ -47,16 +47,17 @@ def create_meta_data_node(tx, meta_data):
         
 # Text-chunk node
 def create_transcript_chunk_node(tx, chunk):
-    if not check_url_id_exists(tx, "TranscriptChunk", "text", chunk["id"]):
+    #if not check_url_id_exists(tx, "TranscriptChunk", "text", chunk["id"]) 
         query = """
         CREATE (c:TranscriptChunk {
-            text: $sentence, start_time: $time,
+            node_id: $node_id, text: $sentence, start_time: $time,
             length: $length
         })
         """
-        tx.run(query, text=chunk["sentence"], 
+        tx.run(query, node_id=chunk["node_id"],
+            sentence=chunk["sentence"], 
             time=chunk["time"],  
             length=chunk["length"])
-        print(f"Node with url_id {chunk['id']} created.")
-    else:
-        print(f"Node with url_id {chunk['id']} already exists.")
+        #print(f"Node with url_id {chunk['id']} created.")
+    #else:
+       # print(f"Node with url_id {chunk['id']} already exists.")
