@@ -22,7 +22,7 @@ These pre-processed outputs are structured for further use by the **GraphDB** an
 **10. Processing Log:** Records the video URL in a list of processed URLs to prevent duplicate processing.  
 **11. Embedding:** Use an embedding model to embed chunks of text.  
 
-Steps 3 to 10 are repeated for every video that should be processed, if a playlist was passed to the pipeline.
+Steps 3 to 11 are repeated for every video that should be processed, if a playlist was passed to the pipeline.
 
 ## Output
 
@@ -41,9 +41,9 @@ Stores the downloaded video.
 
 ## Usage
 
-The usage of this package is streamlined and easy. Ensure the **FastAPI server** is running by starting it from the `main.py` file. Once the server is active, you can make a POST request to the `/analyze` endpoint. 
+The usage of this package is streamlined and easy. Ensure the **FastAPI server** is running by starting it from the `main.py` file. Once the server is active, you can make a POST request to the `/analyze` endpoint.
 
-In order for the data pipeline to work properly, please create a .env file in your AcademicChatBot directory with your gemine API key, API_KEY_GOOGLE_GEMINI="your_api_key". You can get your key on the following website: https://aistudio.google.com/app/apikey. Then, pull the embedding model: ollama pull nomic-embed-text (or your preferred model).
+In order for the data pipeline to work properly, please create a `.env` file in your AcademicChatBot directory with your gemine API key, `API_KEY_GOOGLE_GEMINI="your_api_key"`. You can get your key on the following website: <https://aistudio.google.com/app/apikey>. Then, pull the embedding model: `ollama pull nomic-embed-text` (or your preferred model).
 
 ### Method
 
@@ -56,6 +56,9 @@ In order for the data pipeline to work properly, please create a .env file in yo
 | `video_input` | `string` | The URL of the YouTube video or playlist to analyze. |
 | `chunk_max_length (optional)` | `int` | Specifies the maximum number of characters allowed in each chunk. Defaults to 550. |
 | `chunk_overlap_length (optional)` | `int` | Determines how many characters overlap between consecutive chunks. Defaults to 50. |
+| `embedding_mode (optional)` | `str` | The embeding AI model that gets used for the embedding step (step 11). |
+
+*Important: The optional parameters are currently in work and can not be set through the API call, but directly through adjusting the code in `data_pipeline.py`.*
 
 #### Response
 
