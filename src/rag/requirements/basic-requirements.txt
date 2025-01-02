@@ -18,3 +18,4 @@ llama-index-llms-langchain
 llama-index-llms-ollama
 llama-index-graph-stores-neo4j
 llama-index-llms-openai
+pandas

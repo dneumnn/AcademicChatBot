@@ -8,7 +8,7 @@ from rerankers.rerankers import rerank_passages_with_cross_encoder_bge
 from vectorstore.vectorstore import format_docs, transform_string_list_to_string
 from routing.logical_routing import route_query
 
-def rag(database_path: str, question: str, use_logical_routing: bool = False, use_semantic_routing: bool = False, knowledge_base_type: str = "vector"):
+def rag(database_path: str, question: str, use_logical_routing: bool = False, use_semantic_routing: bool = False, knowledge_base_type: str = "vector", basic_return: bool = False):
     VECTORSTORE_TOP_K = 25
     RERANKER_TOP_K = 5
     MODEL_ID = "llama3.2"
@@ -40,6 +40,7 @@ def rag(database_path: str, question: str, use_logical_routing: bool = False, us
 
     #docs = retriever_chain.invoke(question)
     #print(docs)
+    #retriever_chain.get_graph().print_ascii()
 
     rag_chain = (
         {"context": retriever_chain, "question": RunnablePassthrough()}
@@ -48,7 +49,11 @@ def rag(database_path: str, question: str, use_logical_routing: bool = False, us
         | StrOutputParser()
     )
 
-    #rag_chain.get_graph().print_ascii()
-
-    for chunk in rag_chain.stream(question):
-        print(chunk, end="", flush=True)
+    if basic_return:
+        output = []
+        for chunk in rag_chain.stream(question):
+            output.append(chunk)
+        return ''.join(output)
+    else:
+        for chunk in rag_chain.stream(question):
+            print(chunk, end="", flush=True)

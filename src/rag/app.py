@@ -3,6 +3,7 @@ from typing import List
 from models.model import get_available_models
 from graphstore.langchain import ask_question_to_graphdb, mock_load_text_to_graphdb
 from rag.rag import rag
+from __tests__.generation import test_complete_generation
 
 DATABASE_PATH = os.path.join(os.path.dirname(__file__), "mock", "chroma_db")
 ALICE_PATH = os.path.join(os.path.dirname(__file__), "mock", "alice.txt")
@@ -63,7 +64,8 @@ def main():
     #mock_load_text_to_vectordb_with_ollama_embeddings()
     #mock_load_text_to_graphdb(ALICE_PATH)
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
-    rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
+    #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
+    test_complete_generation(DATABASE_PATH, generate_output_first=False)
  
 if __name__ == "__main__":
     main()
