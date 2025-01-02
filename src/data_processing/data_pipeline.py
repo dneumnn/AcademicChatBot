@@ -7,6 +7,7 @@ from .video_metadata_download import *
 from .audio_processing import *
 from .chunk_processing import *
 from .visual_processing import *
+from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
 
 # Static variables
@@ -24,7 +25,7 @@ create_log_file("src/data_processing/data-processing.log")
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text"):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -33,7 +34,9 @@ def download_pipeline_youtube(url: str):
     ensuring a clear separation between technical implementation details and the overall structural overview.
 
     Args:
-        url (str). URL of the YouTube video or playlist.
+        url (str): URL of the YouTube video or playlist.
+        chunk_max_length (int): Maximum length of character of each chunk.
+        chunk_overlap_length (int): Number of characters each chunk si overlapping.
 
     Returns:
         status_code (int). The status code that should be returned by the Fast API schnittstelle.
@@ -52,6 +55,7 @@ def download_pipeline_youtube(url: str):
     write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
 
+    chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
 
     # load url(s) in the video_urls list
@@ -103,8 +107,8 @@ def download_pipeline_youtube(url: str):
                     processed_text_transcript = file.read()
 
                 extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
-                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, 500)
-                chunked_text = add_chunk_overlap(merged_sentence, 50)
+                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
+                chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
 
                 # Rename column "sentence" into "chunks" for the chunked data
                 df = pd.DataFrame(chunked_text)
@@ -119,8 +123,13 @@ def download_pipeline_youtube(url: str):
 
             except Exception as e:
                 log.error("download_pipeline_youtube: Error during transcript: %s", e)
+
+            try:
+                embed_text_chunks(videoid, embedding_model)
+            except Exception as e:
+                log.error("download_pipeline_youtube: Error during embedding: %s", e)
         except Exception as e:
-            log.error(f"download_pipeline_youtube: /analyze error: %s", e)
+            log.error("download_pipeline_youtube: /analyze error: %s", e)
             return 500
     return 200
 
