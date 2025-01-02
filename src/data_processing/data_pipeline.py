@@ -25,7 +25,7 @@ create_log_file("src/data_processing/data-processing.log")
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text"):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -125,7 +125,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 log.error("download_pipeline_youtube: Error during transcript: %s", e)
 
             try:
-                embed_text_chunks(videoid)
+                embed_text_chunks(videoid, embedding_model)
             except Exception as e:
                 log.error("download_pipeline_youtube: Error during embedding: %s", e)
         except Exception as e:
