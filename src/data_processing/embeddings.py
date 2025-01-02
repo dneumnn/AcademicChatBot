@@ -1,5 +1,5 @@
 import pandas as pd
-from ollama import OllamaEmbeddings 
+from langchain_ollama import OllamaEmbeddings
 
 def embed_text_chunks(videoid: str, embedding_model: str="nomic-embed-text"):
     """
