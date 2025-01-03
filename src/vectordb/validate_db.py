@@ -3,12 +3,13 @@ import random
 import os
 import chromadb
 from openai import OpenAI
-
-
+import openai
 from config import INPUT_DIR
 
 # Setze OpenAI API-Schlüssel
-# openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key = openai.api_key)
+
 def create_embedding_with_openai(text):
     """
     Erzeugt ein echtes Embedding für den übergebenen Text
