@@ -2,23 +2,22 @@ import csv
 import random
 import os
 import chromadb
-from ollama import OllamaClient  # Importiere das Ollama SDK
+from openai import OpenAI
+
+
 from config import INPUT_DIR
 
-# Initialisiere Ollama Client
-ollama_client = OllamaClient(model="nomic-embed-text")
-
-def create_embedding_with_ollama(text):
+# Setze OpenAI API-Schlüssel
+# openai.api_key = os.getenv("OPENAI_API_KEY")
+def create_embedding_with_openai(text):
     """
     Erzeugt ein echtes Embedding für den übergebenen Text
-    mit dem Ollama-Modell 'nomic-embed-text'.
+    mit dem OpenAI-Modell 'text-embedding-ada-002'.
     """
     try:
-        response = ollama_client.embed(text)
-        if response and "embedding" in response:
-            return response["embedding"]
-        else:
-            raise ValueError("Embedding konnte nicht erstellt werden.")
+        response = client.embeddings.create(input=text,
+        model="text-embedding-ada-002")
+        return response.data[0].embedding
     except Exception as e:
         print(f"Fehler beim Erstellen des Embeddings: {e}")
         return None
@@ -56,9 +55,9 @@ def main():
             else:
                 print(f"Stichprobe ID {doc_id}: Keine Daten in ChromaDB gefunden.")
 
-    # 3. Beispielsuche mit Ollama-Embedding
+    # 3. Beispielsuche mit OpenAI-Embedding
     test_text = "What is the topic of the video segment about machine learning?"
-    embedding = create_embedding_with_ollama(test_text)
+    embedding = create_embedding_with_openai(test_text)
     if embedding:
         try:
             results = collection.query(query_embeddings=[embedding], n_results=3)
