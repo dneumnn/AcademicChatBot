@@ -71,7 +71,9 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     # try to download the list of YouTube videos
     for video_url in video_urls:
-        if url_already_downloaded(video_url):
+        videoid = extract_youtube_video_id(video_url)
+
+        if url_already_downloaded(videoid):
             log.warning("download_pipeline_youtube: %s was already downloaded and analyzed.", url)
             continue
         try:
@@ -90,7 +92,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             meta_data = extract_meta_data(video_url)
             # print(meta_data)
 
-            videoid = extract_youtube_video_id(video_url)
             video_filepath = f"{VIDEO_DIRECTORY}/{videoid}/video/{videoid}.mp4"
             extract_frames_from_video(video_filepath, 10)
 
@@ -114,7 +115,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 os.makedirs(transcript_chunks_path)
             df.to_csv(f"media/{videoid}/transcripts_chunks/{videoid}.csv", index=False)
 
-            write_url_to_already_downloaded(video_url)
             log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url) # ends here with: download_pipeline_youtube: Error during transcript: %s
 
             embed_text_chunks(videoid, embedding_model) # try: download_pipeline_youtube: Error during embedding: %s
@@ -125,7 +125,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     return 200
 
 
-def url_already_downloaded(url: str):
+def url_already_downloaded(id: str):
     """
     Check if the video or playlist with this URL has already been downloaded and processed.
 
@@ -139,28 +139,8 @@ def url_already_downloaded(url: str):
         url_already_downloaded("https://www.youtube.com/playlist?v=example")
     """
 
-    # Check if the file exists
-    if not os.path.exists(PROCESSED_URLS_FILE):
+    if not os.path.exists(f"./media/{id}"):
         return False
-
-    with open(PROCESSED_URLS_FILE, 'r') as file:
-        for line in file:
-            if line.strip() == url:
-                return True
-    return False
-
-
-def write_url_to_already_downloaded(url: str):
-    """
-    Write the URL to the list of already downloaded and processed video or playlists.
-
-    Args:
-        url (str): URL of a YouTube video or playlist.
-
-    Example: 
-        write_url_to_already_downloaded("https://www.youtube.com/playlist?v=example")
-    """
-    with open(PROCESSED_URLS_FILE, 'a') as file:
-        file.write(url + '\n')
-        log.info("write_url_to_already_downloaded: Wrote %s into list of processed URLs.", url)
+    else:
+        return True
 
