@@ -91,7 +91,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
             videoid = extract_youtube_video_id(video_url)
             video_filepath = f"{VIDEO_DIRECTORY}/{videoid}/video/{videoid}.mp4"
-            extract_frames_from_video(video_filepath, 60)
+            extract_frames_from_video(video_filepath, 10)
 
             # TODO: Implement better try-catch mechanism. This nested try-catch blocks are not good.
             try:
