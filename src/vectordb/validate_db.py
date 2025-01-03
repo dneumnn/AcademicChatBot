@@ -2,14 +2,26 @@ import csv
 import random
 import os
 import chromadb
+from ollama import OllamaClient  # Importiere das Ollama SDK
 from config import INPUT_DIR
 
-def create_dummy_embedding(text):
+# Initialisiere Ollama Client
+ollama_client = OllamaClient(model="nomic-embed-text")
+
+def create_embedding_with_ollama(text):
     """
-    Platzhalter: Gibt ein Dummy-Embedding zurück.
-    Für echte Tests sollte hier ein richtiges Embedding erzeugt werden.
+    Erzeugt ein echtes Embedding für den übergebenen Text
+    mit dem Ollama-Modell 'nomic-embed-text'.
     """
-    return [0.0] * 768
+    try:
+        response = ollama_client.embed(text)
+        if response and "embedding" in response:
+            return response["embedding"]
+        else:
+            raise ValueError("Embedding konnte nicht erstellt werden.")
+    except Exception as e:
+        print(f"Fehler beim Erstellen des Embeddings: {e}")
+        return None
 
 def main():
     csv_path = os.path.join(INPUT_DIR, "Yq0QkCxoTHM.csv")
@@ -44,16 +56,19 @@ def main():
             else:
                 print(f"Stichprobe ID {doc_id}: Keine Daten in ChromaDB gefunden.")
 
-    # 3. Beispielsuche mit Dummy-Embedding
-    test_text = "Gay Cake"
-    embedding = create_dummy_embedding(test_text)
-    try:
-        results = collection.query(query_embeddings=[embedding], n_results=3)
-        print("Beispielsuche erfolgreich, gefundene Dokumente:")
-        for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
-            print(f"  Dokument: {doc[:60]}... | time={meta.get('time')} length={meta.get('length')}")
-    except Exception as e:
-        print(f"Fehler bei der Embedding-Suche: {e}")
+    # 3. Beispielsuche mit Ollama-Embedding
+    test_text = "What is the topic of the video segment about machine learning?"
+    embedding = create_embedding_with_ollama(test_text)
+    if embedding:
+        try:
+            results = collection.query(query_embeddings=[embedding], n_results=3)
+            print("Beispielsuche erfolgreich, gefundene Dokumente:")
+            for doc, meta in zip(results["documents"][0], results["metadatas"][0]):
+                print(f"  Dokument: {doc[:60]}... | time={meta.get('time')} | length={meta.get('length')}")
+        except Exception as e:
+            print(f"Fehler bei der Embedding-Suche: {e}")
+    else:
+        print("Fehler: Embedding für die Suche konnte nicht erstellt werden.")
 
 if __name__ == "__main__":
     main()
