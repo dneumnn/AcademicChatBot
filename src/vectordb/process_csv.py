@@ -5,18 +5,6 @@ import subprocess
 import json
 from config import INPUT_DIR, PROCESSED_DIR
 
-
-def delete_existing_collection():
-    client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb")
-    collection_name = "youtube_chunks"
-    try:
-        client.delete_collection(name=collection_name)
-        print(f"Collection '{collection_name}' erfolgreich gelöscht.")
-    except Exception as e:
-        print(f"Fehler beim Löschen der Collection '{collection_name}': {e}")
-
-delete_existing_collection()
-
 def create_embedding(text):
     """
     Ruft das ollama-CLI-Modell auf und gibt das Embedding zurück.
