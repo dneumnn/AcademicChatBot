@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import FastAPI, HTTPException
 import requests
 import logging
@@ -30,11 +31,11 @@ def chat_history():
     pass
 
 @app.post("/analyze")
-def analyze(video_input: str):
+def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, embedding_model: Optional[str] = "nomic-embed-text"):
     url = "https://www.youtube.com/oembed?format=json&url=" + video_input
     response = requests.head(url, allow_redirects=True)
     if response.status_code in range(200, 300):
-        status_code = download_pipeline_youtube(video_input)
+        status_code = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, embedding_model)
         if status_code in range(200, 300):
             return {"message": "YouTube content processed successfully", "status_code": status_code}
         else:
