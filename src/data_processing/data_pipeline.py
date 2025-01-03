@@ -47,7 +47,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     TODO:
         - Implement better error handling.
-        - Make the directories in the other files matching.
         - Document in the README all LLMs that are being used.
         - Add better and more detailed comments.
     """
@@ -84,6 +83,8 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 download_youtube_video_yt_dlp(video_url)
             except:
                 return 500
+
+        # TODO: Implement better try-catch mechanism. They are not nested anymore, but the called functions can be further improved.
         try:
             # TODO: Also add a second method for extracting meta data (similar to video download)
             meta_data = extract_meta_data(video_url)
@@ -93,41 +94,31 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             video_filepath = f"{VIDEO_DIRECTORY}/{videoid}/video/{videoid}.mp4"
             extract_frames_from_video(video_filepath, 10)
 
-            # TODO: Implement better try-catch mechanism. This nested try-catch blocks are not good.
-            try:
-                create_image_description(videoid)
-            except Exception as e:
-                log.error("download_pipeline_youtube: Error during creation of image descriptions: %s", e)
+            create_image_description(videoid) # download_pipeline_youtube: Error during creation of image descriptions: %s
 
-            try:
-                download_preprocess_youtube_transcript(video_url)
+            download_preprocess_youtube_transcript(video_url) # start another try block here
 
-                # Read the downloaded transcript into the variable "processed_text_transcript"
-                with open(f"media/{videoid}/transcripts/{videoid}.txt", "r") as file:
-                    processed_text_transcript = file.read()
+            # Read the downloaded transcript into the variable "processed_text_transcript"
+            with open(f"media/{videoid}/transcripts/{videoid}.txt", "r") as file:
+                processed_text_transcript = file.read()
 
-                extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
-                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
-                chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
+            extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
+            merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
+            chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
 
-                # Rename column "sentence" into "chunks" for the chunked data
-                df = pd.DataFrame(chunked_text)
-                df = df.rename(columns={"sentence":"chunks"})
-                transcript_chunks_path = f"media/{videoid}/transcripts_chunks/"
-                if not os.path.exists(transcript_chunks_path):
-                    os.makedirs(transcript_chunks_path)
-                df.to_csv(f"media/{videoid}/transcripts_chunks/{videoid}.csv", index=False)
+            # Rename column "sentence" into "chunks" for the chunked data
+            df = pd.DataFrame(chunked_text)
+            df = df.rename(columns={"sentence":"chunks"})
+            transcript_chunks_path = f"media/{videoid}/transcripts_chunks/"
+            if not os.path.exists(transcript_chunks_path):
+                os.makedirs(transcript_chunks_path)
+            df.to_csv(f"media/{videoid}/transcripts_chunks/{videoid}.csv", index=False)
 
-                write_url_to_already_downloaded(video_url)
-                log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url)
+            write_url_to_already_downloaded(video_url)
+            log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url) # ends here with: download_pipeline_youtube: Error during transcript: %s
 
-            except Exception as e:
-                log.error("download_pipeline_youtube: Error during transcript: %s", e)
+            embed_text_chunks(videoid, embedding_model) # try: download_pipeline_youtube: Error during embedding: %s
 
-            try:
-                embed_text_chunks(videoid, embedding_model)
-            except Exception as e:
-                log.error("download_pipeline_youtube: Error during embedding: %s", e)
         except Exception as e:
             log.error("download_pipeline_youtube: /analyze error: %s", e)
             return 500
