@@ -1,54 +1,28 @@
 import csv
 import os
 import chromadb
-import openai
-from config import INPUT_DIR
-
-# Setze den OpenAI API-Schlüssel
-openai.api_key = os.getenv("OPENAI_API_KEY")
+import subprocess
+import json
+from config import INPUT_DIR, PROCESSED_DIR
 
 def create_embedding(text):
     """
-    Erzeugt ein Embedding für den übergebenen Text mit dem OpenAI-Modell 'text-embedding-ada-002'.
+    Ruft das ollama-CLI-Modell auf und gibt das Embedding zurück.
     """
     try:
-        response = openai.Embedding.create(
-            input=text,
-            model="text-embedding-ada-002"
-        )
-        return response["data"][0]["embedding"]
+        command = ["ollama", "generate", "-m", "nomic-embed-text", text]
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+        return data.get("embedding", [])
     except Exception as e:
-        print(f"Fehler beim Erstellen des Embeddings: {e}")
-        return [0.0] * 1536
+        # Fallback, falls ein Fehler auftritt
+        return [0.0] * 768
 
 def main():
     csv_path = os.path.join(INPUT_DIR, "Yq0QkCxoTHM.csv")
     client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb")
+    collection = client.get_or_create_collection(name="youtube_chunks")
 
-    # Collection prüfen oder erstellen
-    collection_name = "youtube_chunks"
-    try:
-        existing_collection = client.get_collection(name=collection_name)
-        # Überprüfe die Dimension
-        dimension = existing_collection.metadata.get("dimension") if existing_collection.metadata else None
-        if dimension != 1536:
-            # Falsche Dimension: Lösche und erstelle neu
-            client.delete_collection(name=collection_name)
-            collection = client.create_collection(
-                name=collection_name,
-                metadata={"dimension": 1536}
-            )
-        else:
-            # Collection hat die korrekte Dimension
-            collection = existing_collection
-    except chromadb.errors.InvalidCollectionException:
-        # Collection existiert nicht: Neu erstellen
-        collection = client.create_collection(
-            name=collection_name,
-            metadata={"dimension": 1536}
-        )
-
-    # Daten aus der CSV-Datei verarbeiten und in die Collection einfügen
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         valid_entries = 0
@@ -69,9 +43,6 @@ def main():
                 print(f"{valid_entries} Datensätze erfolgreich gespeichert.")
 
     print(f"Fertig! Insgesamt {valid_entries} Datensätze gespeichert.")
-
-
-
 
 if __name__ == "__main__":
     main()
