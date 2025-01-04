@@ -27,3 +27,12 @@ def create_meta_data_relationship(tx, node_id, metadata_id):
     MERGE (t)-[:HAS_METADATA]->(m)
     """
     tx.run(query, chunk_id=node_id, metadata_id=metadata_id)
+
+def create_chunk_similartity_relationship(tx, node_id1, node_id2):
+    query = """
+    MATCH (c1:TranscriptChunk {node_id: $chunk_id1})
+    MATCH (c2:TranscriptChunk {node_id: $chunk_id2})
+    MERGE (t1)-[:SIMILAR_TO]->(t2)
+    MERGE (t2)-[:SIMILAR_TO]->(t1)
+    """
+    tx.run(query, chunk_id1=node_id1, chunk_id2=node_id2) 
