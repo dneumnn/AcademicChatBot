@@ -1,3 +1,4 @@
+import logging
 from typing import List
 from sentence_transformers import CrossEncoder, SentenceTransformer
 from llama_index.retrievers.bm25 import BM25Retriever
@@ -67,7 +68,7 @@ def rerank_passages_with_cosine(question: str, passages: List[str], top_k: int =
     ranked_passages = [p for _, p in sorted(zip(similarities, passages), reverse=True)]
     return ranked_passages[:top_k]
 
-def rerank_passages_with_cross_encoder_bge(question: str, passages: List[str], top_k: int = 3) -> List[str]:
+def rerank_passages_with_cross_encoder_bge(question: str, passages: List[str], logger: logging.Logger, top_k: int = 3) -> List[str]:
     """
     Rerank passages using cross-encoder model for semantic similarity scoring
    
@@ -79,10 +80,13 @@ def rerank_passages_with_cross_encoder_bge(question: str, passages: List[str], t
     Returns:
         List of reranked passages sorted by semantic similarity to question
     """
+    logger.info("Reranking passages with cross-encoder BGE")
+    logger.info(f"Using top_k: {top_k} for reranking with {len(passages)} passages")
     cross_encoder_model = CrossEncoder('BAAI/bge-reranker-large')
     sentence_pairs = [(question, passage) for passage in passages]
     similarity_scores = cross_encoder_model.predict(sentence_pairs)
     ranked_passages = [p for _, p in sorted(zip(similarity_scores, passages), reverse=True)]
+    logger.info(f"Reranked passages.")
     return ranked_passages[:top_k]
 
 def __test__reranking():

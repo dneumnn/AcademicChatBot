@@ -1,3 +1,4 @@
+import logging
 from langchain_core.prompts import PromptTemplate
 from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama, OllamaEmbeddings
@@ -8,21 +9,31 @@ from rerankers.rerankers import rerank_passages_with_cross_encoder_bge
 from vectorstore.vectorstore import format_docs, transform_string_list_to_string
 from routing.logical_routing import route_query
 
-def rag(database_path: str, question: str, use_logical_routing: bool = False, use_semantic_routing: bool = False, knowledge_base_type: str = "vector", basic_return: bool = False):
+def rag(database_path: str, question: str, model_id: str, model_parameters: dict, logger: logging.Logger, use_logical_routing: bool = False, knowledge_base: str = None, use_semantic_routing: bool = False, basic_return: bool = False):
     VECTORSTORE_TOP_K = 25
     RERANKER_TOP_K = 5
-    MODEL_ID = "llama3.2"
     EMBEDDING_MODEL_ID = "nomic-embed-text"
 
-    if knowledge_base_type != "vector" and knowledge_base_type != "graph" and knowledge_base_type != "both":
-        print("Invalid knowledge base type. Using vector.")
-        knowledge_base_type = "vector"
+    if knowledge_base is None and use_logical_routing == False:
+        logger.warning("Knowledge base is not provided and logical routing is not enabled. Using default subject.")
+        knowledge_base = "all"
 
-    llm = ChatOllama(model=MODEL_ID)
+    logger.info(f"Starting RAG with model: {model_id}")
+    logger.info(f"Using top_k values: VECTORSTORE_TOP_K={VECTORSTORE_TOP_K}, RERANKER_TOP_K={RERANKER_TOP_K}")
+
+    llm = ChatOllama(
+        model=model_id,
+        temperature=model_parameters["temperature"],
+        top_p=model_parameters["top_p"],
+        top_k=model_parameters["top_k"]
+    )
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
-    subject = route_query(question) if use_logical_routing else "alice"
+    logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
+    subject = route_query(question) if use_logical_routing else knowledge_base
+    logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
 
     embeddings = OllamaEmbeddings(model=EMBEDDING_MODEL_ID)
+    logger.info(f"Using embeddings model: {EMBEDDING_MODEL_ID}")
     vectorstore = Chroma(
         persist_directory=database_path,
         embedding_function=embeddings,
@@ -34,7 +45,7 @@ def rag(database_path: str, question: str, use_logical_routing: bool = False, us
     retriever_chain = (
         retriever 
         | format_docs 
-        | (lambda docs: rerank_passages_with_cross_encoder_bge(question=question, passages=docs, top_k=RERANKER_TOP_K))
+        | (lambda docs: rerank_passages_with_cross_encoder_bge(question=question, passages=docs, logger=logger, top_k=RERANKER_TOP_K))
         | transform_string_list_to_string
     )
 
@@ -49,11 +60,13 @@ def rag(database_path: str, question: str, use_logical_routing: bool = False, us
         | StrOutputParser()
     )
 
+    output = []
+    for chunk in rag_chain.stream(question):
+        output.append(chunk)
+        print(chunk, end="", flush=True)
+    print()
+    
+    logger.info(f"RAG output: {''.join(output)}")
+
     if basic_return:
-        output = []
-        for chunk in rag_chain.stream(question):
-            output.append(chunk)
         return ''.join(output)
-    else:
-        for chunk in rag_chain.stream(question):
-            print(chunk, end="", flush=True)
