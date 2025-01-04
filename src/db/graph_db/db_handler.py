@@ -38,12 +38,32 @@ class GraphHandler:
                 )
                 
     def create_chunk_similarity_relation_session(self, chunks):
-        current_chunks = self.get_transcript_embeddings()            
+        with self.driver.session() as session:
+        # Get embeddings for current chunks in db
+            current_chunks = self.get_transcript_embeddings()
+            current_embeddings = [chunk['chunks_embedded'] for chunk in current_chunks]          
             
+            # Get embeddings for new chunks
+            new_embeddings = [chunk["chunks_embedded"] for chunk in chunks]
+            
+            # Compare new chunks to current chunks in db
+            similarity_threshold = 0.8
+            
+            for chunk, new_embedding in zip(chunks, new_embeddings):
+                for current_chunk, current_embedding in zip(current_chunks, current_embeddings):
+                    similarity_score = cosine_similarity([new_embedding], [current_embedding])[0][0]
+                
+                if similarity_score > similarity_threshold: 
+                    session.execute_write(
+                        create_chunk_similartity_relationship, 
+                        chunk['node_id'], 
+                        current_chunk['node_id']
+                        )
+                           
     def get_transcript_embeddings(self):
         with self.driver.session() as session:
             query = """
-            MATCH (t:TextChunk)
+            MATCH (t:TranscriptChunk)
             RETURN t.node_id AS node_id, t.embedding AS embedding
             """
             
