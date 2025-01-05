@@ -36,7 +36,13 @@ def create_meta_data_relationship_to_frame(tx, frame_id, metadata_id):
     """
     tx.run(query, frame_id=frame_id, metadata_id=metadata_id)
 
-
+def create_frame_relationship_to_transcript(tx, frame_id, node_id):
+    query = """"
+    MATCH (f:FrameDescription {frame_id: $frame_id})
+    MATCH (c:TranscriptChunk {node_id: $chunk_id})
+    CREATE (f)-[:DESCRIBES]->(c)
+    """
+    tx.run(query, frame_id=frame_id, chunk_id=node_id)
 
 
 def create_chunk_similartity_relationship(tx, node_id1, node_id2):
