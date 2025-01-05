@@ -1,3 +1,4 @@
+import time
 import os
 import re
 import PIL.Image
@@ -76,6 +77,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     path_dir = f"./media/{video_id}/frames/"
     all_image_files = os.listdir(path_dir)
 
+    requests_made = 0
     # Iterate through all image files
     for file in all_image_files:
 
@@ -93,10 +95,16 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             "are directly relevant to the content of the video. Avoid mentioning other people."
         )
 
+        if requests_made >= 14:
+            time.sleep(30)
+            requests_made = 0
+
         # Generate response
         response = model.generate_content(
             [prompt, image_file]
         )
+
+        requests_made += 1
 
         path_dir_frame_desc = f"./media/{video_id}/frames_description/"
         if not os.path.exists(path_dir_frame_desc):

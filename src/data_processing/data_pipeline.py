@@ -7,24 +7,25 @@ from .video_metadata_download import *
 from .audio_processing import *
 from .chunk_processing import *
 from .visual_processing import *
+from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
 
 # Static variables
 VIDEO_DIRECTORY = "./media/"
-PROCESSED_URLS_FILE = "./src/data_processing/extracted_urls.txt"
+LOG_FILE_PATH = "src/data_processing/data-processing.log"
 
 # Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
 # Create log file
-create_log_file("src/data_processing/data-processing.log")
+create_log_file(LOG_FILE_PATH)
 
 
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text"):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -33,28 +34,36 @@ def download_pipeline_youtube(url: str):
     ensuring a clear separation between technical implementation details and the overall structural overview.
 
     Args:
-        url (str). URL of the YouTube video or playlist.
+        url (str): URL of the YouTube video or playlist.
+        chunk_max_length (int): Maximum length of character of each chunk.
+        chunk_overlap_length (int): Number of characters each chunk si overlapping.
 
     Returns:
-        status_code (int). The status code that should be returned by the Fast API schnittstelle.
-        Check the README of this package for more insights into the possible returned status codes.
+        status_code (int): The status code that should be returned by the Fast API endpoint.
+        status_message (str). A message about the status that should be returned by the Fast API endpoint.
+    Check the README of this package for more insights into the possible returned status codes.
 
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
 
     TODO:
-        - Implement better error handling.
-        - Make the directories in the other files matching.
         - Document in the README all LLMs that are being used.
-        - Add better and more detailed comments.
+        - Add enhanced images in /images.
+        - Add placeholder .env.
     """
 
     write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
+    log.info("download_pipeline_youtube: Parameter 1: url = %s", url)
+    log.info("download_pipeline_youtube: Parameter 2: chunk_max_length = %s", chunk_max_length)
+    log.info("download_pipeline_youtube: Parameter 3: chunk_overlap_length = %s", chunk_overlap_length)
+    log.info("download_pipeline_youtube: Parameter 4: embedding_model = %s", embedding_model)
 
+    chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
+    processed_video_titles = []
 
-    # load url(s) in the video_urls list
+    # * Load url(s) in the video_urls list
     # TODO: Check other types of URLs, e.g. what happens, if an URL is passed, which belongs to a single video which is part of a playlist?
     if "watch" in url and "list" not in url:
         log.info("download_pipeline_youtube: %s is a YouTube video.", url)
@@ -64,12 +73,18 @@ def download_pipeline_youtube(url: str):
         video_urls = extract_video_urls_from_playlist(url)
     else:
         log.warning("download_pipeline_youtube: %s is neither a YouTube video nor a playlist.", url)
-        return 415
+        return 415, "The URL is a valid YouTube URL, but neither a video nor a playlist."
 
-    # try to download the list of YouTube videos
+    # * Try to download and process the list of YouTube videos
     for video_url in video_urls:
-        if url_already_downloaded(video_url):
-            log.warning("download_pipeline_youtube: %s was already downloaded and analyzed.", url)
+        # Set needed variables
+        video_id = extract_youtube_video_id(video_url)
+        video_filepath = f"{VIDEO_DIRECTORY}/{video_id}/video/{video_id}.mp4"
+        meta_data = {}
+
+        # * Download video
+        if video_with_id_already_downloaded(video_id):
+            log.warning("download_pipeline_youtube: video with ID %s was already downloaded and analyzed.", video_id)
             continue
         try:
             log.info("download_pipeline_youtube: %s is a new URL!", url)
@@ -79,88 +94,90 @@ def download_pipeline_youtube(url: str):
                 log.warning("download_pipeline_youtube: Downloading video with PyTube failed. Now trying to download it with yt_dlp.")
                 download_youtube_video_yt_dlp(video_url)
             except:
-                return 500
+                log.error("download_pipeline_youtube: Download failed with both PyTube and yt_dlp.")
+                return 500, "Internal error when trying to download the video. Please contact a developer."
+
+        # * Extract meta data
         try:
-            # TODO: Also add a second method for extracting meta data (similar to video download)
-            meta_data = extract_meta_data(video_url)
-            # print(meta_data)
-
-            videoid = extract_youtube_video_id(video_url)
-            video_filepath = f"{VIDEO_DIRECTORY}/{videoid}/video/{videoid}.mp4"
-            extract_frames_from_video(video_filepath, 60)
-
-            # TODO: Implement better try-catch mechanism. This nested try-catch blocks are not good.
+            meta_data = extract_meta_data_pytube(video_url)
+        except:
             try:
-                create_image_description(videoid)
-            except Exception as e:
-                log.error("download_pipeline_youtube: Error during creation of image descriptions: %s", e)
+                log.warning("download_pipeline_youtube: Extracting meta data using PyTube failed. Now trying to extract it with yt_dlp.")
+                meta_data = extract_meta_data_yt_dlp(video_url)
+            except:
+                log.error("download_pipeline_youtube: Extracting meta data failed with both PyTube and yt_dlp.")
+                return 500, "Internal error when trying to extract the video meta data. Please contact a developer."
 
-            try:
-                download_preprocess_youtube_transcript(video_url)
-
-                # Read the downloaded transcript into the variable "processed_text_transcript"
-                with open(f"media/{videoid}/transcripts/{videoid}.txt", "r") as file:
-                    processed_text_transcript = file.read()
-
-                extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
-                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, 500)
-                chunked_text = add_chunk_overlap(merged_sentence, 50)
-
-                # Rename column "sentence" into "chunks" for the chunked data
-                df = pd.DataFrame(chunked_text)
-                df = df.rename(columns={"sentence":"chunks"})
-                transcript_chunks_path = f"media/{videoid}/transcripts_chunks/"
-                if not os.path.exists(transcript_chunks_path):
-                    os.makedirs(transcript_chunks_path)
-                df.to_csv(f"media/{videoid}/transcripts_chunks/{videoid}.csv", index=False)
-
-                write_url_to_already_downloaded(video_url)
-                log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url)
-
-            except Exception as e:
-                log.error("download_pipeline_youtube: Error during transcript: %s", e)
+        # * Visual Processing: Extract frames with description
+        try:
+            extract_frames_from_video(video_filepath, 10)
+            create_image_description(video_id)
         except Exception as e:
-            log.error(f"download_pipeline_youtube: /analyze error: %s", e)
-            return 500
-    return 200
+            log.error("download_pipeline_youtube: The visual processing failed: %s", e)
+            return 500, "Internal error when trying to process the video visual. Please contact a developer."
+        
+        # * Audio Processing: Download and pre-process transcripts
+        try:
+            download_preprocess_youtube_transcript(video_url)
+            # Read the downloaded transcript into the variable "processed_text_transcript"
+            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file:
+                processed_text_transcript = file.read()
+        except Exception as e:
+            log.error("download_pipeline_youtube: The audio processing failed: %s", e)
+            return 500, "Internal error when trying to process the video audio. Please contact a developer."
+
+        # * Chunking: Append timestamps, merge sentences and add chunk overlap
+        try:
+            extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
+            merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
+            chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
+
+            # Rename column "sentence" into "chunks" for the chunked data csv
+            df = pd.DataFrame(chunked_text)
+            df = df.rename(columns={"sentence":"chunks"})
+            transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
+            if not os.path.exists(transcript_chunks_path):
+                os.makedirs(transcript_chunks_path)
+            df.to_csv(f"media/{video_id}/transcripts_chunks/{video_id}.csv", index=False)
+        except Exception as e:
+            log.error("download_pipeline_youtube: The chunking failed: %s", e)
+            return 500, "Internal error when trying to chunk the video content. Please contact a developer."
+
+        # * Embed text chunks
+        try:
+            embed_text_chunks(video_id, embedding_model)
+        except Exception as e:
+            log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
+            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
+
+        processed_video_titles.append(meta_data['title'])
+
+    if len(processed_video_titles) == 0:
+        log.info(f"YouTube content for URL {url} was already processed.")
+        return 200, f"YouTube content was already processed."
+    else:
+        # TODO: Implement better format for the title(s)
+        log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url)
+        return 200, f"YouTube content with Title(s) {processed_video_titles} successfully processed."
 
 
-def url_already_downloaded(url: str):
+def video_with_id_already_downloaded(id: str):
     """
-    Check if the video or playlist with this URL has already been downloaded and processed.
+    Helper function.
+    Check if the video with this ID has already been downloaded and processed.
 
     Args:
-        url (str): URL of a YouTube video or playlist.
+        id (str): ID of a YouTube video.
 
     Returns:
-        bool: True if this URL has already been processed, False if not.
+        bool: True if this video has already been processed, False if not.
 
     Example:
-        url_already_downloaded("https://www.youtube.com/playlist?v=example")
+        url_already_downloaded("dQw4w9WgXcQ")
     """
 
-    # Check if the file exists
-    if not os.path.exists(PROCESSED_URLS_FILE):
+    if not os.path.exists(f"{VIDEO_DIRECTORY}{id}"):
         return False
-
-    with open(PROCESSED_URLS_FILE, 'r') as file:
-        for line in file:
-            if line.strip() == url:
-                return True
-    return False
-
-
-def write_url_to_already_downloaded(url: str):
-    """
-    Write the URL to the list of already downloaded and processed video or playlists.
-
-    Args:
-        url (str): URL of a YouTube video or playlist.
-
-    Example: 
-        write_url_to_already_downloaded("https://www.youtube.com/playlist?v=example")
-    """
-    with open(PROCESSED_URLS_FILE, 'a') as file:
-        file.write(url + '\n')
-        log.info("write_url_to_already_downloaded: Wrote %s into list of processed URLs.", url)
+    else:
+        return True
 
