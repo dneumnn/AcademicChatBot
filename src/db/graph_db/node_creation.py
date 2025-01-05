@@ -53,13 +53,14 @@ def create_transcript_chunk_node(tx, chunk):
         query = """
         CREATE (c:TranscriptChunk {
             node_id: $node_id, text: $sentence, start_time: $time,
-            length: $length
+            length: $length, embedding: $embedding
         })
         """
         tx.run(query, node_id=chunk["node_id"],
             sentence=chunk["sentence"], 
             time=chunk["time"],  
-            length=chunk["length"])
+            length=chunk["length"],
+            embedding=chunk["embedding"])
         print(f"Node with url_id {chunk['node_id']} created.")
         return
     else:
