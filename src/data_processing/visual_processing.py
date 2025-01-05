@@ -96,7 +96,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         )
 
         if requests_made >= 14:
-            time.sleep(30)
+            time.sleep(50)
             requests_made = 0
 
         # Generate response
