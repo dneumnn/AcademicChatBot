@@ -70,7 +70,7 @@ def create_transcript_chunk_node(tx, chunk):
 def create_frame_description_node(tx, frame):
     if not check_url_id_exists(tx, "FrameDescription", "frame_id", frame["frame_id"]):
         query = """
-        CREATE (c:TranscriptChunk {
+        CREATE (f:FrameDescription {
             frame_id: $frame_id, text: $frameText, start_time: $time
         })
         """
