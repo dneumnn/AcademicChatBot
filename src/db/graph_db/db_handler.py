@@ -11,6 +11,7 @@ class GraphHandler:
     def close(self):
         self.driver.close()
 
+    # session functions for node creation
     def create_meta_data_session(self, meta_data):
         with self.driver.session() as session:
             session.execute_write(create_meta_data_node, meta_data)
@@ -25,11 +26,12 @@ class GraphHandler:
             for frame in frames:
                 session.execute_write(create_frame_description_node, frame)
     
+    # sessions for relation creation
     def create_chunk_next_relation_session(self, chunks):
          with self.driver.session() as session:
             for i in range(len(chunks) - 1):
                 session.execute_write(
-                    create_next_relationship,
+                    create_next_relationship_transcript,
                     chunks[i]['node_id'],
                     chunks[i + 1]['node_id'])
                 
@@ -37,11 +39,20 @@ class GraphHandler:
         with self.driver.session() as session:
             for chunk in chunks:
                 session.execute_write(
-                    create_meta_data_relationship,
+                    create_meta_data_relationship_to_transcript,
                     chunk['node_id'],
                     meta_data['id']
                 )
-                
+    
+    def create_frameDescription_metadata_relation_session(self, frames, meta_data):
+        with self.driver.session() as session:
+            for frame in frames:
+                session.execute_write(
+                    create_meta_data_relationship_to_frame,
+                    frame['frame_id'],
+                    meta_data['id']
+                )
+
     def create_chunk_similarity_relation_session(self, chunks):
         with self.driver.session() as session:
         # Get embeddings for current chunks in db
