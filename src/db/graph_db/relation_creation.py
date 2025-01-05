@@ -14,7 +14,7 @@ def create_next_relationship_frame(tx, frame_id1, frame_id2):
     query = """
     MATCH (f1:FrameDescription {frame_id: $chunk_id1})
     MATCH (f2:FrameDescription {frame_id: $chunk_id2})
-    CREATE (f1)-[:NEXT]->(f2)
+    MERGE (f1)-[:NEXT]->(f2)
     """
     tx.run(query, chunk_id1=frame_id1, chunk_id2=frame_id2)
 
@@ -40,7 +40,7 @@ def create_frame_relationship_to_transcript(tx, frame_id, node_id):
     query = """"
     MATCH (f:FrameDescription {frame_id: $frame_id})
     MATCH (c:TranscriptChunk {node_id: $chunk_id})
-    CREATE (f)-[:DESCRIBES]->(c)
+    MERGE (f)-[:DESCRIBES]->(c)
     """
     tx.run(query, frame_id=frame_id, chunk_id=node_id)
 
