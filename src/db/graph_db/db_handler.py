@@ -20,6 +20,11 @@ class GraphHandler:
             for chunk in chunks:
                 session.execute_write(create_transcript_chunk_node, chunk)
     
+    def create_frame_description_session(self, frames):
+        with self.driver.session() as session:
+            for frame in frames:
+                session.execute_write(create_frame_description_node, frame)
+    
     def create_chunk_next_relation_session(self, chunks):
          with self.driver.session() as session:
             for i in range(len(chunks) - 1):
