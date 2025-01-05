@@ -65,3 +65,20 @@ def create_transcript_chunk_node(tx, chunk):
     else:
         print(f"Node with url_id {chunk['node_id']} already exists.")
         return
+    
+# Frame node 
+def create_frame_description_node(tx, frame):
+    if not check_url_id_exists(tx, "FrameDescription", "frame_id", frame["frame_id"]):
+        query = """
+        CREATE (c:TranscriptChunk {
+            frame_id: $frame_id, text: $frameText, start_time: $time
+        })
+        """
+        tx.run(query, frame_id=frame["frame_id"],
+            frameText=frame["text"], 
+            time=frame["time"]) 
+        print(f"Node with url_id {frame['frame_id']} created.")
+        return
+    else:
+        print(f"Node with url_id {frame['frame_id']} already exists.")
+        return
