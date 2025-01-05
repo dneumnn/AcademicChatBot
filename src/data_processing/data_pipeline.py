@@ -108,21 +108,23 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 log.error("download_pipeline_youtube: Extracting meta data failed with both PyTube and yt_dlp.")
                 return 500, "Internal error when trying to extract the video meta data. Please contact a developer."
 
-        # * Visual and Audio Processing: Extract frames with description, download and pre-process transcripts
+        # * Visual Processing: Extract frames with description
         try:
-            # * Visual Processing
             extract_frames_from_video(video_filepath, 10)
             create_image_description(video_id)
-
-            # * Audio Processing
+        except Exception as e:
+            log.error("download_pipeline_youtube: The visual processing failed: %s", e)
+            return 500, "Internal error when trying to process the video visual. Please contact a developer."
+        
+        # * Audio Processing: Download and pre-process transcripts
+        try:
             download_preprocess_youtube_transcript(video_url)
-
             # Read the downloaded transcript into the variable "processed_text_transcript"
             with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file:
                 processed_text_transcript = file.read()
         except Exception as e:
-            log.error("download_pipeline_youtube: The visual and audio processing failed: %s", e)
-            return 500, "Internal error when trying to process the video visual and audio. Please contact a developer."
+            log.error("download_pipeline_youtube: The audio processing failed: %s", e)
+            return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
