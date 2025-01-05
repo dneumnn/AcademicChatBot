@@ -53,6 +53,19 @@ class GraphHandler:
                     meta_data['id']
                 )
 
+    def create_frameDescription_transcript_relation_session(self, frames, chunks):
+        with self.driver.session() as session:
+            for frame in frames:
+                matching_chunk = next(
+                    (chunk for chunk in chunks if chunk["time"] == frame["time"]), None
+                )
+                if matching_chunk:
+                    session.execute_write(
+                        create_frame_relationship_to_transcript,
+                        frame["frame_id"],
+                        matching_chunk["node_id"]
+                    )
+
     def create_chunk_similarity_relation_session(self, chunks):
         with self.driver.session() as session:
         # Get embeddings for current chunks in db
