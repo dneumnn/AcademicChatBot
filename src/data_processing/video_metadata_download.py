@@ -127,7 +127,13 @@ def extract_meta_data_pytube(url: str) -> dict:
         meta_data['like_count'] = None  
         meta_data['tags'] = yt.keywords
         meta_data['categories'] = None  
-        meta_data['age_limit'] = None  
+        meta_data['age_limit'] = None 
+
+        log.info(
+            "extract_meta_data_pytube: Extracted meta data for video with title %s from channel %s.",
+            meta_data['title'], 
+            meta_data['uploader']
+        ) 
 
         return meta_data
     
@@ -136,7 +142,7 @@ def extract_meta_data_pytube(url: str) -> dict:
         raise e
 
 
-def extract_meta_data(url: str) -> dict:
+def extract_meta_data_yt_dlp(url: str) -> dict:
     """
     Extract the relevant meta data of a YouTube video.
 
@@ -178,7 +184,7 @@ def extract_meta_data(url: str) -> dict:
             meta_data['age_limit'] = result.get('age_limit')
 
             log.info(
-                "extract_meta_data: Extracted meta data for video with title %s from channel %s.",
+                "extract_meta_data_yt_dlp: Extracted meta data for video with title %s from channel %s.",
                 meta_data['title'], 
                 meta_data['uploader']
             )
