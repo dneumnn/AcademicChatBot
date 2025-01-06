@@ -2,13 +2,13 @@ import csv
 import random
 import os
 import chromadb
-from config import INPUT_DIR
+from config import INPUT_DIR, DB_DIR
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def validate_db():
-    client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb")
+    client = chromadb.PersistentClient(path=DB_DIR)
     collection = client.get_collection("youtube_chunks")
     all_docs = collection.get(include=["embeddings", "documents"])
     if not all_docs["documents"]:
@@ -32,8 +32,8 @@ def validate_db():
         print(f"  - {result['documents'][0][i]} => Similarity: {similarity}")
 
 def find_most_similar(question):
-    client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb")
-    collection = client.get_collection("youtube_chunks2")
+    client = chromadb.PersistentClient(path=DB_DIR)
+    collection = client.get_collection("youtube_chunks")
     question_embedding = model.encode(question).tolist()
     result = collection.query(
         query_embeddings=[question_embedding],

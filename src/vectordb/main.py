@@ -4,7 +4,7 @@ import chromadb
 import subprocess
 import json
 import time
-from config import INPUT_DIR
+from config import INPUT_DIR, DB_DIR
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -18,7 +18,7 @@ def create_embedding(text):
 
 def main():
     csv_path = os.path.join(INPUT_DIR, "Yq0QkCxoTHM.csv") # Pfad zur CSV-Datei
-    client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb") # Verbindung zur Datenbank
+    client = chromadb.PersistentClient(path=DB_DIR) # Verbindung zur Datenbank
     collection = client.create_collection(
         name="youtube_chunks"
     )

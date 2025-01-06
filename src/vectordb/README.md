@@ -10,7 +10,6 @@ Dieses Projekt nutzt [Chromadb](https://docs.trychroma.com/) zum Speichern und A
 Enthält globale Einstellungen:
 - `INPUT_DIR`: Verzeichnis, in dem die CSV-Dateien abgelegt sind.  
 - `OPENAI_API_KEY`: Automatisch aus den Umgebungsvariablen gelesen.  
-- `EMBEDDING_MODEL`: Name des Standard-Embedding-Modells.  
 
 Das Skript dient ausschließlich als Konfigurationsquelle, auf die andere Module zugreifen.
 
@@ -22,11 +21,19 @@ Haupt-Entry-Point für die FastAPI-App:
 - Nutzt `download_pipeline_youtube(video_input)`, um den Video-Content zu verarbeiten.  
 - Bei Erfolg wird der Inhalt als Vektoren in der Datenbank gespeichert.
 
+#### Funktionen:
+- `create_embedding(text)`: Erstellt ein Embedding für den gegebenen Text mithilfe von SentenceTransformer.
+- `main()`: Liest eine CSV-Datei ein, generiert Embeddings für die Text-Chunks und speichert diese in der Chromadb-Datenbank.
+
 ### 3. validate_db.py
 - Bietet zwei Hauptfunktionen:  
   1. `validate_db()`: Wählt ein zufälliges Dokument aus der Vektordatenbank (Collection "youtube_chunks"), gibt sein Embedding aus und führt eine Ähnlichkeitsabfrage durch.  
   2. `find_most_similar(question)`: Fragt die Collection "youtube_chunks2" nach dem am stärksten ähnlichen Dokument zum eingegebenen Text ab.  
 - Nutzt SentenceTransformer, um Texte in Embeddings zu verwandeln.
+
+#### Funktionen:
+- `validate_db()`: Validiert die gespeicherten Embeddings in der Datenbank.
+- `find_most_similar(question)`: Findet das ähnlichste Dokument zu einer gegebenen Frage.
 
 ---
 
