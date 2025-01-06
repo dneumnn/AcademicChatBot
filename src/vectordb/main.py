@@ -19,7 +19,7 @@ def main():
     csv_path = os.path.join(INPUT_DIR, "Yq0QkCxoTHM.csv") # Pfad zur CSV-Datei
     client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb") # Verbindung zur Datenbank
     collection = client.create_collection(
-        name="youtube_chunks"
+        name="youtube_chunks2"
     )
 
     with open(csv_path, mode="r", encoding="utf-8") as file:

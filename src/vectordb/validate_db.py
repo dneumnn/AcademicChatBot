@@ -33,7 +33,7 @@ def validate_db():
 
 def find_most_similar(question):
     client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb")
-    collection = client.get_collection("youtube_chunks")
+    collection = client.get_collection("youtube_chunks2")
     question_embedding = model.encode(question).tolist()
     result = collection.query(
         query_embeddings=[question_embedding],
