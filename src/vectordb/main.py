@@ -4,21 +4,23 @@ import chromadb
 import subprocess
 import json
 from config import INPUT_DIR
+from sentence_transformers import SentenceTransformer
 
-def create_embedding(text): # Ruft das ollama-CLI-Modell auf und gibt das Embedding zurück.
-    try: # Versuche, das Embedding zu generieren
-        command = ["ollama", "generate", "-m", "nomic-embed-text", text]
-        result = subprocess.run(command, capture_output=True, text=True, check=True) 
-        data = json.loads(result.stdout) 
-        return data.get("embedding", [])
+model = SentenceTransformer("all-MiniLM-L6-v2")
+
+def create_embedding(text):
+    try:
+        return model.encode(text).tolist()
     except Exception as e:
-        # Fallback, falls ein Fehler auftritt
-        return [0.0] * 768 
+        print("Fehler beim Generieren des Embeddings:", e)
+        return [0.0] * 384
 
 def main():
     csv_path = os.path.join(INPUT_DIR, "Yq0QkCxoTHM.csv") # Pfad zur CSV-Datei
     client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb") # Verbindung zur Datenbank
-    collection = client.get_or_create_collection(name="youtube_chunks") # Erstelle eine Sammlung TODO
+    collection = client.create_collection(
+        name="youtube_chunks"
+    )
 
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file) # Lese die CSV-Datei
