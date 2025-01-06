@@ -1,3 +1,4 @@
+import ast
 from neo4j import GraphDatabase
 from src.db.graph_db.node_creation import *
 from src.db.graph_db.relation_creation import *
@@ -66,54 +67,59 @@ class GraphHandler:
                         matching_chunk["node_id"]
                     )
 
-    def create_chunk_similarity_relation_session(self, chunks):
+    def create_chunk_similarity_relation_session(self, chunks, video_id):
         with self.driver.session() as session:
-        # Get embeddings for current chunks in db
-            current_chunks = self.get_transcript_embeddings()
-            current_embeddings = [chunk['chunks_embedded'] for chunk in current_chunks]          
             
+            # Get embeddings for current chunks in the db
+            current_chunks = self.get_transcript_embeddings(video_id)
+            current_chunks_formatted = {}
+            for node_id, embedding_str in current_chunks.items():
+                embedding = ast.literal_eval(embedding_str)  
+                current_chunks_formatted[node_id] = [float(val) for val in embedding]
+                
             # Get embeddings for new chunks
-            new_embeddings = [chunk["chunks_embedded"] for chunk in chunks]
+            new_embeddings = [ast.literal_eval(chunk["embedding"]) for chunk in chunks]
             
-            # Compare new chunks to current chunks in db
+            # Set similarity threshold
             similarity_threshold = 0.8
             
+            # Iterate through the new chunks
             for chunk, new_embedding in zip(chunks, new_embeddings):
-                for current_chunk, current_embedding in zip(current_chunks, current_embeddings):
+                # Compare the new chunk to all current chunks
+                for node_id, current_embedding in current_chunks_formatted.items():
                     similarity_score = cosine_similarity([new_embedding], [current_embedding])[0][0]
-                
-                if similarity_score > similarity_threshold: 
-                    session.execute_write(
-                        create_chunk_similartity_relationship, 
-                        chunk['node_id'], 
-                        current_chunk['node_id']
+                    
+                    # If similarity exceeds threshold, create the relationship
+                    if similarity_score > similarity_threshold:
+                        print(f"Comparing {chunk['node_id']} with {node_id} | Similarity: {similarity_score}")
+                        session.execute_write(
+                            create_chunk_similartity_relationship, 
+                            chunk['node_id'], 
+                            node_id  
                         )
                            
-    def get_transcript_embeddings(self):
+    def get_transcript_embeddings(self, video_id):
         with self.driver.session() as session:
             query = """
             MATCH (t:TranscriptChunk)
+            WHERE NOT t.node_id STARTS WITH $exclude_id
             RETURN t.node_id AS node_id, t.embedding AS embedding
             """
             
-            # Initialize an empty dictionary to store the results
-            chunks_dict = {}
+            result = session.run(
+                query,
+                exclude_id=video_id)
             
-            try:
-                # Execute the query and process the results
-                result = session.run(query)
-                
-                # Iterate through the result and store each node's information in the dictionary
-                for record in result:
-                    node_id = record["node_id"]
-                    embedding = record["embedding"]
-                    
-                    # If the embedding is a list or array, ensure it’s stored correctly
-                    if embedding:
-                        chunks_dict[node_id] = embedding
-                    else:
-                        print(f"Warning: No embedding found for node {node_id}.")
-            except Exception as e:
-                print(f"Error retrieving embeddings: {e}")
+            embedding_dict = {}
+            
+            result_list = list(result)
+            
+            for record in result_list:
+                node_id = record["node_id"]
+                embedding = record["embedding"]
+                embedding_dict[node_id] = embedding 
+
+            return embedding_dict
         
-        return chunks_dict
+        
+        

@@ -181,6 +181,11 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         except Exception as e:
             log.error("download_pipeline_youtube: Creation of Transcript Chunk relations failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
+        try:
+            graph_handler.create_chunk_similarity_relation_session(chunks, video_id)
+        except Exception as e:
+            log.error("download_pipeline_youtube: Creation of Transcript Chunk similarity relation failed: %s", e)
+            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
         graph_handler.close()
         processed_video_titles.append(meta_data['title'])
 
