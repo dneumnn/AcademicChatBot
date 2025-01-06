@@ -85,15 +85,14 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         image_file = PIL.Image.open(image_file_path)
 
         prompt = (
-            "Please provide a detailed description of the image from the YouTube video, "
-            "focusing on the relevant content, e.g. AI, Machine Learning, "
-            "or other topics shown in the picture. Describe the setting, including the environment, any diagrams, "
-            "charts, equations, or visual aids displayed. If there are visual representations of algorithms, "
-            "models, or data, explain them in detail, including any colors, patterns, or structures. "
-            "If relevant people, such as experts in computer vision or similar fields, are shown in the "
-            "context of the task, briefly mention them and their relevance. Focus on mentioning people who "
-            "are directly relevant to the content of the video. Avoid mentioning other people."
+            "Describe the extracted image from the instructional video, focusing solely on the relevant content related to "
+            "the subject of the lesson: AI. Ignore irrelevant elements such as facecams or placeholders that are not related to "
+            "the topic. Focus on describing concepts, diagrams, graphs, key points, or any other visual content in the image. "
+            "If key points or visual representations of constructs, concepts, or models are shown, place them in context, "
+            "explain their significance, and describe how they relate to the topic. Provide a coherent text block, with no formatting, "
+            "bullet points, or other structural elements, just a clear and concise explanation of the image content."
         )
+
 
         if requests_made >= 14:
             time.sleep(50)
