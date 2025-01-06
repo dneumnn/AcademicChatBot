@@ -46,7 +46,7 @@ def find_most_similar(question):
 
 if __name__ == '__main__':
     validate_db()
-    question = "What is generative AI?"
+    question = "what is artificial  intelligence?"
     doc, sim = find_most_similar(question)
     print(f"Die ähnlichste Antwort auf die Frage '{question}' ist:")
     print(f"  Dokument: {doc}")

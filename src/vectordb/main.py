@@ -3,6 +3,7 @@ import os
 import chromadb
 import subprocess
 import json
+import time
 from config import INPUT_DIR
 from sentence_transformers import SentenceTransformer
 
@@ -18,9 +19,13 @@ def create_embedding(text):
 def main():
     csv_path = os.path.join(INPUT_DIR, "Yq0QkCxoTHM.csv") # Pfad zur CSV-Datei
     client = chromadb.PersistentClient(path="AcademicChatBot/db/chromadb") # Verbindung zur Datenbank
-    collection = client.create_collection(
-        name="youtube_chunks"
-    )
+    
+    try:
+        collection = client.get_collection("youtube_chunks")
+    except chromadb.errors.CollectionNotFoundError:
+        collection = client.create_collection(
+            name="youtube_chunks"
+        )
 
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file) # Lese die CSV-Datei
@@ -31,11 +36,12 @@ def main():
                 continue  # Überspringt unvollständige Einträge
 
             embedding = create_embedding(row["chunks"]) # Generiere das Embedding
+            unique_id = f"row_{i}_{int(time.time())}" # Erzeuge eine eindeutige ID
             collection.add( # Füge den Eintrag zur Datenbank hinzu
                 embeddings=[embedding], 
                 documents=[row["chunks"]],
                 metadatas=[{"time": row["time"], "length": row["length"]}],
-                ids=[f"row_{i}"]
+                ids=[unique_id]
             )
             valid_entries += 1
             if valid_entries % 50 == 0: # Alle 50 Einträge speichern
