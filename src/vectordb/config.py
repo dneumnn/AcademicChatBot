@@ -1,8 +1,5 @@
 import os
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-INPUT_DIR = os.path.join(BASE_DIR, 'data', 'input')
-DB_DIR = os.path.join(BASE_DIR, 'db', 'chromadb')
-
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')  # Ensure this environment variable is set
-# EMBEDDING_MODEL = 'nomic-embed-text'
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')) # AcademicChatBot
+INPUT_DIR = os.path.join(BASE_DIR, 'data', 'input') # AcademicChatBot/data/input
+DB_DIR = os.path.join(BASE_DIR, 'db', 'chromadb') # AcademicChatBot/db/chromadb

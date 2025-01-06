@@ -1,8 +1,5 @@
-import csv
-import random
-import os
 import chromadb
-from config import INPUT_DIR, DB_DIR
+from config import DB_DIR
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
