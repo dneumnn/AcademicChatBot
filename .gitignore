@@ -166,3 +166,21 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# Exclude all videos
+*.mp4
+*.mp4.part
+
+# Exclude bkp files (from draw.io - modelling tool)
+*.bkp
+
+# Exclude generated files by data_processing
+/src/data_processing/extracted_urls.txt
+/media/
+! /media/images/
+
+# Neo4j generated files
+/src/db/graph_db/logs
+/src/db/graph_db/config
+/src/db/graph_db/data
+/src/db/graph_db/plugins
