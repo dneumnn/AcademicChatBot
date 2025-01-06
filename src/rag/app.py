@@ -116,7 +116,7 @@ def main():
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    chat(prompt="What is allices opinion on getting older?", model_id="llama3.2:latest", database="vector", model_parameters={"temperature": 0.7, "top_p": 0.9, "top_k": 0}, knowledge_base="alice")
+    chat(prompt="What are supervised and unsupervised learning models?", model_id="llama3.2:latest", database="vector", model_parameters={"temperature": 0.8, "top_p": 0.9, "top_k": 40}, knowledge_base="youtube_chunks")
  
 if __name__ == "__main__":
     main()
