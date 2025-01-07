@@ -5,6 +5,7 @@ import PIL.Image
 import cv2
 from dotenv import load_dotenv
 import google.generativeai as genai
+import pandas as pd
 
 # Import other functions of the data_processing package
 from .logger import log
@@ -48,7 +49,8 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     while success:
         if count % interval_in_frames == 0:
             log.info(f"extract_frames_from_video: Extracting frame {count} for video {filename}.")
-            cv2.imwrite(f"./media/{filename}/frames/frame{count}.jpg", image)
+            timestamp_ms = cam.get(cv2.CAP_PROP_POS_MSEC)
+            cv2.imwrite(f"./media/{filename}/frames/frame{count}_{timestamp_ms}.jpg", image)
         success, image = cam.read()
         count += 1
 
@@ -63,9 +65,6 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
     Example:
         create_image_description("njjBbKpkmFI", "gemini-1.5-flash")
-
-    TODO:
-        - Describe only the images that add relevant content. Ignore frames that are unreadable or serve merely as transitions.
     """
 
     log.info("create_image_description: Start creating descriptions for images using %s as LLM.", gemini_model)
@@ -76,6 +75,8 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
     path_dir = f"./media/{video_id}/frames/"
     all_image_files = os.listdir(path_dir)
+
+    descriptions = []
 
     requests_made = 0
     # Iterate through all image files
@@ -109,9 +110,17 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         if not os.path.exists(path_dir_frame_desc):
             os.makedirs(path_dir_frame_desc)
 
+
         # Save response in a designated file
         filename = file.replace(".jpg", "")
-        with open(f"{path_dir_frame_desc}/{filename}.txt", "w", encoding="utf-8") as response_file:
-            response_file.write(response.text)
-        log.info("creating_image_description: Successfully created an image description for file %s.", filename)
+        timestamp_ms = filename.split("_", 1)[1]
+        filename = filename.split("_",1)[0]
+        frame_time_s = float(timestamp_ms) / 1000.0
+
+        descriptions.append({"file_name": filename, "description": response.text, "time_in_s": frame_time_s})
+
+    df = pd.DataFrame(descriptions)
+    df.to_csv(f"{path_dir_frame_desc}/frame_descriptions.csv", index=False)
+
+    log.info("creating_image_description: Successfully created an image description for file %s.", filename)
 
