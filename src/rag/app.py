@@ -85,15 +85,15 @@ def chat(
     logger.info(f"Using model parameters: {model_parameters}")
 
     rag(
-        database_path=DATABASE_PATH,
         question=prompt,
+        message_history=message_history,
         model_id=model_id,
         knowledge_base=knowledge_base,
         model_parameters=model_parameters,
         logger=logger,
         use_logical_routing=False,
         use_semantic_routing=False,
-        basic_return=False
+        basic_return=False,
     )
 
     return "Chatting with the user"
@@ -116,7 +116,23 @@ def main():
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    chat(prompt="What are supervised and unsupervised learning models?", model_id="llama3.2:latest", database="vector", model_parameters={"temperature": 0.8, "top_p": 0.9, "top_k": 40}, knowledge_base="youtube_chunks")
+    chat(
+        prompt="What are other types and what do they do?",
+        message_history=[
+            {"role": "user", "content": "What are discriminative models?"},
+            {"role": "assistant", "content": "Discriminative models are a type of machine learning model that are used to classify data into different categories."},
+            {"role": "user", "content": "What do they do?"},
+            {"role": "assistant", "content": "Discriminative models learn from the relationship between labels of data points and can only classify those data points. They learn from labeled data and predict labels for new, unlabeled data points. Examples include image classification tasks like identifying cats or dogs."},
+            {"role": "user", "content": "What are other types and what do they do?"}
+        ],
+        model_id="llama3.2:latest",
+        database="vector",
+        model_parameters={
+            "temperature": 0.8,
+            "top_p": 0.9,
+            "top_k": 40
+        },
+        knowledge_base="youtube_chunks")
  
 if __name__ == "__main__":
     main()

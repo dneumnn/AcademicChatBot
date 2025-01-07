@@ -1,3 +1,4 @@
+import json
 import logging
 from langchain_core.prompts import PromptTemplate
 from langchain_chroma import Chroma
@@ -8,6 +9,54 @@ from routing.semantic_routing import get_base_template, semantic_routing
 from rerankers.rerankers import rerank_passages_with_cross_encoder_bge
 from vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chromadb, transform_string_list_to_string
 from routing.logical_routing import route_query
+
+def contextualize_and_improve_query(question: str, llm: ChatOllama, logger: logging.Logger, message_history: list[dict] = None):
+    logger.info("Improving query")
+    if message_history is not None:
+        logger.info("Contextualizing query with provided message history")
+
+    contextualize_q_prompt_string = """
+        You are an expert at reformulating questions to be more concise and only mention the most relevant information and adding relevant context.
+
+        Given a optional chat history and the latest user question \
+        which might reference context in the chat history, formulate a standalone question \
+        which can be understood without the chat history if provided. Do NOT answer the question, \
+        just reformulate it if needed and otherwise return it as is. \
+        
+        Also improve the standalone question as much as possible. \
+        The question should be concise and only mention the most relevant information. \
+        If the question is already concise and only mentions the most relevant information, \
+        return it as is. Do not return a history, only a reformulated question. \
+        Try to indentify what the user is trying to ask. Focus on the user messages. \
+        The newly generated question should be good for a vector search and prompting GenAI.
+
+        ==============================
+        Question: {query}
+        ==============================
+        Chat History: {message_history}
+        ==============================
+
+        ONLY return the reformulated question, do not add any other text or explanation.
+    """
+    
+    contextualize_q_prompt = PromptTemplate.from_template(contextualize_q_prompt_string)
+
+    contextualize_q_chain = (
+        {"message_history": RunnablePassthrough(), "query": RunnablePassthrough()}
+        | contextualize_q_prompt
+        | llm
+        | StrOutputParser()
+    )
+
+    output = []
+    for chunk in contextualize_q_chain.stream({"message_history": message_history, "query": question}):
+        output.append(chunk)
+        print(chunk, end="", flush=True)
+    print()
+
+    logger.info(f"Contextualized and improved user query: {''.join(output)}")
+
+    return ''.join(output)
 
 def get_vector_context(question: str, subject: str, logger: logging.Logger, vectorstore_top_k: int = 25, reranker_top_k: int = 5):
     vector_context = retrieve_top_n_documents_chromadb(
@@ -30,9 +79,18 @@ def get_vector_context(question: str, subject: str, logger: logging.Logger, vect
 
     return reranked_context
 
-def rag(database_path: str, question: str, model_id: str, model_parameters: dict, logger: logging.Logger, use_logical_routing: bool = False, knowledge_base: str = None, use_semantic_routing: bool = False, basic_return: bool = False):
+def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Logger, message_history: list[dict] = None, use_logical_routing: bool = False, knowledge_base: str = None, use_semantic_routing: bool = False, basic_return: bool = False):
     VECTORSTORE_TOP_K = 10
     RERANKER_TOP_K = 3
+
+    llm = ChatOllama(
+        model=model_id,
+        temperature=model_parameters["temperature"],
+        top_p=model_parameters["top_p"],
+        top_k=model_parameters["top_k"]
+    )
+
+    question = contextualize_and_improve_query(question, llm, logger, message_history)
 
     if knowledge_base is None and use_logical_routing == False:
         logger.warning("Knowledge base is not provided and logical routing is not enabled. Using default subject.")
@@ -41,12 +99,6 @@ def rag(database_path: str, question: str, model_id: str, model_parameters: dict
     logger.info(f"Starting RAG with model: {model_id}")
     logger.info(f"Using top_k values: VECTORSTORE_TOP_K={VECTORSTORE_TOP_K}, RERANKER_TOP_K={RERANKER_TOP_K}")
 
-    llm = ChatOllama(
-        model=model_id,
-        temperature=model_parameters["temperature"],
-        top_p=model_parameters["top_p"],
-        top_k=model_parameters["top_k"]
-    )
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
     logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
     subject = route_query(question) if use_logical_routing else knowledge_base
