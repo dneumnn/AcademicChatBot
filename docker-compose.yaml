@@ -1,0 +1,14 @@
+services:
+  neo4j:
+    image: neo4j:5.26.0
+    volumes:
+      - ./src/db/graph_db/logs:/logs
+      - ./src/db/graph_db/config:/config
+      - ./src/db/graph_db/data:/data
+      - ./src/db/graph_db/plugins:/plugins
+    environment:
+      - NEO4J_AUTH=neo4j/this_pw_is_a_test25218###1119jj
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    restart: always
