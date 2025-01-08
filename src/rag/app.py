@@ -5,10 +5,7 @@ from graphstore.langchain import ask_question_to_graphdb, mock_load_text_to_grap
 from logger.logger import setup_logger
 from rag.rag import rag
 from __tests__.generation import test_complete_generation
-
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), "mock", "chroma_db")
-ALICE_PATH = os.path.join(os.path.dirname(__file__), "mock", "alice.txt")
-COLLECTION_NAME = "alice"
+from constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
 
 """
 VectorDB -> ChromaDB
@@ -26,11 +23,11 @@ def chat(
         message_history: List[dict] = None,
         playlist_id: str = None,
         video_id: str = None,
-        knowledge_base: str = None,
+        knowledge_base: str | None = None,
         model_parameters: dict = {
-            "temperature": 0.8,
-            "top_p": 0.9,
-            "top_k": 40
+            "temperature": DEFAULT_MODEL_PARAMETER_TEMPERATURE,
+            "top_p": DEFAULT_MODEL_PARAMETER_TOP_P,
+            "top_k": DEFAULT_MODEL_PARAMETER_TOP_K
         },
         database: str = "vector"
     ):
@@ -62,25 +59,25 @@ def chat(
 
     if database != "vector" and database != "graph" and database != "all":
         logger.warning(f"Invalid database type: {database}. Using vector.")
-        database = "vector"
+        database = DEFAULT_DATABASE
 
     logger.info(f"Using database: {database}")
 
     if model_id is None or model_id not in get_available_models():
         logger.warning(f"Invalid model ID: {model_id}. Available models: {get_available_models()}. Using default model.")
-        model_id = "llama3.2:latest"
+        model_id = DEFAULT_MODEL
 
     logger.info(f"Using model: {model_id}")
 
     if "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters["temperature"] > 1:
         logger.warning(f"Invalid temperature: {model_parameters.get('temperature')}. Using default temperature.")
-        model_parameters["temperature"] = 0.8
+        model_parameters["temperature"] = DEFAULT_MODEL_PARAMETER_TEMPERATURE
     elif "top_p" not in model_parameters or model_parameters["top_p"] < 0 or model_parameters["top_p"] > 1:
         logger.warning(f"Invalid top_p: {model_parameters.get('top_p')}. Using default top_p.")
-        model_parameters["top_p"] = 0.9
+        model_parameters["top_p"] = DEFAULT_MODEL_PARAMETER_TOP_P
     elif "top_k" not in model_parameters or model_parameters["top_k"] < 0:
         logger.warning(f"Invalid top_k: {model_parameters.get('top_k')}. Using default top_k.")
-        model_parameters["top_k"] = 40
+        model_parameters["top_k"] = DEFAULT_MODEL_PARAMETER_TOP_K
     
     logger.info(f"Using model parameters: {model_parameters}")
 
@@ -90,10 +87,9 @@ def chat(
         model_id=model_id,
         knowledge_base=knowledge_base,
         model_parameters=model_parameters,
+        use_logical_routing=USE_LOGICAL_ROUTING,
+        use_semantic_routing=USE_SEMANTIC_ROUTING,
         logger=logger,
-        use_logical_routing=False,
-        use_semantic_routing=False,
-        basic_return=False,
     )
 
     return "Chatting with the user"
@@ -131,8 +127,8 @@ def main():
             "temperature": 0.8,
             "top_p": 0.9,
             "top_k": 40
-        },
-        knowledge_base="youtube_chunks")
+        }
+    )
  
 if __name__ == "__main__":
     main()

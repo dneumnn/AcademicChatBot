@@ -6,9 +6,11 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from routing.semantic_routing import get_base_template, semantic_routing
-from rerankers.rerankers import rerank_passages_with_cross_encoder_bge
+from rerankers.rerankers import rerank_passages_with_cross_encoder
 from vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chromadb, transform_string_list_to_string
 from routing.logical_routing import route_query
+from logger.logger import setup_logger
+from constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
 
 def contextualize_and_improve_query(question: str, llm: ChatOllama, logger: logging.Logger, message_history: list[dict] = None):
     logger.info("Improving query")
@@ -67,7 +69,7 @@ def get_vector_context(question: str, subject: str, logger: logging.Logger, vect
     )
     passages = [doc["document"] for doc in vector_context]
 
-    reranked_passages = rerank_passages_with_cross_encoder_bge(
+    reranked_passages = rerank_passages_with_cross_encoder(
         question=question,
         passages=passages,
         logger=logger,
@@ -79,9 +81,9 @@ def get_vector_context(question: str, subject: str, logger: logging.Logger, vect
 
     return reranked_context
 
-def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Logger, message_history: list[dict] = None, use_logical_routing: bool = False, knowledge_base: str = None, use_semantic_routing: bool = False, basic_return: bool = False):
-    VECTORSTORE_TOP_K = 10
-    RERANKER_TOP_K = 3
+def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Logger | None = None, message_history: list[dict] = None, use_logical_routing: bool = False, knowledge_base: str | None = None, use_semantic_routing: bool = False, basic_return: bool = False):
+    if logger is None:
+        logger = setup_logger()
 
     llm = ChatOllama(
         model=model_id,
@@ -93,11 +95,11 @@ def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Lo
     question = contextualize_and_improve_query(question, llm, logger, message_history)
 
     if knowledge_base is None and use_logical_routing == False:
-        logger.warning("Knowledge base is not provided and logical routing is not enabled. Using default subject.")
-        knowledge_base = "all"
+        logger.info(f"Knowledge base is not provided and logical routing is not enabled. Using default knowledge base: {DEFAULT_KNOWLEDGE_BASE}")
+        knowledge_base = DEFAULT_KNOWLEDGE_BASE
 
     logger.info(f"Starting RAG with model: {model_id}")
-    logger.info(f"Using top_k values: VECTORSTORE_TOP_K={VECTORSTORE_TOP_K}, RERANKER_TOP_K={RERANKER_TOP_K}")
+    logger.info(f"Using top_k values in retrieval: VECTORSTORE_TOP_K={VECTORSTORE_TOP_K}, RERANKER_TOP_K={RERANKING_TOP_K}")
 
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
     logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
@@ -108,7 +110,7 @@ def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Lo
     #print(docs)
     #retriever_chain.get_graph().print_ascii()
 
-    vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKER_TOP_K)
+    vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K)
     vector_context_text = "\n".join([doc["document"] for doc in vector_context])
     vector_context_metadatas = [doc["metadata"] for doc in vector_context]
 

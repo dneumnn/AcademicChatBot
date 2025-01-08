@@ -7,7 +7,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from llama_index.core import Document
 import chromadb
 from sentence_transformers import SentenceTransformer
-from rerankers.rerankers import rerank_passages_with_cross_encoder_bge
+from rerankers.rerankers import rerank_passages_with_cross_encoder
+from constants.config import RETRIEVAL_EMBEDDING_MODEL
 
 def mock_load_text_to_vectordb_with_ollama_embeddings(database_path: str, file_path: str, collection_name: str) -> None:
     """
@@ -79,7 +80,7 @@ def retrieve_top_n_documents_chromadb_mock(logger: logging.Logger, question: str
     retriever_chain = (
         retriever 
         | format_docs 
-        | (lambda docs: rerank_passages_with_cross_encoder_bge(question=question, passages=docs, logger=logger, top_k=RERANKER_TOP_K))
+        | (lambda docs: rerank_passages_with_cross_encoder(question=question, passages=docs, logger=logger, top_k=RERANKER_TOP_K))
         | transform_string_list_to_string
     )
 
@@ -107,13 +108,11 @@ def tidy_vectorstore_results(results):
     return results
 
 def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: logging.Logger, top_k: int = 25):
-    EMBEDDING_MODEL_ID = "all-MiniLM-L6-v2"
-
-    logger.info(f"Using embeddings model: {EMBEDDING_MODEL_ID}")
+    logger.info(f"Using embeddings model: {RETRIEVAL_EMBEDDING_MODEL}")
     client = chromadb.PersistentClient(path=get_persistent_chroma_db_directory())
     collection = client.get_collection(subject)
 
-    model = SentenceTransformer(EMBEDDING_MODEL_ID)
+    model = SentenceTransformer(RETRIEVAL_EMBEDDING_MODEL)
     question_embedding = model.encode(question).tolist()
 
     result = collection.query(

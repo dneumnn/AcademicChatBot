@@ -6,8 +6,9 @@ from llama_index.core import Document
 import Stemmer
 from torch import cosine_similarity
 from vectorstore.legacy.vectorstore import query_vectordb
+from constants.config import RERANKING_CROSS_ENCODER_MODEL
 
-def rerank_passages_with_cross_encoder(question: str, passages: List[str], top_k: int = 3) -> List[str]:
+def rerank_passages_with_cross_encoder(question: str, passages: List[str], logger: logging.Logger, top_k: int = 3) -> List[str]:
     """
     Rerank passages using cross-encoder model for semantic similarity scoring
    
@@ -19,10 +20,13 @@ def rerank_passages_with_cross_encoder(question: str, passages: List[str], top_k
     Returns:
         List of reranked passages sorted by semantic similarity to question
     """
-    cross_encoder_model = CrossEncoder('cross-encoder/stsb-roberta-base')
+    logger.info(f"Reranking passages with cross encoding, model: {RERANKING_CROSS_ENCODER_MODEL}")
+    logger.info(f"Using top_k: {top_k} for reranking with {len(passages)} passages")
+    cross_encoder_model = CrossEncoder(RERANKING_CROSS_ENCODER_MODEL)
     sentence_pairs = [(question, passage) for passage in passages]
     similarity_scores = cross_encoder_model.predict(sentence_pairs)
     ranked_passages = [p for _, p in sorted(zip(similarity_scores, passages), reverse=True)]
+    logger.info(f"Reranked passages.")
     return ranked_passages[:top_k]
  
 # Inpired by class notebook
@@ -66,27 +70,6 @@ def rerank_passages_with_cosine(question: str, passages: List[str], top_k: int =
  
     similarities = cosine_similarity(question_embedding, passage_embeddings)[0]
     ranked_passages = [p for _, p in sorted(zip(similarities, passages), reverse=True)]
-    return ranked_passages[:top_k]
-
-def rerank_passages_with_cross_encoder_bge(question: str, passages: List[str], logger: logging.Logger, top_k: int = 3) -> List[str]:
-    """
-    Rerank passages using cross-encoder model for semantic similarity scoring
-   
-    Args:
-        question: Question to search for
-        passages: List of passages to rerank
-        top_k: Number of top passages to return
-   
-    Returns:
-        List of reranked passages sorted by semantic similarity to question
-    """
-    logger.info("Reranking passages with cross-encoder BGE")
-    logger.info(f"Using top_k: {top_k} for reranking with {len(passages)} passages")
-    cross_encoder_model = CrossEncoder('BAAI/bge-reranker-large')
-    sentence_pairs = [(question, passage) for passage in passages]
-    similarity_scores = cross_encoder_model.predict(sentence_pairs)
-    ranked_passages = [p for _, p in sorted(zip(similarity_scores, passages), reverse=True)]
-    logger.info(f"Reranked passages.")
     return ranked_passages[:top_k]
 
 def __test__reranking():
