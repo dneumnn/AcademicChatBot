@@ -1,0 +1,5 @@
+google-generativeai
+youtube-transcript-api
+pytube
+yt-dlp
+opencv-python
