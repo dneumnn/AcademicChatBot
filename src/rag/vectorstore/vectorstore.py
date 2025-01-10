@@ -7,8 +7,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from llama_index.core import Document
 import chromadb
 from sentence_transformers import SentenceTransformer
-from rerankers.rerankers import rerank_passages_with_cross_encoder
-from constants.config import RETRIEVAL_EMBEDDING_MODEL
+
+from ..rerankers.rerankers import rerank_passages_with_cross_encoder
+from ..constants.config import RETRIEVAL_EMBEDDING_MODEL
 
 def mock_load_text_to_vectordb_with_ollama_embeddings(database_path: str, file_path: str, collection_name: str) -> None:
     """

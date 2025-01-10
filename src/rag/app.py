@@ -1,11 +1,12 @@
-import os
 from typing import List
-from models.model import get_available_models
-from graphstore.langchain import ask_question_to_graphdb, mock_load_text_to_graphdb
-from logger.logger import setup_logger
-from rag.rag import rag
-from __tests__.generation import test_complete_generation
-from constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
+
+from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
+from .models.model import get_available_models
+from .graphstore.langchain import ask_question_to_graphdb, mock_load_text_to_graphdb
+from .logger.logger import setup_logger
+from .rag.rag import rag
+from .__tests__.generation import test_complete_generation
+from .graphstore.graphstore import get_full_graph_information
 
 """
 VectorDB -> ChromaDB
@@ -17,19 +18,15 @@ GraphDB -> neo4j
 ##########################################################
  
 # POST /chat
-def chat(
+def chat_internal(
         prompt: str,
-        model_id: str = None,
-        message_history: List[dict] = None,
-        playlist_id: str = None,
-        video_id: str = None,
+        model_id: str | None = None,
+        message_history: List[dict] | None = None,
+        playlist_id: str | None = None,
+        video_id: str | None = None,
         knowledge_base: str | None = None,
-        model_parameters: dict = {
-            "temperature": DEFAULT_MODEL_PARAMETER_TEMPERATURE,
-            "top_p": DEFAULT_MODEL_PARAMETER_TOP_P,
-            "top_k": DEFAULT_MODEL_PARAMETER_TOP_K
-        },
-        database: str = "vector"
+        model_parameters: dict | None = None,
+        database: str | None = None
     ):
     """
     Respond to the user's prompt
@@ -57,7 +54,7 @@ def chat(
 
     logger.info(f"Chatting with the user: {prompt}")
 
-    if database != "vector" and database != "graph" and database != "all":
+    if database is None or (database != "vector" and database != "graph" and database != "all"):
         logger.warning(f"Invalid database type: {database}. Using vector.")
         database = DEFAULT_DATABASE
 
@@ -69,7 +66,14 @@ def chat(
 
     logger.info(f"Using model: {model_id}")
 
-    if "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters["temperature"] > 1:
+    if model_parameters is None:
+        logger.warning(f"No model parameters provided. Using default model parameters.")
+        model_parameters = {
+            "temperature": DEFAULT_MODEL_PARAMETER_TEMPERATURE,
+            "top_p": DEFAULT_MODEL_PARAMETER_TOP_P,
+            "top_k": DEFAULT_MODEL_PARAMETER_TOP_K
+        }
+    elif "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters["temperature"] > 1:
         logger.warning(f"Invalid temperature: {model_parameters.get('temperature')}. Using default temperature.")
         model_parameters["temperature"] = DEFAULT_MODEL_PARAMETER_TEMPERATURE
     elif "top_p" not in model_parameters or model_parameters["top_p"] < 0 or model_parameters["top_p"] > 1:
@@ -81,7 +85,7 @@ def chat(
     
     logger.info(f"Using model parameters: {model_parameters}")
 
-    rag(
+    return rag(
         question=prompt,
         message_history=message_history,
         model_id=model_id,
@@ -91,11 +95,9 @@ def chat(
         use_semantic_routing=USE_SEMANTIC_ROUTING,
         logger=logger,
     )
-
-    return "Chatting with the user"
  
 # GET /models
-def models() -> List[str]:
+def models_internal() -> List[str]:
     """
     List all available models
  
@@ -112,7 +114,7 @@ def main():
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    chat(
+    chat_internal(
         prompt="What are other types and what do they do?",
         message_history=[
             {"role": "user", "content": "What are discriminative models?"},
@@ -129,6 +131,7 @@ def main():
             "top_k": 40
         }
     )
+    #get_full_graph_information()
  
 if __name__ == "__main__":
     main()

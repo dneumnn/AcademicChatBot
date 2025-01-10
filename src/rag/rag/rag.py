@@ -5,12 +5,13 @@ from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from routing.semantic_routing import get_base_template, semantic_routing
-from rerankers.rerankers import rerank_passages_with_cross_encoder
-from vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chromadb, transform_string_list_to_string
-from routing.logical_routing import route_query
-from logger.logger import setup_logger
-from constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
+
+from ..routing.semantic_routing import get_base_template, semantic_routing
+from ..rerankers.rerankers import rerank_passages_with_cross_encoder
+from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chromadb, transform_string_list_to_string
+from ..routing.logical_routing import route_query
+from ..logger.logger import setup_logger
+from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
 
 def contextualize_and_improve_query(question: str, llm: ChatOllama, logger: logging.Logger, message_history: list[dict] = None):
     logger.info("Improving query")
@@ -121,13 +122,13 @@ def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Lo
         | StrOutputParser()
     )
 
-    output = []
-    for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
-        output.append(chunk)
-        print(chunk, end="", flush=True)
-    print()
-    
-    logger.info(f"RAG output: {''.join(output)}")
-
     if basic_return:
+        output = []
+        for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
+            output.append(chunk)
+            print(chunk, end="", flush=True)
+        print()
+        logger.info(f"RAG output: {''.join(output)}")
         return ''.join(output)
+    else:
+        return rag_chain.stream({"context": vector_context_text, "question": question})

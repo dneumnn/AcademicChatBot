@@ -1,5 +1,6 @@
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
+
 from .routes import SUBJECTS, RouteQuery
 
 def route_query(query: str, message_history: list[dict] = None) -> str:

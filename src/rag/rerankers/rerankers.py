@@ -5,8 +5,9 @@ from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core import Document
 import Stemmer
 from torch import cosine_similarity
-from vectorstore.legacy.vectorstore import query_vectordb
-from constants.config import RERANKING_CROSS_ENCODER_MODEL
+
+from ..vectorstore.legacy.vectorstore import query_vectordb
+from ..constants.config import RERANKING_CROSS_ENCODER_MODEL
 
 def rerank_passages_with_cross_encoder(question: str, passages: List[str], logger: logging.Logger, top_k: int = 3) -> List[str]:
     """

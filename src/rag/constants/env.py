@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
-from constants.config import NEO4J_FALLBACK
+
+from .config import NEO4J_FALLBACK
 
 load_dotenv()
 
