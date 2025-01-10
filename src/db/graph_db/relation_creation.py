@@ -1,26 +1,49 @@
 # File for the node relations 
-# Linear relationships: NEXT and PREVIOUS model the sequence and make navigation easier
 
-def create_next_relationship(tx, chunk_id1, chunk_id2):
+# Linear relationship for transcript chunks
+def create_next_relationship_transcript(tx, node_id1, node_id2):
     query = """
-    MATCH (c1:TranscriptChunk {id: $chunk_id1})
-    MATCH (c2:TranscriptChunk {id: $chunk_id2})
-    CREATE (c1)-[:NEXT]->(c2)
+    MATCH (c1:TranscriptChunk {node_id: $chunk_id1})
+    MATCH (c2:TranscriptChunk {node_id: $chunk_id2})
+    MERGE (c1)-[:NEXT]->(c2)
     """
-    tx.run(query, chunk_id1=chunk_id1, chunk_id2=chunk_id2)
+    tx.run(query, chunk_id1=node_id1, chunk_id2=node_id2)
 
-# Liste von Chunks
-chunks = [
-    {'chunk_id': 'chunk_001', 'text': 'Hallo, wie geht es dir?', 'embedding': [0.1, 0.2, 0.3]},
-    {'chunk_id': 'chunk_002', 'text': 'Mir geht es gut, danke!', 'embedding': [0.2, 0.3, 0.4]},
-    {'chunk_id': 'chunk_003', 'text': 'Was machst du heute?', 'embedding': [0.1, 0.1, 0.2]},
-]
-"""""
-with driver.session() as session:
-    for i in range(len(chunks) - 1):
-        session.write_transaction(
-            create_next_relationship,
-            chunks[i]['chunk_id'],
-            chunks[i + 1]['chunk_id']
-        )
-"""
+# Linear relationship between meta_data nodes and transcript chunk nodes
+def create_meta_data_relationship_to_transcript(tx, node_id, metadata_id):
+    query = """
+    MATCH (t:TranscriptChunk {node_id: $chunk_id})
+    MATCH (m:MetaData {url_id: $metadata_id})
+    MERGE (t)-[:HAS_METADATA]->(m)
+    """
+    tx.run(query, chunk_id=node_id, metadata_id=metadata_id)
+
+# Linear relationship between meta_data nodes and frame description chunk nodes
+def create_meta_data_relationship_to_frame(tx, frame_id, metadata_id):
+    query = """
+    MATCH (f:FrameDescription {frame_id: $frame_id})
+    MATCH (m:MetaData {url_id: $metadata_id})
+    MERGE (t)-[:HAS_METADATA]->(m)
+    """
+    tx.run(query, frame_id=frame_id, metadata_id=metadata_id)
+
+# Linear relationship between frame nodes and transcript chunk nodes
+def create_frame_relationship_to_transcript(tx, frame_id, node_id):
+    query = """"
+    MATCH (f:FrameDescription {frame_id: $frame_id})
+    MATCH (c:TranscriptChunk {node_id: $chunk_id})
+    MERGE (f)-[:DESCRIBES]->(c)
+    """
+    tx.run(query, frame_id=frame_id, chunk_id=node_id)
+
+# Bi-linear relationship for similar transcript chunk nodes
+def create_chunk_similartity_relationship(tx, node_id1, node_id2):
+    print(node_id1)
+    print(node_id2)
+    query = """
+    MATCH (c1:TranscriptChunk {node_id: $chunk_id1})
+    MATCH (c2:TranscriptChunk {node_id: $chunk_id2})
+    MERGE (c1)-[:SIMILAR_TO]->(c2)
+    MERGE (c2)-[:SIMILAR_TO]->(c1)
+    """
+    tx.run(query, chunk_id1=node_id1, chunk_id2=node_id2) 
