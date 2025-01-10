@@ -1,10 +1,11 @@
 import os
 from langchain_ollama import ChatOllama
 import pandas as pd
-from rag.rag import rag
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+
+from ..rag.rag import rag
 
 compliance_prompt = """
 You are comparing a submitted answer to an expert answer on a given question. Here is the data:

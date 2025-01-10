@@ -1,0 +1,18 @@
+config:
+  default_database: vector
+  default_model: llama3.2:latest
+  default_model_parameters:
+    temperature: 0.8
+    top_p: 0.9
+    top_k: 40
+  default_knowledge_base: youtube_chunks
+  use_semantic_routing: false
+  use_logical_routing: false
+  retrieval_embedding_model: all-MiniLM-L6-v2
+  reranking_cross_encoder_model: BAAI/bge-reranker-large # cross-encoder/stsb-roberta-base
+  vectorstore_top_k: 10
+  reranking_top_k: 3
+  neo4j_fallback:
+    uri: bolt://localhost:7687
+    user: neo4j
+    password: this_pw_is_a_test25218###1119jj
