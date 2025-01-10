@@ -1,12 +1,19 @@
 import os
 import re
+import pandas as pd
 from pytube import (
     YouTube,
     Playlist
 )
 import yt_dlp
+from dotenv import load_dotenv
+import google.generativeai as genai
 
 from .logger import log
+
+# Env variables
+load_dotenv() 
+API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
 def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
     """
@@ -216,4 +223,67 @@ def extract_youtube_video_id(url: str) -> str:
     else:
         log.warning("YouTube Video ID could not be extracted from the URL")
         raise ValueError("YouTube Video ID could not be extracted from the URL")
+
+
+def create_topic_video(videoid: str, video_title: str, video_transcript: str, video_transcript_len: int = 500, gemini_model: str = "gemini-1.5-flash"):
+    """
+    Create chunks based on LLM.
+
+    Args:
+        text (str): text input.
+        max_chunk_length (int): max. character length of the chunks.
+        gemini_model (str): version of the gemini model.
+    
+    Returns:
+        List of chunks.
+
+    """
+    transcript_cleaned = re.sub(r'\s+', ' ', re.sub(r'\{.*?\}', '', video_transcript)).strip()[:video_transcript_len].rsplit(' ', 1)[0] if len(video_transcript) > video_transcript_len else video_transcript
+
+    genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+    model = genai.GenerativeModel(gemini_model)
+    prompt = (
+        f"""
+        Based on the provided information, categorize the following YouTube video into a broad topic area such as Data Science, Web Development, Digital Marketing, Health and Wellness, Gaming, etc.
+
+        You should infer the most appropriate topic for the video based on its title and the beginning of its transcript. If the information is unclear or spans multiple categories, choose the most relevant one or state "Unclear" if no category can be determined.
+
+        Video title: {video_title}
+        Video transcript start: {transcript_cleaned}
+
+        Please provide your response in the format:
+        [Insert Topic]
+        """
+    )
+    
+    response = model.generate_content(prompt)
+    response = response.text
+
+    csv_path = f"media/video_topic_overview.csv"
+    if os.path.exists(csv_path):
+        df = pd.read_csv(csv_path)
+
+        unique_topics = df["video_topic"].unique()
+
+        prompt = f"""
+        Consider the topic: {response}. Compare it with the following list of predefined topics: {unique_topics}. 
+
+        1. If '{response}' closely matches any of the predefined topics, return the matching topic.
+        2. If there is no close match, return '{response}' as it is.
+
+        Ensure the comparison accounts for synonymous terms or slight variations in phrasing.
+
+        Please provide your response in the format:
+        [Insert Topic]
+        """
+        final_topic = model.generate_content(prompt)
+        final_topic = final_topic.text
+
+        new_row = {"video_id": videoid, "video_topic": final_topic}
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+    
+    else:
+        df = pd.DataFrame([{"video_id": videoid, "video_topic": response}])
+    
+    df.to_csv(csv_path, index=False)
 

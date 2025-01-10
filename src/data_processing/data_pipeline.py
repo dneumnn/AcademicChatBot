@@ -149,6 +149,11 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         except Exception as e:
             log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
+        
+        try:
+            create_topic_video(video_id, meta_data['title'], processed_text_transcript)
+        except:
+            print("Error topic definition")
 
         processed_video_titles.append(meta_data['title'])
 
