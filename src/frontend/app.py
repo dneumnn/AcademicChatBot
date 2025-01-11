@@ -9,11 +9,11 @@ DB_PATH = "database/chatbot.db"
 MOCKED_MODELS = ["Llama3.2", "gpt-4", "other-llm"]
 BASE_URL = "http://localhost:8000"
 
+
 # Database Initialization
 def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    
     # Users
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
@@ -51,20 +51,24 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
 
 def register_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hash_password(password))) # hash necessary?
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)",
+                       (username, hash_password(password)))  # hash necessary?
         conn.commit()
         return True
     except sqlite3.IntegrityError:
         return False  # Username already exists
     finally:
         conn.close()
+
 
 def authenticate_user(username, password):
     conn = sqlite3.connect(DB_PATH)
@@ -76,6 +80,7 @@ def authenticate_user(username, password):
         stored_password = result[0]
         return stored_password == hash_password(password)
     return False
+
 
 def chat(user_input):
     try:
@@ -90,19 +95,22 @@ def chat(user_input):
         st.error("Connection error")
         return "Connection error"
 
+
 def save_chat(username, message, response):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO chat_history (username, message, response) VALUES (?, ?, ?)", (username, message, response))
+    cursor.execute("INSERT INTO chat_history (username, message, response) VALUES (?, ?, ?)",
+                   (username, message, response))
     conn.commit()
     conn.close()
 
-# TO-DO: real timestamps when bot asnwers 
+
+# TO-DO: real timestamps when bot asnwers
 def save_chat(username, message, response):
     import datetime
     message_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     response_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -111,6 +119,7 @@ def save_chat(username, message, response):
     """, (username, message, response, message_timestamp, response_timestamp))
     conn.commit()
     conn.close()
+
 
 def get_chat_history(username):
     conn = sqlite3.connect(DB_PATH)
@@ -125,6 +134,7 @@ def get_chat_history(username):
     conn.close()
     return history
 
+
 def send_support_request(username, message):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -133,6 +143,7 @@ def send_support_request(username, message):
     conn.close()
     return "Support request submitted successfully!"
 
+
 def get_all_support_requests():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -140,6 +151,7 @@ def get_all_support_requests():
     requests = cursor.fetchall()
     conn.close()
     return requests
+
 
 def get_available_models():
     try:
@@ -152,6 +164,7 @@ def get_available_models():
     except requests.ConnectionError:
         st.error("Unable to connect to the backend.")
         return []
+
 
 def ChangeTheme():
     # Toggle the current theme
@@ -170,6 +183,7 @@ def ChangeTheme():
 
     st.rerun()
 
+
 def mocked_response():
     response = random.choice(
         [
@@ -180,29 +194,30 @@ def mocked_response():
     for word in response.split():
         yield word
 
+
 # Initialize Database
 init_db()
 
-if "themes" not in st.session_state: 
-  st.session_state.themes = {
-                    "current_theme": "dark",
-                    "refreshed": True,
-                    
-                    "light": {"theme.base": "dark",
-                              "theme.backgroundColor": "black",
-                              "theme.primaryColor": "#c98bdb",
-                              "theme.secondaryBackgroundColor": "#5591f5",
-                              "theme.textColor": "white",
-                              "theme.textColor": "white",
-                              "button_face": "🌞"},
+if "themes" not in st.session_state:
+    st.session_state.themes = {
+        "current_theme": "dark",
+        "refreshed": True,
 
-                    "dark":  {"theme.base": "light",
-                              "theme.backgroundColor": "white",
-                              "theme.primaryColor": "#5591f5",
-                              "theme.secondaryBackgroundColor": "#82E1D7",
-                              "theme.textColor": "#0a1464",
-                              "button_face": "🌜"},
-                    }
+        "light": {"theme.base": "dark",
+                  "theme.backgroundColor": "black",
+                  "theme.primaryColor": "#c98bdb",
+                  "theme.secondaryBackgroundColor": "#5591f5",
+                  "theme.textColor": "white",
+                  "theme.textColor": "white",
+                  "button_face": "🌞"},
+
+        "dark": {"theme.base": "light",
+                 "theme.backgroundColor": "white",
+                 "theme.primaryColor": "#5591f5",
+                 "theme.secondaryBackgroundColor": "#82E1D7",
+                 "theme.textColor": "#0a1464",
+                 "button_face": "🌜"},
+    }
 
 # Session management
 if "username" not in st.session_state:
@@ -217,24 +232,26 @@ if "dark_mode" not in st.session_state:
 
 # Rerun trigger
 if "rerun" not in st.session_state:
-    st.session_state.rerun = False 
+    st.session_state.rerun = False
 
 if st.session_state.rerun:
     st.session_state.rerun = False
-    st.rerun()  
+    st.rerun()
 
-#TO-DO: change behavior of on_change logging in -> prioritize register? 
+# TO-DO: change behavior of on_change logging in -> prioritize register?
 # Login/Register Page
 if st.session_state.page == "Login":
     st.title("Login")
 
+
     def login_user():
         if authenticate_user(st.session_state.login_username, st.session_state.login_password):
             st.session_state.username = st.session_state.login_username
-            st.session_state.page = "Chat" 
-            st.session_state.rerun = True  
+            st.session_state.page = "Chat"
+            st.session_state.rerun = True
         else:
             st.error("Invalid username or password.")
+
 
     st.text_input("Username", key="login_username")
     st.text_input("Password", type="password", key="login_password", on_change=login_user)
@@ -243,14 +260,16 @@ if st.session_state.page == "Login":
     if login_button.button("Login"):
         login_user()
 
+
     def register_user_and_login():
         if register_user(st.session_state.login_username, st.session_state.login_password):
             st.success("Registration successful! You can now log in.")
             st.session_state.username = st.session_state.login_username
-            st.session_state.page = "Chat"  
-            st.session_state.rerun = True  
+            st.session_state.page = "Chat"
+            st.session_state.rerun = True
         else:
             st.error("Username already exists.")
+
 
     if register_button.button("Register"):
         register_user_and_login()
@@ -260,12 +279,21 @@ if st.session_state.page == "Login":
 # Navigation Panel
 st.sidebar.title("Navigation")
 
-model = st.sidebar.selectbox("Select LLM Model", MOCKED_MODELS)
+# Begrüßung und Benutzeranzeige
+if st.session_state.username:
+    st.sidebar.markdown(f"👤 **User:** {st.session_state.username}")
+else:
+    st.sidebar.markdown("👤 **User:** Gast")
 
-if st.session_state.username == "admin":
-    if st.sidebar.button("Admin Panel", key="admin_panel"):
-        st.session_state.page = "Admin Panel"
-        st.rerun()
+# LLM-Auswahl
+#st.sidebar.markdown("---")
+model = st.sidebar.selectbox("🧠 **Select LLM Model**", MOCKED_MODELS)
+
+# Trennlinie
+#st.sidebar.markdown("---")
+
+# Navigation Buttons
+st.sidebar.markdown("### 📂 **Page Navigation**")
 
 if st.sidebar.button("Chat", key="chat_button"):
     st.session_state.page = "Chat"
@@ -279,14 +307,28 @@ if st.sidebar.button("Chat History", key="chat_history_button"):
     st.session_state.page = "Chat History"
     st.rerun()
 
+if st.session_state.username == "admin" and st.sidebar.button("Admin Panel", key="admin_panel"):
+    st.session_state.page = "Admin Panel"
+    st.rerun()
+
 if st.sidebar.button("Logout", key="logout"):
     st.session_state.page = "Login"
     st.session_state.username = None
     st.rerun()
 
-btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
-if st.button(btn_face):
-    ChangeTheme()
+# Info-Bereich
+#st.sidebar.markdown("---")
+st.sidebar.subheader("ℹ️ About the Bot")
+st.sidebar.info("""
+Hier die Erklärung über den Bot einfügen.
+""")
+
+# Farbschema-Wechsel
+#st.sidebar.markdown("---")
+#btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
+#if st.sidebar.button(btn_face, help="Thema wechseln"):
+#    ChangeTheme()
+
 
 # CHAT
 if st.session_state.page == "Chat":
@@ -307,7 +349,7 @@ if st.session_state.page == "Chat":
             st.markdown(prompt)
 
         with st.chat_message("Chatbot"):
-            response_placeholder = st.empty()  #placeholder
+            response_placeholder = st.empty()  # placeholder
             response_content = ""
             for word in mocked_response():
                 response_content += word + " "
@@ -329,7 +371,7 @@ if st.session_state.page == "Chat":
         #     st.session_state.messages.append({"role": "Chatbot", "content": response})
 
         # save_chat(st.session_state.username, prompt, response)
-        
+
 
 elif st.session_state.page == "Support":
     st.title("Support")
