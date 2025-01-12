@@ -1,9 +1,12 @@
-from typing import Optional
+from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 import requests
 import logging
+from pydantic import BaseModel
 
 from src.data_processing.data_pipeline import download_pipeline_youtube
+from src.rag.app import chat_internal, models_internal
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO) # default=INFO (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -15,15 +18,38 @@ app = FastAPI()
 def read_root():
     return {"Hello": "World"}
 
-# placeholder
 @app.get("/model")
 def model():
-    pass
+    return {
+        "models": models_internal(),
+        "status_code": 200
+    }
 
-# placeholder
-@app.post("/chat")
-def chat():
-    pass
+class ChatRequest(BaseModel):
+    prompt: str
+    message_history: Optional[List[Dict[str, str]]] = None
+    model_id: Optional[str] = None
+    database: Optional[str] = None
+    model_parameters: Optional[Dict[str, float]] = None
+    playlist_id: Optional[str] = None
+    video_id: Optional[str] = None
+    knowledge_base: Optional[str] = None
+
+@app.post("/chat", response_class=StreamingResponse)
+def chat(request: ChatRequest):
+    return StreamingResponse(
+        chat_internal(
+            prompt=request.prompt,
+            message_history=request.message_history,
+            model_id=request.model_id,
+            database=request.database,
+            model_parameters=request.model_parameters,
+            playlist_id=request.playlist_id,
+            video_id=request.video_id,
+            knowledge_base=request.knowledge_base
+        ),
+        media_type="text/event-stream"
+    )
 
 # placeholder
 @app.get("/chathistory")
