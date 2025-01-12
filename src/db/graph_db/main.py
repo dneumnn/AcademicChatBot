@@ -25,19 +25,25 @@ def parse_response_to_graph(response_text):
     # Beispiel: Antwort in ein Wörterbuch mit Knoten und Kanten umwandeln
     graph_data = {
         "nodes": [],
-        "edges": []
+        "relationships": []
     }
 
     lines = response_text.strip().split("\n")
     for line in lines:
-        if "Node:" in line:
-            node = line.split(":")[1].strip()
-            graph_data["nodes"].append(node)
-        elif "Relationship:" in line:
-            parts = line.split(":")[1].strip().split("->")
-            if len(parts) == 2:
-                graph_data["edges"].append((parts[0].strip(), parts[1].strip()))
+        if line.startswith("Node:"):
+            node = line.split(":", 1)[1].strip()
+            if node not in graph_data["nodes"]:
+                graph_data["nodes"].append(node)
+        elif line.startswith("Relationship:"):
+            relationship_data = line.split(":", 1)[1].strip()
+            parts = relationship_data.split(",")
+            if len(parts) == 3:
+                source = parts[0].strip()
+                relation = parts[1].strip()
+                target = parts[2].strip()
+                graph_data["relationships"].append((source, relation, target))
                 print(graph_data)
+            
 
     return graph_data
 
@@ -48,12 +54,16 @@ def add_to_graphdb(graph_data, driver):
     with driver.session() as session:
         for node in graph_data["nodes"]:
             session.run("MERGE (n:Entity {name: $name})", name=node)
-        for edge in graph_data["edges"]:
-            session.run("""
-                MATCH (a:Entity {name: $source})
-                MATCH (b:Entity {name: $target})
-                MERGE (a)-[:RELATED_TO]->(b)
-            """, source=edge[0], target=edge[1])
+        for relationship in graph_data["relationships"]:
+            source, relation, target = relationship
+            sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
+            print(f"relationship:{sanitized_relation}")
+            query = f"""
+                MATCH (a:Entity {{name: $source}})
+                MATCH (b:Entity {{name: $target}})
+                MERGE (a)-[:{sanitized_relation}]->(b)
+            """
+            session.run(query, source=source, target=target)
 
 def load_csv_to_graphdb(documents) -> None:
     # Lade Umgebungsvariablen und konfiguriere Google Gemini
@@ -73,21 +83,22 @@ def load_csv_to_graphdb(documents) -> None:
         # Prompt, um Entitäten und Beziehungen zu extrahieren
         prompt = f"""
         Extract all Entities and their relation from following text:
-        {document}
+        {document}. Entities can be people, places, organizations, concepts, or other meaningful items. Relationships represent how these entities are connected.
 
         Return the output in the following format:
         Node: <Entity1>
         Node: <Entity2>
-        Relationship: <Entity1> - <Relationship> -> <Entity2>
+        Relationship: <Entity1> , <Relationship> , <Entity2>
+
+        If Relationships consist of more than one word use _ to separate them. If two entities have more than one relation to one another make to separate relationships.
         """
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         
-        if requests_made >= 14:
+        if requests_made >= 12:
             time.sleep(60)
             requests_made = 0
 
         response = model.generate_content(contents=prompt)
-        #print(response.text)
 
         requests_made += 1
 
