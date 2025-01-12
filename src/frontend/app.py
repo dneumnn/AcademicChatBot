@@ -9,7 +9,6 @@ DB_PATH = "database/chatbot.db"
 MOCKED_MODELS = ["Llama3.2", "gpt-4", "other-llm"]
 BASE_URL = "http://localhost:8000"
 
-
 # Database Initialization
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -55,7 +54,6 @@ def init_db():
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-
 def register_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -80,30 +78,21 @@ def authenticate_user(username, password):
         stored_password = result[0]
         return stored_password == hash_password(password)
     return False
-
-
-def chat(user_input):
-    try:
-        payload = {"input": user_input}
-        response = requests.post(f"{BASE_URL}/chat", json=payload)
-        if response.status_code == 200:
-            return response.json().get("response", "no response field")
-        else:
-            st.error(f"Error analyzing input: {response.status_code}")
-            return "Error analyzing input."
-    except requests.ConnectionError:
-        st.error("Connection error")
-        return "Connection error"
-
-
-def save_chat(username, message, response):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO chat_history (username, message, response) VALUES (?, ?, ?)",
-                   (username, message, response))
-    conn.commit()
-    conn.close()
-
+    
+def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None):
+    url = "http://127.0.0.1:8000/chat"
+    payload = {
+        "prompt": prompt,
+        "message_history": message_history,
+        "model_id": st.session_state.selectedModel,
+        "database": database,
+        "model_parameters": model_parameters,
+        "playlist_id": playlist_id,
+        "video_id": video_id,
+        "knowledge_base": knowledge_base
+    }
+    response = requests.post(url, json=payload, stream=True)
+    return response.iter_lines()
 
 # TO-DO: real timestamps when bot asnwers
 def save_chat(username, message, response):
@@ -155,7 +144,7 @@ def get_all_support_requests():
 
 def get_available_models():
     try:
-        response = requests.get(f"{BASE_URL}/models")
+        response = requests.get(f"{BASE_URL}/model")
         if response.status_code == 200:
             return response.json().get("models", [])
         else:
@@ -182,18 +171,6 @@ def ChangeTheme():
             st._config.set_option(vkey, vval)
 
     st.rerun()
-
-
-def mocked_response():
-    response = random.choice(
-        [
-            "Hi there, this is our academic chatbot. How can I help you today?",
-            "Hi, human! Do you want to analyze a youtube video?",
-        ]
-    )
-    for word in response.split():
-        yield word
-
 
 # Initialize Database
 init_db()
@@ -243,15 +220,14 @@ if st.session_state.rerun:
 if st.session_state.page == "Login":
     st.title("Login")
 
-
     def login_user():
         if authenticate_user(st.session_state.login_username, st.session_state.login_password):
             st.session_state.username = st.session_state.login_username
             st.session_state.page = "Chat"
+            st.session_state.models = get_available_models()
             st.session_state.rerun = True
         else:
             st.error("Invalid username or password.")
-
 
     st.text_input("Username", key="login_username")
     st.text_input("Password", type="password", key="login_password", on_change=login_user)
@@ -286,11 +262,9 @@ else:
     st.sidebar.markdown("👤 **User:** Gast")
 
 # LLM-Auswahl
-#st.sidebar.markdown("---")
-model = st.sidebar.selectbox("🧠 **Select LLM Model**", MOCKED_MODELS)
+st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
 
 # Trennlinie
-#st.sidebar.markdown("---")
 
 # Navigation Buttons
 st.sidebar.markdown("### 📂 **Page Navigation**")
@@ -317,17 +291,15 @@ if st.sidebar.button("Logout", key="logout"):
     st.rerun()
 
 # Info-Bereich
-#st.sidebar.markdown("---")
 st.sidebar.subheader("ℹ️ About the Bot")
 st.sidebar.info("""
 Hier die Erklärung über den Bot einfügen.
 """)
 
 # Farbschema-Wechsel
-#st.sidebar.markdown("---")
-#btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
-#if st.sidebar.button(btn_face, help="Thema wechseln"):
-#    ChangeTheme()
+btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
+if st.sidebar.button(btn_face, help="Thema wechseln"):
+    ChangeTheme()
 
 
 # CHAT
@@ -343,35 +315,23 @@ if st.session_state.page == "Chat":
             st.markdown(message["content"])
 
     # User Input
-    if prompt := st.chat_input("...................."):
+    if prompt := st.chat_input("..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        with st.chat_message("Chatbot"):
+        with st.chat_message("assistant"):
             response_placeholder = st.empty()  # placeholder
             response_content = ""
-            for word in mocked_response():
-                response_content += word + " "
-                response_placeholder.markdown(response_content)
-                time.sleep(0.05)
-            st.session_state.messages.append({"role": "Chatbot", "content": response_content})
+            for line in get_chat_response(prompt):
+                if line:
+                    word = line.decode('utf-8')
+                    response_content += word + " "
+                    response_placeholder.markdown(response_content)
+                    time.sleep(0.05)
+            st.session_state.messages.append({"role": "assistant", "content": response_content})
 
-        save_chat(st.session_state.username, prompt, response_content)
-
-        # TO-DO: Uncomment this block to use the backend
-        # response = chat(prompt)
-        # with st.chat_message("Chatbot"):
-        #     response_placeholder = st.empty()
-        #     response_content = ""
-        #    for word in response.split():
-        #         response_content += word + " "
-        #         response_placeholder.markdown(response_content)
-        #         time.sleep(0.05)
-        #     st.session_state.messages.append({"role": "Chatbot", "content": response})
-
-        # save_chat(st.session_state.username, prompt, response)
-
+            save_chat(st.session_state.username, prompt, response_content)
 
 elif st.session_state.page == "Support":
     st.title("Support")
