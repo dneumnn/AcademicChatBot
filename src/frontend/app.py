@@ -44,9 +44,7 @@ def init_db():
 
     # Add admin user
     admin_password = hash_password("admin")
-    cursor.execute("""
-    INSERT OR IGNORE INTO users (username, password) VALUES ('admin', ?)
-    """, (admin_password,))
+    cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES ('admin', ?)", (admin_password,))
     conn.commit()
     conn.close()
 
@@ -58,8 +56,7 @@ def register_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     try:
-        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)",
-                       (username, hash_password(password)))  # hash necessary?
+        cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)",(username, hash_password(password)))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -80,7 +77,6 @@ def authenticate_user(username, password):
     return False
     
 def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None):
-    url = "http://127.0.0.1:8000/chat"
     payload = {
         "prompt": prompt,
         "message_history": message_history,
@@ -91,7 +87,7 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
         "video_id": video_id,
         "knowledge_base": knowledge_base
     }
-    response = requests.post(url, json=payload, stream=True)
+    response = requests.post(f"{BASE_URL}/chat", json=payload, stream=True)
     return response.iter_lines()
 
 # TO-DO: real timestamps when bot asnwers
