@@ -2,7 +2,7 @@ from typing import List
 import requests
 
 def get_available_models():
-    return get_local_llama_models()
+    return get_local_llama_models() + get_openai_models() + get_gemini_models()
 
 def get_local_llama_models() -> List[str]:
     """
@@ -22,3 +22,9 @@ def get_local_llama_models() -> List[str]:
         return []
     except requests.exceptions.RequestException:
         raise ConnectionError("Cannot connect to local Llama server")
+    
+def get_openai_models():
+    return ["gpt-4o"]
+
+def get_gemini_models():
+    return ["gemini-1.5-flash"]

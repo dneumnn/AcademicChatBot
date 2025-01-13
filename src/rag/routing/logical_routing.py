@@ -1,9 +1,11 @@
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
 from .routes import SUBJECTS, RouteQuery
 
-def route_query(query: str, message_history: list[dict] = None) -> str:
+def route_query(query: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeAI, message_history: list[dict] = None) -> str:
     system = f"""
     You are an expert at determining the subject of a user question.
     Possible subjects are: {", ".join(SUBJECTS)}
@@ -22,7 +24,6 @@ def route_query(query: str, message_history: list[dict] = None) -> str:
 
     prompt = ChatPromptTemplate.from_messages(messages)
 
-    llm = ChatOllama(model="llama3.2", temperature=0)
     structured_llm = llm.with_structured_output(RouteQuery)
 
     router = prompt | structured_llm
