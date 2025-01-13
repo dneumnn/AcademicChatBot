@@ -15,7 +15,7 @@ from ..routing.logical_routing import route_query
 from ..logger.logger import setup_logger
 from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
 from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
-from ..models.model import get_local_llama_models, get_openai_models, get_gemini_models, get_available_models
+from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models
 
 def contextualize_and_improve_query(question: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeAI, logger: logging.Logger, message_history: list[dict] = None):
     logger.info("Improving query")
@@ -101,7 +101,7 @@ def rag(
         logger = setup_logger()
 
 
-    if model_id in get_local_llama_models():
+    if model_id in get_local_ollama_models():
         llm = ChatOllama(
         model=model_id,
         temperature=model_parameters["temperature"],
