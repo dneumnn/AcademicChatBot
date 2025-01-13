@@ -119,7 +119,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Visual Processing: Extract frames with description
         try:
-            extract_frames_from_video(video_filepath, 10)
+            extract_frames_from_video(video_filepath, 30)
             create_image_description(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
@@ -159,7 +159,12 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
         
-    # Insert Meta Data into graph_db       
+        try:
+            create_topic_video(video_id, meta_data['title'], processed_text_transcript)
+        except:
+            print("Error topic definition")
+
+        # * Insert Meta Data into graph_db       
         try:
             graph_handler.create_meta_data_session(meta_data)
         except Exception as e:
@@ -187,6 +192,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             log.error("download_pipeline_youtube: Creation of Transcript Chunk similarity relation failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
         graph_handler.close()
+
         processed_video_titles.append(meta_data['title'])
 
     if len(processed_video_titles) == 0:
