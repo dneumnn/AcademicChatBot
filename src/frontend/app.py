@@ -221,6 +221,7 @@ if st.session_state.page == "Login":
         else:
             st.error("Invalid username or password.")
 
+    # TO-DO: change behavior of on_change logging in -> prioritize register?
     st.text_input("Username", key="login_username")
     st.text_input("Password", type="password", key="login_password", on_change=login_user)
 
@@ -256,8 +257,6 @@ else:
 # LLM-Auswahl
 st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
 
-# Trennlinie
-
 # Navigation Buttons
 st.sidebar.markdown("### 📂 **Page Navigation**")
 
@@ -289,6 +288,7 @@ Hier die Erklärung über den Bot einfügen.
 """)
 
 # Farbschema-Wechsel
+# TO-DO: default theme with streamlit.toml?
 btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
 if st.sidebar.button(btn_face, help="Thema wechseln"):
     ChangeTheme()
@@ -306,6 +306,7 @@ if st.session_state.page == "Chat":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
+    # TO-DO: make bot stream response instead of writing all at once
     # User Input
     if prompt := st.chat_input("..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -322,7 +323,7 @@ if st.session_state.page == "Chat":
                     response_placeholder.markdown(response_content)
                     time.sleep(0.05)
             st.session_state.messages.append({"role": "assistant", "content": response_content})
-
+            # TO-DO: timestamp correctly    
             save_chat(st.session_state.username, prompt, response_content)
 
 elif st.session_state.page == "Support":
