@@ -86,7 +86,17 @@ def get_vector_context(question: str, subject: str, logger: logging.Logger, vect
 
     return reranked_context
 
-def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Logger | None = None, message_history: list[dict] = None, use_logical_routing: bool = False, knowledge_base: str | None = None, use_semantic_routing: bool = False, basic_return: bool = False):
+def rag(
+        question: str,
+        model_id: str,
+        model_parameters: dict,
+        logger: logging.Logger | None = None,
+        message_history: list[dict] = None,
+        use_logical_routing: bool = False,
+        knowledge_base: str | None = None,
+        use_semantic_routing: bool = False,
+        plaintext: bool = False
+    ):
     if logger is None:
         logger = setup_logger()
 
@@ -145,13 +155,9 @@ def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Lo
         | StrOutputParser()
     )
 
-    if basic_return:
-        output = []
+    if plaintext:
         for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
-            output.append(chunk)
-            print(chunk, end="", flush=True)
-        print()
-        logger.info(f"RAG output: {''.join(output)}")
-        return ''.join(output)
+            yield chunk
     else:
-        return rag_chain.stream({"context": vector_context_text, "question": question})
+        for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
+            yield json.dumps({"content": chunk, "sources": []})
