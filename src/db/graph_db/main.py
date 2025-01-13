@@ -92,6 +92,13 @@ def add_to_graphdb(graph_data, driver, meta_data=None):
                 MERGE (a)-[:{sanitized_relation}]->(b)
             """
             session.run(query, source=source, target=target)
+        
+        # Lösche Knoten ohne Beziehungen (isolierte Knoten)
+        session.run("""
+            MATCH (n:Entity)
+            WHERE NOT (n)--()  // Knoten ohne Beziehungen
+            DELETE n
+        """)
 
 def load_csv_to_graphdb(documents, meta_data) -> None:
     # Lade Umgebungsvariablen und konfiguriere Google Gemini
