@@ -6,7 +6,6 @@ import hashlib
 import requests
 
 DB_PATH = "database/chatbot.db"
-MOCKED_MODELS = ["Llama3.2", "gpt-4", "other-llm"]
 BASE_URL = "http://localhost:8000"
 
 # Database Initialization
@@ -21,7 +20,6 @@ def init_db():
         password TEXT
     )
     """)
-    # TO-DO: Differentiate between multiple chats of one user
     # Chat history
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS chat_history (
@@ -76,6 +74,7 @@ def authenticate_user(username, password):
         return stored_password == hash_password(password)
     return False
     
+#TO-DO: use optional params if needed
 def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None):
     payload = {
         "prompt": prompt,
@@ -90,7 +89,7 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
     response = requests.post(f"{BASE_URL}/chat", json=payload, stream=True)
     return response.iter_lines()
 
-# TO-DO: real timestamps when bot asnwers
+# TO-DO: real timestamps when bot answers
 def save_chat(username, message, response):
     import datetime
     message_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -98,10 +97,7 @@ def save_chat(username, message, response):
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO chat_history (username, message, response, message_timestamp, response_timestamp)
-    VALUES (?, ?, ?, ?, ?)
-    """, (username, message, response, message_timestamp, response_timestamp))
+    cursor.execute("INSERT INTO chat_history (username, message, response, message_timestamp, response_timestamp) VALUES (?, ?, ?, ?, ?)", (username, message, response, message_timestamp, response_timestamp))
     conn.commit()
     conn.close()
 
