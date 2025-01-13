@@ -47,13 +47,41 @@ def parse_response_to_graph(response_text):
 
     return graph_data
 
-def add_to_graphdb(graph_data, driver):
+def add_to_graphdb(graph_data, driver, meta_data=None):
     """
     Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
     """
     with driver.session() as session:
         for node in graph_data["nodes"]:
             session.run("MERGE (n:Entity {name: $name})", name=node)
+        
+        if meta_data:
+            # Überprüfen, welche Knoten keine Metadaten haben (hier mit `upload_date`)
+            query = """
+                MATCH (n:Entity)
+                WHERE n.uploader IS NULL
+                SET n += {
+                    title: $title,
+                    description: $description,
+                    duration: $duration,
+                    view_count: $view_count,
+                    uploader: $uploader,
+                    tags: $tags,
+                    thumbnail: $thumbnail,
+                    uploader_url: $uploader_url
+                }
+            """ 
+            session.run(query, parameters={
+                "title": meta_data.get('title'),
+                "description": meta_data.get('description'),
+                "duration": meta_data.get('duration'),
+                "view_count": meta_data.get('view_count'),
+                "uploader": meta_data.get('uploader'),
+                "tags": meta_data.get('tags'),
+                "thumbnail": meta_data.get('thumbnail'),
+                "uploader_url": meta_data.get('uploader_url')
+            })
+        
         for relationship in graph_data["relationships"]:
             source, relation, target = relationship
             sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
@@ -65,7 +93,7 @@ def add_to_graphdb(graph_data, driver):
             """
             session.run(query, source=source, target=target)
 
-def load_csv_to_graphdb(documents) -> None:
+def load_csv_to_graphdb(documents, meta_data) -> None:
     # Lade Umgebungsvariablen und konfiguriere Google Gemini
     load_dotenv()
     API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
@@ -90,7 +118,12 @@ def load_csv_to_graphdb(documents) -> None:
         Node: <Entity2>
         Relationship: <Entity1> , <Relationship> , <Entity2>
 
-        If Relationships consist of more than one word use _ to separate them. If two entities have more than one relation to one another make to separate relationships.
+        Follow these rules strictly:
+
+        1. If Relationships consist of more than one word use _ to separate them. If two entities have more than one relation to one another make to separate relationships.
+        2. Relationships and nodes may only contain letters, numbers and underscores.
+        3. If a relationship includes multiple actions (e.g., `own/created`), split it into separate relationships for each action. For example:
+            - Instead of `own/created`, create `own` and `created` as two distinct relationships.
         """
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         
@@ -106,9 +139,33 @@ def load_csv_to_graphdb(documents) -> None:
         graph_data = parse_response_to_graph(response.text)
 
         # Speichere Knoten und Beziehungen in der Graph-Datenbank
-        add_to_graphdb(graph_data, driver)
+        add_to_graphdb(graph_data, driver, meta_data)
 
     # Schließe den Neo4j-Driver
     driver.close()
 
-load_csv_to_graphdb(documents)
+
+meta_data = {
+    'id': 'dQw4w9WgXcQ',
+    'title': 'Never Gonna Give You Up',
+    'description': 'Never gonna give you up... (Textbeschreibung)',
+    'upload_date': '2021-10-01',
+    'duration': 213,
+    'view_count': 1000000,
+    'uploader_url': 'https://www.youtube.com/channel/UC1234567890',
+    'uploader_id': 'UC1234567890',
+    'channel_id': None,
+    'uploader': 'Bob dylan',
+    'thumbnail': 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    'like_count': None,
+    'tags': ['rick', 'astley', 'never gonna give you up'],
+    'categories': None,
+    'age_limit': None,
+}
+
+
+load_csv_to_graphdb(documents, meta_data)
+
+# Lösche alle Knoten und Beziehungen 
+# MATCH (n)
+# DETACH DELETE n
