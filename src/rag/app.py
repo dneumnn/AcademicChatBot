@@ -1,4 +1,5 @@
 from typing import List
+import json
 
 from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
 from .models.model import get_available_models
@@ -26,7 +27,9 @@ def chat_internal(
         video_id: str | None = None,
         knowledge_base: str | None = None,
         model_parameters: dict | None = None,
-        database: str | None = None
+        database: str | None = None,
+        stream: bool | None = None,
+        plaintext: bool | None = None
     ):
     """
     Respond to the user's prompt
@@ -85,16 +88,47 @@ def chat_internal(
     
     logger.info(f"Using model parameters: {model_parameters}")
 
-    return rag(
-        question=prompt,
-        message_history=message_history,
-        model_id=model_id,
-        knowledge_base=knowledge_base,
-        model_parameters=model_parameters,
-        use_logical_routing=USE_LOGICAL_ROUTING,
-        use_semantic_routing=USE_SEMANTIC_ROUTING,
-        logger=logger,
-    )
+    if stream is None:
+        logger.warning("Stream is not provided. Using default value.")
+        stream = True
+
+    if plaintext is None:
+        logger.warning("Plaintext is not provided. Using default value.")
+        plaintext = False
+
+    if stream:
+        return rag(
+            question=prompt,
+            message_history=message_history,
+            model_id=model_id,
+            knowledge_base=knowledge_base,
+            model_parameters=model_parameters,
+            use_logical_routing=USE_LOGICAL_ROUTING,
+            use_semantic_routing=USE_SEMANTIC_ROUTING,
+            logger=logger,
+            plaintext=plaintext
+        )
+    else:
+        output = []
+        for chunk in rag(
+            question=prompt,
+            message_history=message_history,
+            model_id=model_id,
+            knowledge_base=knowledge_base,
+            model_parameters=model_parameters,
+            use_logical_routing=USE_LOGICAL_ROUTING,
+            use_semantic_routing=USE_SEMANTIC_ROUTING,
+            logger=logger,
+            plaintext=plaintext
+        ):
+            output.append(chunk)
+        if plaintext:
+            return ''.join(output)
+        else:
+            return {
+                "content:": ''.join([json.loads(chunk)["content"] for chunk in output]),
+                "sources": json.loads(output[-1])["sources"]
+            }
  
 # GET /models
 def models_internal() -> List[str]:
