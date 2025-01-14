@@ -10,7 +10,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ..routing.semantic_routing import get_base_template, semantic_routing
 from ..rerankers.rerankers import rerank_passages_with_cross_encoder
-from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chromadb, transform_string_list_to_string
+from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chromadb, transform_string_list_to_string, generate_vector_filter
 from ..routing.logical_routing import route_query
 from ..logger.logger import setup_logger
 from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
@@ -65,12 +65,13 @@ def contextualize_and_improve_query(question: str, llm: ChatOllama | ChatOpenAI 
 
     return ''.join(output)
 
-def get_vector_context(question: str, subject: str, logger: logging.Logger, vectorstore_top_k: int = 25, reranker_top_k: int = 5):
+def get_vector_context(question: str, subject: str, logger: logging.Logger, vectorstore_top_k: int = 25, reranker_top_k: int = 5, filter: dict | None = None):
     vector_context = retrieve_top_n_documents_chromadb(
         question=question,
         subject=subject,
         logger=logger,
-        top_k=vectorstore_top_k
+        top_k=vectorstore_top_k,
+        filter=filter
     )
     passages = [doc["document"] for doc in vector_context]
 
@@ -94,6 +95,8 @@ def rag(
         message_history: list[dict] = None,
         use_logical_routing: bool = False,
         knowledge_base: str | None = None,
+        video_id: str | None = None,
+        playlist_id: str | None = None,
         use_semantic_routing: bool = False,
         plaintext: bool = False
     ):
@@ -144,9 +147,10 @@ def rag(
     #print(docs)
     #retriever_chain.get_graph().print_ascii()
 
-    vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K)
+    vector_filter = generate_vector_filter(logger, video_id, playlist_id)
+    vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K, vector_filter)
     vector_context_text = "\n".join([doc["document"] for doc in vector_context])
-    vector_context_metadatas = [doc["metadata"] for doc in vector_context]
+    vector_context_metadata = [doc["metadata"] for doc in vector_context]
 
     rag_chain = (
         {"context": RunnablePassthrough(), "question": RunnablePassthrough()}

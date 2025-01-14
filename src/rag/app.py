@@ -106,6 +106,8 @@ def chat_internal(
             use_logical_routing=USE_LOGICAL_ROUTING,
             use_semantic_routing=USE_SEMANTIC_ROUTING,
             logger=logger,
+            video_id=video_id,
+            playlist_id=playlist_id,
             plaintext=plaintext
         )
     else:
@@ -119,6 +121,8 @@ def chat_internal(
             use_logical_routing=USE_LOGICAL_ROUTING,
             use_semantic_routing=USE_SEMANTIC_ROUTING,
             logger=logger,
+            video_id=video_id,
+            playlist_id=playlist_id,
             plaintext=plaintext
         ):
             output.append(chunk)
