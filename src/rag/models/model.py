@@ -24,14 +24,22 @@ def get_local_ollama_models() -> List[str]:
             models = [model["name"].replace(":latest", "") for model in response.json()["models"]]
             return models
         return []
-    except requests.exceptions.RequestException:
-        print("Can't connect to local ollama server")
+    except Exception as e:
+        print(f"Error getting local ollama models: {e}")
         return []
     
 def get_openai_models():
-    client = OpenAI(api_key=OPENAI_API_KEY)
-    return [model.id for model in client.models.list()]
+    try:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+        return [model.id for model in client.models.list()]
+    except Exception as e:
+        print(f"Error getting OpenAI models: {e}")
+        return []
 
 def get_gemini_models():
-    gemini.configure(api_key=GEMINI_API_KEY)
-    return [model.name.replace("models/", "") for model in gemini.list_models()]
+    try:
+        gemini.configure(api_key=GEMINI_API_KEY)
+        return [model.name.replace("models/", "") for model in gemini.list_models()]
+    except Exception as e:
+        print(f"Error getting Gemini models: {e}")
+        return []
