@@ -147,6 +147,13 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
             if not os.path.exists(transcript_chunks_path):
                 os.makedirs(transcript_chunks_path)
+
+            df["video_id"] = meta_data["id"]
+            df["video_title"] = meta_data["title"]
+            df["video_uploaddate"] = meta_data["upload_date"]
+            df["video_duration"] = meta_data["duration"]
+            df["channel_url"] = meta_data["uploader_url"] 
+            
             df.to_csv(f"media/{video_id}/transcripts_chunks/{video_id}.csv", index=False)
         except Exception as e:
             log.error("download_pipeline_youtube: The chunking failed: %s", e)
