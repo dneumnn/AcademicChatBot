@@ -147,8 +147,13 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
             if not os.path.exists(transcript_chunks_path):
                 os.makedirs(transcript_chunks_path)
+            
+            df_video_topic_overview = pd.read_csv("media/video_topic_overview.csv")
+            df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
+            topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
 
             df["video_id"] = meta_data["id"]
+            df["video_topic"] = topic
             df["video_title"] = meta_data["title"]
             df["video_uploaddate"] = meta_data["upload_date"]
             df["video_duration"] = meta_data["duration"]
