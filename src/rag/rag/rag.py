@@ -16,6 +16,7 @@ from ..logger.logger import setup_logger
 from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
 from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
 from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models
+from ..graphstore.graphstore import question_to_graphdb
 
 def contextualize_and_improve_query(question: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeAI, logger: logging.Logger, message_history: list[dict] = None):
     logger.info("Improving query")
@@ -98,7 +99,8 @@ def rag(
         video_id: str | None = None,
         playlist_id: str | None = None,
         use_semantic_routing: bool = False,
-        plaintext: bool = False
+        plaintext: bool = False,
+        database: str = "all"
     ):
     if logger is None:
         logger = setup_logger()
@@ -147,10 +149,29 @@ def rag(
     #print(docs)
     #retriever_chain.get_graph().print_ascii()
 
-    vector_filter = generate_vector_filter(logger, video_id, playlist_id)
-    vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K, vector_filter)
-    vector_context_text = "\n".join([doc["document"] for doc in vector_context])
-    vector_context_metadata = [doc["metadata"] for doc in vector_context]
+    vector_context_text = ""
+    vector_context_metadata = []
+
+    if database == "vector" or database == "all":
+        vector_filter = generate_vector_filter(logger, video_id, playlist_id)
+        vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K, vector_filter)
+
+        vector_context_text = "\n".join([doc["document"] for doc in vector_context])
+        vector_context_metadata = [doc["metadata"] for doc in vector_context]
+    
+    graph_context = ""
+    graph_context_metadata = []
+
+    if database == "graph" or database == "all":
+        graph_context, graph_context_metadata = question_to_graphdb(question, llm, logger)
+
+    context = f"""
+        Vector context: {vector_context_text}
+
+        ==============================
+        
+        Graph context: {graph_context}
+    """
 
     rag_chain = (
         {"context": RunnablePassthrough(), "question": RunnablePassthrough()}
@@ -159,9 +180,12 @@ def rag(
         | StrOutputParser()
     )
 
+    print(vector_context_metadata)
+    print(graph_context_metadata)
+
     if plaintext:
-        for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
+        for chunk in rag_chain.stream({"context": context, "question": question}):
             yield chunk
     else:
-        for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
+        for chunk in rag_chain.stream({"context": context, "question": question}):
             yield json.dumps({"content": chunk, "sources": []})

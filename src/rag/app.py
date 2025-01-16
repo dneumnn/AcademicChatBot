@@ -3,7 +3,7 @@ import json
 
 from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
 from .models.model import get_available_models
-from .graphstore.langchain import ask_question_to_graphdb, mock_load_text_to_graphdb
+from .graphstore.langchain_version import ask_question_to_graphdb, mock_load_text_to_graphdb
 from .logger.logger import setup_logger
 from .rag.rag import rag
 from .__tests__.generation import test_complete_generation
@@ -108,7 +108,8 @@ def chat_internal(
             logger=logger,
             video_id=video_id,
             playlist_id=playlist_id,
-            plaintext=plaintext
+            plaintext=plaintext,
+            database=database
         )
     else:
         output = []
@@ -123,7 +124,8 @@ def chat_internal(
             logger=logger,
             video_id=video_id,
             playlist_id=playlist_id,
-            plaintext=plaintext
+            plaintext=plaintext,
+            database=database
         ):
             output.append(chunk)
         if plaintext:
@@ -152,23 +154,13 @@ def main():
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    chat_internal(
-        prompt="What are other types and what do they do?",
-        message_history=[
-            {"role": "user", "content": "What are discriminative models?"},
-            {"role": "assistant", "content": "Discriminative models are a type of machine learning model that are used to classify data into different categories."},
-            {"role": "user", "content": "What do they do?"},
-            {"role": "assistant", "content": "Discriminative models learn from the relationship between labels of data points and can only classify those data points. They learn from labeled data and predict labels for new, unlabeled data points. Examples include image classification tasks like identifying cats or dogs."},
-            {"role": "user", "content": "What are other types and what do they do?"}
-        ],
-        model_id="llama3.2:latest",
-        database="vector",
-        model_parameters={
-            "temperature": 0.8,
-            "top_p": 0.9,
-            "top_k": 40
-        }
-    )
+    print(chat_internal(
+        prompt="What inspired the photographer?",
+        model_id="gpt-4o",
+        database="graph",
+        stream=False,
+        plaintext=False
+    ))
     #get_full_graph_information()
  
 if __name__ == "__main__":

@@ -3,9 +3,11 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain_ollama import ChatOllama
 from langchain_experimental.graph_transformers import LLMGraphTransformer
 from langchain_neo4j import Neo4jGraph, GraphCypherQAChain
-from langchain_openai import OpenAI
+from langchain_openai import OpenAI, ChatOpenAI
 from dotenv import load_dotenv
 import os
+
+from ..constants.env import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 def mock_load_text_to_graphdb(file_path: str) -> None:
     # load and preprocess text data
@@ -24,20 +26,21 @@ def mock_load_text_to_graphdb(file_path: str) -> None:
     
     # store in database
     graph_store = Neo4jGraph(
-        url="bolt://localhost:7687", 
-        username="neo4j", 
-        password="password",
+        url=NEO4J_URI, 
+        username=NEO4J_USER, 
+        password=NEO4J_PASSWORD,
     )
     graph_store.add_graph_documents(graph_documents)
 
 def ask_question_to_graphdb(question: str) -> str:
     graph_store = Neo4jGraph(
-        url="bolt://localhost:7687", 
-        username="neo4j", 
-        password="password",
+        url=NEO4J_URI, 
+        username=NEO4J_USER, 
+        password=NEO4J_PASSWORD,
     )
 
     llm = ChatOllama(model="llama3.2")
+    #llm = ChatOpenAI(model="gpt-4o")
     qa_chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph_store,
@@ -47,3 +50,10 @@ def ask_question_to_graphdb(question: str) -> str:
     result = qa_chain.invoke(question)
 
     return result
+
+def main():
+    print(ask_question_to_graphdb("Wehre was the ehibition?"))
+
+if __name__ == "__main__":
+    main()
+
