@@ -37,7 +37,7 @@ def main():
 
     for idx, doc_id in enumerate(ids):
         print(f"ID: {doc_id}")
-        print(f"  Document: {documents[idx][:80]}...")  # Show only part of the document
+        print(f"  Document: {documents[idx]}...")  # Show only part of the document
         print(f"  Metadata: {metadatas[idx]}")
         print("---")
 
