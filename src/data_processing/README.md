@@ -70,6 +70,13 @@ Assuming the **FastAPI server** is running locally on its default port `8000`, y
 
 `$ curl -X POST "http://127.0.0.1:8000/analyze?video_input=https://www.youtube.com/watch?v=dQw4w9WgXcQ"`
 
+## Used AI Models
+
+| Language Model   | Function | Description |
+| --------------   | ----     | ----        |
+| Gemini           | LLM      | ...         |
+| nomic-embed-test | Embedding Model      | ...         |
+
 ---
 
 <picture>
