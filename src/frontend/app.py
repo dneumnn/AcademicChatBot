@@ -209,18 +209,17 @@ if "themes" not in st.session_state:
         "refreshed": True,
 
         "light": {"theme.base": "dark",
-                  "theme.backgroundColor": "black",
-                  "theme.primaryColor": "#c98bdb",
-                  "theme.secondaryBackgroundColor": "#5591f5",
-                  "theme.textColor": "white",
+                  "theme.backgroundColor": "#0E1117",
+                  "theme.primaryColor": "#FF4B4B",
+                  "theme.secondaryBackgroundColor": "#262730",
                   "theme.textColor": "white",
                   "button_face": "🌞"},
 
         "dark": {"theme.base": "light",
                  "theme.backgroundColor": "white",
-                 "theme.primaryColor": "#5591f5",
-                 "theme.secondaryBackgroundColor": "#82E1D7",
-                 "theme.textColor": "#0a1464",
+                 "theme.primaryColor": "#FF4B4B",
+                 "theme.secondaryBackgroundColor": "#F0F2F6",
+                 "theme.textColor": "#31333F",
                  "button_face": "🌜"},
     }
 
@@ -300,7 +299,28 @@ if st.session_state.page == "Login":
 # TODO: chat page keeps twitching when other page is selected, highlight stays on chat instead of the newly selected page
 # Page navigation
 pages = ["Chat", "Settings", "Support", "Chat History", "Admin Panel"]
-page = st_navbar(pages)
+styles = {
+    "nav": {
+        "background-color": st.session_state.themes[st.session_state.themes["current_theme"]]["theme.secondaryBackgroundColor"],
+    },
+    "div": {
+        "max-width": "32rem",
+    },
+    "span": {
+        "border-radius": "0.5rem",
+        "color": st.session_state.themes[st.session_state.themes["current_theme"]]["theme.textColor"],
+        "margin": "0 0.125rem",
+        "padding": "0.4375rem 0.625rem",
+    },
+    "active": {
+        "background-color": st.session_state.themes[st.session_state.themes["current_theme"]]["theme.backgroundColor"],
+    },
+    "hover": {
+        "background-color": st.session_state.themes[st.session_state.themes["current_theme"]]["theme.backgroundColor"],
+    },
+}
+
+page = st_navbar(pages, styles=styles)
 
 # Navigation Panel
 st.sidebar.title("Navigation")
@@ -326,7 +346,6 @@ Hier die Erklärung über den Bot einfügen.
 """)
 
 # Farbschema-Wechsel
-# TO-DO: default theme with streamlit.toml?
 btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
 if st.sidebar.button(btn_face, help="Thema wechseln"):
     ChangeTheme()
