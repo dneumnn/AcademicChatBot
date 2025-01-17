@@ -208,7 +208,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         processed_video_titles.append(meta_data['title'])
 
     if len(processed_video_titles) == 0:
-        log.info(f"YouTube content for URL {url} was already processed.")
+        log.warning("YouTube content for URL %s was already processed.", url)
         return 200, f"YouTube content was already processed."
     else:
         # TODO: Implement better format for the title(s)

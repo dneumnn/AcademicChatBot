@@ -42,7 +42,7 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
         log.info("download_youtube_video_pytube: PyTube video download successfull. Saved file to %s.", save_path)
 
     except Exception as e:
-        log.warning("YouTube video download using pytube was unsuccessful: %s", e)
+        log.warning("download_youtube_video_pytube: YouTube video download using pytube was unsuccessful: %s", e)
         raise e
 
 
