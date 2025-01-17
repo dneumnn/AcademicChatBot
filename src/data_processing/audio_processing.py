@@ -83,7 +83,6 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         for chunk in transcript_chunks:
             response = model.generate_content(prompt + chunk)
             improved_chunks.append(response.text)
-            log.info("improve transcript iteration done.")
     
         improved_transcript = " ".join(improved_chunks)
 
@@ -96,4 +95,5 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
 
     with open(f"media/{video_id}/transcripts/{video_id}.txt", "w", encoding="utf-8") as datei:
         datei.write(improved_transcript)
+        log.info("Transcript was successfully extracted and improved.")
 
