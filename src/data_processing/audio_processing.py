@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 import time
 
 import google.generativeai as genai
+from ollama import chat
+from ollama import ChatResponse
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from .video_metadata_download import extract_youtube_video_id
@@ -39,7 +41,7 @@ def split_transcript(transcript: str, max_length: int) -> list:
     
     return chunks
 
-def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash") -> None:
+def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash", local_model:bool=False) -> None:
     """
     Download and add start time information into the transcript. 
     Time information is inserted in curly brackets inbetween the text. 
@@ -61,30 +63,55 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         text = item['text']
         combinded_transcript.append(f"{start_time} {text}")
     raw_combined_transcript = " ".join(combinded_transcript)
-
-    max_length = 20000  
-    transcript_chunks = split_transcript(raw_combined_transcript, max_length)
     
     try:
-        time.sleep(60)
-        genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
-        model = genai.GenerativeModel(gemini_model)
-        prompt = (
-            "Please improve the following transcript by correcting any grammar mistakes, "
-            "fixing capitalization errors, fixing punctuation missings and mistakes, "
-            "and correcting any misspelled or misheard words. Do not modify the formatting "
-            "in any way—keep it as one continuous block of text with no additional headings, "
-            "paragraphs, or bullet points. Only focus on improving the text itself. Ignore all "
-            "curly brackets and the inserted number inside; keep them at the same position "
-            "of the text without adjusting it: "
-        )
+        if local_model == False:
+            max_length = 20000  
+            transcript_chunks = split_transcript(raw_combined_transcript, max_length)
 
-        improved_chunks = []
-        for chunk in transcript_chunks:
-            response = model.generate_content(prompt + chunk)
-            improved_chunks.append(response.text)
-    
-        improved_transcript = " ".join(improved_chunks)
+            time.sleep(60)
+            genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+            model = genai.GenerativeModel(gemini_model)
+            prompt = (
+                """Please improve the following transcript by correcting any grammar mistakes, 
+                fixing capitalization errors, fixing punctuation missings and mistakes, 
+                and correcting any misspelled or misheard words. Do not modify the formatting 
+                in any way—keep it as one continuous block of text with no additional headings, 
+                paragraphs, or bullet points. Only focus on improving the text itself. Ignore all 
+                curly brackets and the inserted number inside; keep them at the same position 
+                of the text without adjusting it: """
+            )
+
+            improved_chunks = []
+            for chunk in transcript_chunks:
+                response = model.generate_content(prompt + chunk)
+                improved_chunks.append(response.text)
+        
+            improved_transcript = " ".join(improved_chunks)
+
+        else:
+            max_length = 2500  
+            transcript_chunks = split_transcript(raw_combined_transcript, max_length)
+            prompt =  """Please improve the following transcript by correcting any grammar mistakes, 
+                fixing capitalization errors, fixing punctuation missings and mistakes, 
+                and correcting any misspelled or misheard words. Do not modify the formatting 
+                in any way—keep it as one continuous block of text with no additional headings, 
+                paragraphs, or bullet points. Only focus on improving the text itself. Ignore all 
+                curly brackets and the inserted number inside keep them at the same position 
+                of the text without adjusting it. Do not return anything else, 
+                do not say "Here is the improved transcript". This is the transcript: """
+
+            improved_chunks = []
+            for chunk in transcript_chunks:
+                response: ChatResponse = chat(model='llama3.2', messages=[
+                {
+                    'role': 'user',
+                    'content': prompt + chunk,
+                },
+                ])
+                improved_chunks.append(response.message.content)
+        
+            improved_transcript = " ".join(improved_chunks)
 
     except Exception as e:
         log.warning("Error during transcript correction: %s", e)
