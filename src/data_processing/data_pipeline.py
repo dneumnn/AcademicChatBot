@@ -119,7 +119,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Visual Processing: Extract frames with description
         try:
-            extract_frames_from_video(video_filepath, 30)
+            extract_frames_from_video(video_filepath, 600)
             create_image_description(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)

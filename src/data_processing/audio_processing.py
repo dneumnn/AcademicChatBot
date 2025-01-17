@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import time
 
 import google.generativeai as genai
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -11,6 +12,32 @@ from .logger import log
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
+def split_transcript(transcript: str, max_length: int) -> list:
+    """
+    Split the transcript into smaller chunks without cutting words.
+    
+    Args:
+        transcript (str): The raw combined transcript.
+        max_length (int): Maximum allowed character length per chunk.
+    
+    Returns:
+        list: List of transcript chunks.
+    """
+    chunks = []
+    current_chunk = []
+
+    for word in transcript.split():
+        # Check if adding the next word would exceed the max_length
+        if sum(len(chunk) for chunk in current_chunk) + len(word) + 1 > max_length:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = []
+        current_chunk.append(word)
+    
+    # Add the last chunk
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
+    
+    return chunks
 
 def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash") -> None:
     """
@@ -34,8 +61,12 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         text = item['text']
         combinded_transcript.append(f"{start_time} {text}")
     raw_combined_transcript = " ".join(combinded_transcript)
+
+    max_length = 20000  
+    transcript_chunks = split_transcript(raw_combined_transcript, max_length)
     
     try:
+        time.sleep(60)
         genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
         model = genai.GenerativeModel(gemini_model)
         prompt = (
@@ -47,8 +78,14 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
             "curly brackets and the inserted number inside; keep them at the same position "
             "of the text without adjusting it: "
         )
-        prompt_transcript = prompt + raw_combined_transcript
-        response = model.generate_content(prompt_transcript)
+
+        improved_chunks = []
+        for chunk in transcript_chunks:
+            response = model.generate_content(prompt + chunk)
+            improved_chunks.append(response.text)
+            log.info("improve transcript iteration done.")
+    
+        improved_transcript = " ".join(improved_chunks)
 
     except Exception as e:
         log.warning("Error during transcript correction: %s", e)
@@ -58,5 +95,5 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
             os.makedirs(transcript_path)
 
     with open(f"media/{video_id}/transcripts/{video_id}.txt", "w", encoding="utf-8") as datei:
-        datei.write(response.text)
+        datei.write(improved_transcript)
 
