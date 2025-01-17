@@ -1,8 +1,6 @@
 import csv
 import os
 import chromadb
-import subprocess
-import json
 import time
 import re
 from config import INPUT_DIR, DB_DIR
@@ -17,8 +15,8 @@ def create_embedding(text):
         print("Fehler beim Generieren des Embeddings:", e)
         return [0.0] * 384
 
-def main():
-    csv_path = os.path.join(INPUT_DIR, "4RixMPF4xis.csv")
+def generate_vector_db(video_id):
+    csv_path = os.path.join(INPUT_DIR, video_id, "transcript_chunks", video_id, ".csv") # Pfad zur CSV-Datei
     
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
@@ -62,6 +60,3 @@ def main():
                 print(f"{valid_entries} Datensätze erfolgreich gespeichert.")
 
     print(f"Fertig! Insgesamt {valid_entries} Datensätze gespeichert.")
-
-if __name__ == "__main__":
-    main()
