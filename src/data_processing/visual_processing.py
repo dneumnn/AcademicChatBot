@@ -5,6 +5,7 @@ import PIL.Image
 import cv2
 from dotenv import load_dotenv
 import google.generativeai as genai
+import pandas as pd
 
 # Import other functions of the data_processing package
 from .logger import log
@@ -48,7 +49,8 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     while success:
         if count % interval_in_frames == 0:
             log.info(f"extract_frames_from_video: Extracting frame {count} for video {filename}.")
-            cv2.imwrite(f"./media/{filename}/frames/frame{count}.jpg", image)
+            timestamp_ms = cam.get(cv2.CAP_PROP_POS_MSEC)
+            cv2.imwrite(f"./media/{filename}/frames/frame{count}_{timestamp_ms}.jpg", image)
         success, image = cam.read()
         count += 1
 
@@ -63,9 +65,6 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
     Example:
         create_image_description("njjBbKpkmFI", "gemini-1.5-flash")
-
-    TODO:
-        - Describe only the images that add relevant content. Ignore frames that are unreadable or serve merely as transitions.
     """
 
     log.info("create_image_description: Start creating descriptions for images using %s as LLM.", gemini_model)
@@ -77,6 +76,8 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     path_dir = f"./media/{video_id}/frames/"
     all_image_files = os.listdir(path_dir)
 
+    descriptions = []
+
     requests_made = 0
     # Iterate through all image files
     for file in all_image_files:
@@ -85,18 +86,17 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         image_file = PIL.Image.open(image_file_path)
 
         prompt = (
-            "Please provide a detailed description of the image from the YouTube video, "
-            "focusing on the relevant content, e.g. AI, Machine Learning, "
-            "or other topics shown in the picture. Describe the setting, including the environment, any diagrams, "
-            "charts, equations, or visual aids displayed. If there are visual representations of algorithms, "
-            "models, or data, explain them in detail, including any colors, patterns, or structures. "
-            "If relevant people, such as experts in computer vision or similar fields, are shown in the "
-            "context of the task, briefly mention them and their relevance. Focus on mentioning people who "
-            "are directly relevant to the content of the video. Avoid mentioning other people."
+            "Describe the extracted image from the instructional video, focusing solely on the relevant content related to "
+            "the subject of the lesson: AI. Ignore irrelevant elements such as facecams or placeholders that are not related to "
+            "the topic. Focus on describing concepts, diagrams, graphs, key points, or any other visual content in the image. "
+            "If key points or visual representations of constructs, concepts, or models are shown, place them in context, "
+            "explain their significance, and describe how they relate to the topic. Provide a coherent text block, with no formatting, "
+            "bullet points, or other structural elements, just a clear and concise explanation of the image content."
         )
 
+        # TODO: Dynamically read the time to sleep (?)
         if requests_made >= 14:
-            time.sleep(30)
+            time.sleep(50)
             requests_made = 0
 
         # Generate response
@@ -110,9 +110,16 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         if not os.path.exists(path_dir_frame_desc):
             os.makedirs(path_dir_frame_desc)
 
+
         # Save response in a designated file
-        filename = file.replace(".jpg", "")
-        with open(f"{path_dir_frame_desc}/{filename}.txt", "w", encoding="utf-8") as response_file:
-            response_file.write(response.text)
-        log.info("creating_image_description: Successfully created an image description for file %s.", filename)
+        filename = file.replace(".jpg", "")        
+        timestamp_ms = filename.split("_", 1)[1]
+        filename = filename.split("_",1)[0]
+        frame_time_s = float(timestamp_ms) / 1000
+        descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
+
+    df = pd.DataFrame(descriptions)
+    df.to_csv(f"{path_dir_frame_desc}/frame_descriptions.csv", index=False)
+
+    log.info("creating_image_description: Successfully created an image description for file %s.", filename)
 

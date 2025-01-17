@@ -6,7 +6,7 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def validate_db():
     client = chromadb.PersistentClient(path=DB_DIR)
-    collection = client.get_collection("youtube_chunks")
+    collection = client.get_collection("Data_Science")
     all_docs = collection.get(include=["embeddings", "documents"])
     if not all_docs["documents"]:
         print("Keine Dokumente in der Sammlung.")
