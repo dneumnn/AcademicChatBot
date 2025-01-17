@@ -2,6 +2,7 @@ import random
 from typing import Dict, List, Optional
 import time
 import streamlit as st
+from streamlit_navigation_bar import st_navbar
 import sqlite3
 import hashlib
 import requests
@@ -296,6 +297,11 @@ if st.session_state.page == "Login":
 
     st.stop()
 
+# TODO: chat page keeps twitching when other page is selected, highlight stays on chat instead of the newly selected page
+# Page navigation
+pages = ["Chat", "Settings", "Support", "Chat History", "Admin Panel"]
+page = st_navbar(pages)
+
 # Navigation Panel
 st.sidebar.title("Navigation")
 
@@ -307,29 +313,6 @@ else:
 
 # LLM-Auswahl
 st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
-
-# Navigation Buttons
-st.sidebar.markdown("### 📂 **Page Navigation**")
-
-if st.sidebar.button("Chat", key="chat_button"):
-    st.session_state.page = "Chat"
-    st.rerun()
-
-if st.sidebar.button("Settings", key="settings_button"):
-    st.session_state.page = "Settings"
-    st.rerun()
-
-if st.sidebar.button("Support", key="support_button"):
-    st.session_state.page = "Support"
-    st.rerun()
-
-if st.sidebar.button("Chat History", key="chat_history_button"):
-    st.session_state.page = "Chat History"
-    st.rerun()
-
-if st.session_state.username == "admin" and st.sidebar.button("Admin Panel", key="admin_panel"):
-    st.session_state.page = "Admin Panel"
-    st.rerun()
 
 if st.sidebar.button("Logout", key="logout"):
     st.session_state.page = "Login"
@@ -349,9 +332,7 @@ if st.sidebar.button(btn_face, help="Thema wechseln"):
     ChangeTheme()
 
 
-
-
-if st.session_state.page == "Settings":
+if page == "Settings":
     st.title("Streamlit Chat Settings")
 
     col1, spacer, col2 = st.columns([2,1,2])
@@ -375,7 +356,7 @@ if st.session_state.page == "Settings":
 
     with col2:
         st.markdown("### Analyze Settings")
-        chunk_max_length= st.slider("Select a value for the chunk size", 250, 1000, st.session_state.settings["chunk_max_length"])
+        chunk_max_length = st.slider("Select a value for the chunk size", 250, 1000, st.session_state.settings["chunk_max_length"])
         chunk_overlap_length = st.slider("Select a value for the chunk overlap length", 0, 100, st.session_state.settings["chunk_overlap_length"])
         embedding_model = st.selectbox(
             "Select Embedding Model",
@@ -396,11 +377,11 @@ if st.session_state.page == "Settings":
 
     # Display current settings
     st.markdown("### Current Settings")
-    st.write(f"Chatsettings:{st.session_state.settings["history"]}{st.session_state.settings["database"]}{st.session_state.settings["routing"]}{st.session_state.settings["temperature"]}{st.session_state.settings["top_p"]}{st.session_state.settings["top_k"]}{st.session_state.settings["playlist_id"]}{st.session_state.settings["video_id"]}")
-    st.write(f"Chatsettings:{st.session_state.settings["chunk_max_length"]}{st.session_state.settings["chunk_overlap_length"]}{st.session_state.settings["embedding_model"]}")
+    st.write(f"Chatsettings:{st.session_state.settings['history']}{st.session_state.settings['database']}{st.session_state.settings['routing']}{st.session_state.settings['temperature']}{st.session_state.settings['top_p']}{st.session_state.settings['top_k']}{st.session_state.settings['playlist_id']}{st.session_state.settings['video_id']}")
+    st.write(f"Chatsettings:{st.session_state.settings['chunk_max_length']}{st.session_state.settings['chunk_overlap_length']}{st.session_state.settings['embedding_model']}")
 
 # CHAT
-if st.session_state.page == "Chat":
+elif page == "Chat":
     st.title(f"Welcome, {st.session_state.username}")
 
     # manage session chats
@@ -437,14 +418,14 @@ if st.session_state.page == "Chat":
             # TO-DO: timestamp correctly    
             save_chat(st.session_state.username, prompt, response_content)
 
-elif st.session_state.page == "Support":
+elif page == "Support":
     st.title("Support")
     support_message = st.text_area("Your support request")
     if st.button("Submit"):
         if support_message:
             st.success(send_support_request(st.session_state.username, support_message))
 
-elif st.session_state.page == "Chat History":
+elif page == "Chat History":
     st.title(f"Chat History - {st.session_state.username}")
     history = get_chat_history(st.session_state.username)
     if history:
@@ -454,7 +435,7 @@ elif st.session_state.page == "Chat History":
     else:
         st.info("No chat history found.")
 
-elif st.session_state.page == "Admin Panel":
+elif page == "Admin Panel":
     if st.session_state.username == "admin":
         st.title("Admin Panel")
         requests = get_all_support_requests()
