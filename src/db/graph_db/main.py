@@ -5,16 +5,8 @@ from dotenv import load_dotenv
 from neo4j import GraphDatabase
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-load_dotenv()
-
-loader = TextLoader(file_path="dummytext.txt")
-docs = loader.load()
-
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=250, chunk_overlap=24)
-documents = text_splitter.split_documents(documents=docs)
-
-
+from itertools import chain
+from src.data_processing.logger import log
 
 
 def parse_response_to_graph(response_text):
@@ -42,50 +34,38 @@ def parse_response_to_graph(response_text):
                 relation = parts[1].strip()
                 target = parts[2].strip()
                 graph_data["relationships"].append((source, relation, target))
-                print(graph_data)
             
 
     return graph_data
 
-def add_to_graphdb(graph_data, driver, meta_data=None):
+def add_nodes_to_graphdb(graph_data, driver, chunk):
     """
     Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
     """
     with driver.session() as session:
         for node in graph_data["nodes"]:
-            session.run("MERGE (n:Entity {name: $name})", name=node)
-        
-        if meta_data:
-            # Überprüfen, welche Knoten keine Metadaten haben (hier mit `upload_date`)
             query = """
-                MATCH (n:Entity)
-                WHERE n.uploader IS NULL
-                SET n += {
-                    title: $title,
-                    description: $description,
-                    duration: $duration,
-                    view_count: $view_count,
-                    uploader: $uploader,
-                    tags: $tags,
-                    thumbnail: $thumbnail,
-                    uploader_url: $uploader_url
-                }
-            """ 
+            MERGE (n:Entity {name: $name})
+            SET n += {
+                time: [$time],
+                text: [$sentence],
+                url_id: [$url_id]
+                } 
+            """
+
             session.run(query, parameters={
-                "title": meta_data.get('title'),
-                "description": meta_data.get('description'),
-                "duration": meta_data.get('duration'),
-                "view_count": meta_data.get('view_count'),
-                "uploader": meta_data.get('uploader'),
-                "tags": meta_data.get('tags'),
-                "thumbnail": meta_data.get('thumbnail'),
-                "uploader_url": meta_data.get('uploader_url')
+                "time": chunk['time'],
+                "sentence": chunk['sentence'],
+                "name": node,
+                "url_id": chunk['node_id']
             })
-        
+
+
+                
         for relationship in graph_data["relationships"]:
             source, relation, target = relationship
             sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
-            print(f"relationship:{sanitized_relation}")
+            #print(f"relationship:{sanitized_relation}")
             query = f"""
                 MATCH (a:Entity {{name: $source}})
                 MATCH (b:Entity {{name: $target}})
@@ -100,7 +80,78 @@ def add_to_graphdb(graph_data, driver, meta_data=None):
             DELETE n
         """)
 
-def load_csv_to_graphdb(documents, meta_data) -> None:
+def add_attributes_to_nodes(driver, chunk, meta_data, frames):
+    with driver.session() as session:
+        if meta_data:
+            query = """
+                MATCH (n:Entity)
+                WHERE $url_id IN n.url_id
+                SET n.title = coalesce(n.title, []) + $title,
+                    n.description = coalesce(n.description, []) + $description,
+                    n.duration = coalesce(n.duration, []) + $duration,
+                    n.view_count = coalesce(n.view_count, []) + $view_count,
+                    n.uploader = coalesce(n.uploader, []) + $uploader,
+                    n.tags = coalesce(n.tags, []) + $tags,
+                    n.thumbnail = coalesce(n.thumbnail, []) + $thumbnail,
+                    n.uploader_url = coalesce(n.uploader_url, []) + $uploader_url,
+                    n.age_limit = coalesce(n.age_limit, []) + $age_limit,
+                    n.categories = coalesce(n.categories, []) + $categories,
+                    n.like_count = coalesce(n.like_count, []) + $like_count,
+                    n.upload_date = coalesce(n.upload_date, []) + $upload_date
+            """ 
+
+            session.run(query, parameters={
+                "title": meta_data.get('title'),
+                "description": meta_data.get('description'),
+                "duration": meta_data.get('duration'),
+                "view_count": meta_data.get('view_count'),
+                "uploader": meta_data.get('uploader'),
+                "tags": meta_data.get('tags'),
+                "thumbnail": meta_data.get('thumbnail'),
+                "uploader_url": meta_data.get('uploader_url'),
+                "age_limit": meta_data.get('age_limit'),
+                "categories": meta_data.get('categories'),
+                "like_count": meta_data.get('like_count'),
+                "upload_date": meta_data.get('upload_date'),
+                "url_id": meta_data.get('id')
+            })
+        else:
+            log.error("download_pipeline_youtube: Meta_data could not be inserted into graph_db: %s")
+            return 500, "Internal error when trying to insert meta_data into graph_db. Please contact a developer."
+        
+        # Insert Frame information to respective nodes
+        if frames:
+            query = """
+            MATCH (n:Entity)
+            WITH n, n.url_id AS urlIdArray
+            UNWIND urlIdArray AS urlIdElement
+            WITH n, urlIdElement, 
+                REDUCE(i = -1, idx IN RANGE(0, SIZE(urlIdArray) - 1) 
+                    | CASE WHEN urlIdArray[idx] = urlIdElement THEN idx ELSE i END) AS index
+            MATCH (n:Entity)
+            WHERE urlIdElement = $id
+            WITH n, index, ABS(n.time[index] - $time) AS difference
+            ORDER BY difference ASC
+            LIMIT 1
+            WITH index, n.time[index] AS closestTime
+            MATCH (n:Entity)
+            WHERE $id IN n.url_id AND n.time[index] = closestTime
+            SET n.frame_names = coalesce(n.frame_names, []) + [$frame_name],
+                n.frame_descriptions = coalesce(n.frame_descriptions, []) + [$description]
+            RETURN n
+            """
+            for frame in frames:
+                session.run(query, parameters={
+                 "id": meta_data.get('id'),
+                 "time": frame['time'],
+                 "frame_name": frame['file_name'],
+                 "description": frame['description']
+                }) 
+        else:
+            log.error("download_pipeline_youtube: Node frames could not be inserted into graph_db: %s")
+            return 500, "Internal error when trying Insert frames to nodes in graph_db. Please contact a developer."
+        
+def load_csv_to_graphdb(chunks, frames, meta_data) -> None:
     # Lade Umgebungsvariablen und konfiguriere Google Gemini
     load_dotenv()
     API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
@@ -114,11 +165,11 @@ def load_csv_to_graphdb(documents, meta_data) -> None:
 
     # Verarbeite jeden Chunk und speichere die Daten in der Graph-Datenbank
     requests_made = 0
-    for document in documents:
+    for chunk in chunks:
         # Prompt, um Entitäten und Beziehungen zu extrahieren
         prompt = f"""
         Extract all Entities and their relation from following text:
-        {document}. Entities can be people, places, organizations, concepts, or other meaningful items. Relationships represent how these entities are connected.
+        {chunk}. Entities can be people, places, organizations, concepts, or other meaningful items. Relationships represent how these entities are connected.
 
         Return the output in the following format:
         Node: <Entity1>
@@ -146,12 +197,13 @@ def load_csv_to_graphdb(documents, meta_data) -> None:
         graph_data = parse_response_to_graph(response.text)
 
         # Speichere Knoten und Beziehungen in der Graph-Datenbank
-        add_to_graphdb(graph_data, driver, meta_data)
+        add_nodes_to_graphdb(graph_data, driver, chunk)
 
+    add_attributes_to_nodes(driver, chunk, meta_data, frames)
     # Schließe den Neo4j-Driver
     driver.close()
 
-
+'''
 meta_data = {
     'id': 'dQw4w9WgXcQ',
     'title': 'Never Gonna Give You Up',
@@ -169,9 +221,9 @@ meta_data = {
     'categories': None,
     'age_limit': None,
 }
+'''
 
-
-load_csv_to_graphdb(documents, meta_data)
+#load_csv_to_graphdb(documents, meta_data)
 
 # Lösche alle Knoten und Beziehungen 
 # MATCH (n)
