@@ -1,10 +1,13 @@
 import random
+from typing import Dict, List, Optional
 import time
 import streamlit as st
 import sqlite3
 import hashlib
 import requests
+import logging
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 DB_PATH = "database/chatbot.db"
 BASE_URL = "http://localhost:8000"
 
@@ -76,6 +79,16 @@ def authenticate_user(username, password):
     
 #TO-DO: use optional params if needed
 def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None):
+
+    if st.session_state.settings["history"]:
+        message_history = get_chat_history(st.session_state.username, True)
+        logging.info(f"Chat history")
+
+    if st.session_state.settings["database"] != "All":
+        database = st.session_state.settings["database"]
+        database = database.lower()
+        logging.info(f"Database: {database}")
+
     payload = {
         "prompt": prompt,
         "message_history": message_history,
@@ -87,6 +100,15 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
         "knowledge_base": knowledge_base
     }
     response = requests.post(f"{BASE_URL}/chat", json=payload, stream=True)
+    return response.iter_lines()
+
+def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, embedding_model="nomic-embed-text"):
+    payload = {
+        "video_input": prompt,
+        "chunk_max_length": st.session_state.settings["chunk_max_length"],
+        "chunk_overlap_length": st.session_state.settings["chunk_overlap_length"],
+    }
+    response = requests.post(f"{BASE_URL}/analyze",json=payload)
     return response.iter_lines()
 
 # TO-DO: real timestamps when bot answers
@@ -102,7 +124,7 @@ def save_chat(username, message, response):
     conn.close()
 
 
-def get_chat_history(username):
+def get_chat_history(username, forChatParameter: Optional[bool] = False):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("""
@@ -113,8 +135,9 @@ def get_chat_history(username):
     """, (username,))
     history = cursor.fetchall()
     conn.close()
+    if forChatParameter:
+        history = [{"message": request[0], "response": request[1]} for request in history]
     return history
-
 
 def send_support_request(username, message):
     conn = sqlite3.connect(DB_PATH)
@@ -186,6 +209,17 @@ if "themes" not in st.session_state:
                  "theme.secondaryBackgroundColor": "#82E1D7",
                  "theme.textColor": "#0a1464",
                  "button_face": "🌜"},
+    }
+
+
+if "settings" not in st.session_state:
+    st.session_state.settings = {
+        "history": False,
+        "database": "All",
+        "routing": True,
+        "chunk_max_length": 550,
+        "chunk_overlap_length": 50,
+        "embedding_model": "nomic-embed-text"
     }
 
 # Session management
@@ -264,6 +298,10 @@ if st.sidebar.button("Chat", key="chat_button"):
     st.session_state.page = "Chat"
     st.rerun()
 
+if st.sidebar.button("Settings", key="settings_button"):
+    st.session_state.page = "Settings"
+    st.rerun()
+
 if st.sidebar.button("Support", key="support_button"):
     st.session_state.page = "Support"
     st.rerun()
@@ -294,6 +332,51 @@ if st.sidebar.button(btn_face, help="Thema wechseln"):
     ChangeTheme()
 
 
+
+
+if st.session_state.page == "Settings":
+    st.title("Streamlit Chat Settings")
+
+
+
+    col1, spacer, col2 = st.columns([2,1,2])
+
+
+
+    with col1:
+        st.markdown("### Chat Settings")
+        history = st.checkbox("Check the box to use the context of the chat", st.session_state.settings["history"])
+        database = st.selectbox(
+            "Select Database Type",
+            ["All", "Vector", "Graph"],
+            index=["All", "Vector", "Graph"].index(str(st.session_state.settings["database"]).strip()))  # Ensure matching
+                                                                                
+        routing = st.checkbox("Use Logical Routing", st.session_state.settings["routing"])
+
+    with spacer:
+        st.write("")
+
+    with col2:
+        st.markdown("### Analyze Settings")
+        chunk_max_length= st.slider("Select a value for the chunk size", 250, 1000, st.session_state.settings["chunk_max_length"])
+        chunk_overlap_length = st.slider("Select a value for the chunk overlap length", 0, 100, st.session_state.settings["chunk_overlap_length"])
+        embedding_model = st.selectbox(
+            "Select Embedding Model",
+            ["nomic-embed-text"],
+            index=["nomic-embed-text"].index(str(st.session_state.settings["embedding_model"]).strip()))
+
+    st.session_state.settings["history"] = history
+    st.session_state.settings["database"] = database
+    st.session_state.settings["routing"] = routing
+    st.session_state.settings["chunk_max_length"] = chunk_max_length
+    st.session_state.settings["chunk_overlap_length"] = chunk_overlap_length
+    st.session_state.settings["embedding_model"] = embedding_model
+
+    # Display current settings
+    st.markdown("### Current Settings")
+    st.write(f"Chatsettings:{st.session_state.settings["history"]}{st.session_state.settings["database"]}{st.session_state.settings["routing"]}")
+    st.write(f"Chatsettings:{st.session_state.settings["chunk_max_length"]}{st.session_state.settings["chunk_overlap_length"]}{st.session_state.settings["embedding_model"]}")
+
 # CHAT
 if st.session_state.page == "Chat":
     st.title(f"Welcome, {st.session_state.username}")
@@ -316,7 +399,13 @@ if st.session_state.page == "Chat":
         with st.chat_message("assistant"):
             response_placeholder = st.empty()  # placeholder
             response_content = ""
-            for line in get_chat_response(prompt):
+            if "youtube.com" in prompt or "youtu.be" in prompt:
+                lines = get_analyze_response(prompt)
+
+            else:
+                lines = get_chat_response(prompt)
+
+            for line in lines:
                 if line:
                     word = line.decode('utf-8')
                     response_content += word + " "

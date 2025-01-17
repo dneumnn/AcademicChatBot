@@ -35,6 +35,14 @@ class ChatRequest(BaseModel):
     video_id: Optional[str] = None
     knowledge_base: Optional[str] = None
 
+
+class AnalyzeRequest(BaseModel):
+    video_input: str
+    chunk_max_length: Optional[int] = 550
+    chunk_overlap_length: Optional[int] = 50
+    embedding_model: Optional[str] = "nomic-embed-text"
+
+
 @app.post("/chat", response_class=StreamingResponse)
 def chat(request: ChatRequest):
     return StreamingResponse(
@@ -57,8 +65,14 @@ def chat_history():
     pass
 
 @app.post("/analyze")
-def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, embedding_model: Optional[str] = "nomic-embed-text"):
+def analyze(request: AnalyzeRequest):
+    video_input = request.video_input
+    chunk_max_length = request.chunk_max_length
+    chunk_overlap_length = request.chunk_overlap_length
+    embedding_model = request.embedding_model
+    
 
+    logging.info(f"Video {video_input}")
     # Check if the passed URL is a valid YouTube URL.
     url = "https://www.youtube.com/oembed?format=json&url=" + video_input
     response = requests.head(url, allow_redirects=True)
