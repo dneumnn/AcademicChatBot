@@ -80,14 +80,26 @@ def authenticate_user(username, password):
 #TO-DO: use optional params if needed
 def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None):
 
+    model_parameters = {
+        "temperature": st.session_state.settings["temperature"],
+        "top_p": st.session_state.settings["top_p"],
+        "top_k": st.session_state.settings["top_k"]
+    }   
+
+    if st.session_state.settings["playlist_id"]:
+        playlist_id = st.session_state.settings["playlist_id"]
+
+    if st.session_state.settings["video_id"]:
+        video_id = st.session_state.settings["video_id"]
+
     if st.session_state.settings["history"]:
         message_history = get_chat_history(st.session_state.username, True)
-        logging.info(f"Chat history")
+        logging.info(f"Message History: {message_history}")
+        logging.info(f"Prompt: {prompt}")
 
     if st.session_state.settings["database"] != "All":
         database = st.session_state.settings["database"]
         database = database.lower()
-        logging.info(f"Database: {database}")
 
     payload = {
         "prompt": prompt,
@@ -217,6 +229,11 @@ if "settings" not in st.session_state:
         "history": False,
         "database": "All",
         "routing": True,
+        "temperature": 0.8,
+        "top_p": 0.9,
+        "top_k": 40,
+        "playlist_id":None, 
+        "video_id":None,
         "chunk_max_length": 550,
         "chunk_overlap_length": 50,
         "embedding_model": "nomic-embed-text"
@@ -337,21 +354,21 @@ if st.sidebar.button(btn_face, help="Thema wechseln"):
 if st.session_state.page == "Settings":
     st.title("Streamlit Chat Settings")
 
-
-
     col1, spacer, col2 = st.columns([2,1,2])
-
-
 
     with col1:
         st.markdown("### Chat Settings")
-        history = st.checkbox("Check the box to use the context of the chat", st.session_state.settings["history"])
+        history = st.checkbox("Use the context of the chat history ", st.session_state.settings["history"])
         database = st.selectbox(
             "Select Database Type",
             ["All", "Vector", "Graph"],
-            index=["All", "Vector", "Graph"].index(str(st.session_state.settings["database"]).strip()))  # Ensure matching
-                                                                                
+            index=["All", "Vector", "Graph"].index(str(st.session_state.settings["database"]).strip())) 
         routing = st.checkbox("Use Logical Routing", st.session_state.settings["routing"])
+        temperature = st.slider("Controls randomness (lower = precise, higher = creative)", 0.0, 1.0, st.session_state.settings["temperature"])
+        top_p = st.slider("Chooses tokens based on cumulative probability (higher = diverse)", 0.0, 1.0, st.session_state.settings["top_p"])
+        top_k = st.slider("Limits the number of tokens considered (higher = creative)", 1, 100, st.session_state.settings["top_k"])
+        playlist_id = st.text_input("Enter a Playlist to use as context", st.session_state.settings["playlist_id"])
+        video_id = st.text_input("Enter a Video to use as context", st.session_state.settings["video_id"])
 
     with spacer:
         st.write("")
@@ -371,10 +388,15 @@ if st.session_state.page == "Settings":
     st.session_state.settings["chunk_max_length"] = chunk_max_length
     st.session_state.settings["chunk_overlap_length"] = chunk_overlap_length
     st.session_state.settings["embedding_model"] = embedding_model
+    st.session_state.settings["tempreature"] = temperature
+    st.session_state.settings["top_p"] = top_p
+    st.session_state.settings["top_k"] = top_k
+    st.session_state.settings["playlist_id"] = playlist_id
+    st.session_state.settings["video_id"] = video_id
 
     # Display current settings
     st.markdown("### Current Settings")
-    st.write(f"Chatsettings:{st.session_state.settings["history"]}{st.session_state.settings["database"]}{st.session_state.settings["routing"]}")
+    st.write(f"Chatsettings:{st.session_state.settings["history"]}{st.session_state.settings["database"]}{st.session_state.settings["routing"]}{st.session_state.settings["temperature"]}{st.session_state.settings["top_p"]}{st.session_state.settings["top_k"]}{st.session_state.settings["playlist_id"]}{st.session_state.settings["video_id"]}")
     st.write(f"Chatsettings:{st.session_state.settings["chunk_max_length"]}{st.session_state.settings["chunk_overlap_length"]}{st.session_state.settings["embedding_model"]}")
 
 # CHAT
