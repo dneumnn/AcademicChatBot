@@ -41,7 +41,7 @@ def split_transcript(transcript: str, max_length: int) -> list:
     
     return chunks
 
-def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash", local_model:bool=False) -> None:
+def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash", local_model:bool=False, local_llm:str="llama3.2") -> None:
     """
     Download and add start time information into the transcript. 
     Time information is inserted in curly brackets inbetween the text. 
@@ -50,6 +50,8 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         url (str): URL of a YouTube video.
         language (str): language of the transcript.
         gemini_model: Gemini model that is in use for processing the transcript.
+        local_model: Boolean value if local model should be used or not.
+        local_llm: Model type that is used locally.
 
     Returns:
         Creation of a transcript file in the folder media/transcripts with the video id as name.
@@ -103,7 +105,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
 
             improved_chunks = []
             for chunk in transcript_chunks:
-                response: ChatResponse = chat(model='llama3.2', messages=[
+                response: ChatResponse = chat(model=local_llm, messages=[
                 {
                     'role': 'user',
                     'content': prompt + chunk,
