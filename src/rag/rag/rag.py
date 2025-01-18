@@ -70,7 +70,7 @@ def contextualize_and_improve_query(question: str, llm: ChatOllama | ChatOpenAI 
     return ''.join(output)
 
 
-def get_vector_context(question: str, subject: str, logger: logging.Logger, vectorstore_top_k: int = 25,
+def get_vector_context(question: str, subject: str, logger: logging.Logger, mode: str, vectorstore_top_k: int = 25,
                        reranker_top_k: int = 5, filter: dict | None = None):
     vector_context = retrieve_top_n_documents_chromadb(
         question=question,
@@ -79,7 +79,16 @@ def get_vector_context(question: str, subject: str, logger: logging.Logger, vect
         top_k=vectorstore_top_k,
         filter=filter
     )
+
+    if mode == "fast":
+        logger.info("Returning vector context without reranking due to fast mode")
+        return vector_context
+
     passages = [doc["document"] for doc in vector_context]
+
+    if len(passages) == 0:
+        logger.warning("No passages found in vector context")
+        return []
 
     reranked_passages = rerank_passages_with_cross_encoder(
         question=question,
@@ -107,7 +116,8 @@ def rag(
         playlist_id: str | None = None,
         use_semantic_routing: bool = False,
         plaintext: bool = False,
-        database: str = "all"
+        database: str = "all",
+        mode: str = "fast"
 ):
     if logger is None:
         logger = setup_logger()
@@ -137,7 +147,9 @@ def rag(
     else:
         raise ValueError(f"Invalid model ID: {model_id}. Available models: {get_available_models()}")
 
-    # question = contextualize_and_improve_query(question, llm, logger, message_history)
+    if mode != "fast":
+        logger.info("Improving question, since mode is not fast")
+        improved_question = contextualize_and_improve_query(question, llm, logger, message_history)
 
     if knowledge_base is None and use_logical_routing == False:
         logger.info(
@@ -150,19 +162,15 @@ def rag(
 
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
     logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
-    subject = route_query(question, llm, logger) if use_logical_routing else knowledge_base
-    logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
-
-    #docs = retriever_chain.invoke(question)
-    #print(docs)
-    #retriever_chain.get_graph().print_ascii()
 
     vector_context_text = ""
     vector_context_metadata = []
 
     if database == "vector" or database == "all":
+        subject = route_query(question, llm, logger) if use_logical_routing else knowledge_base
+        logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
         vector_filter = generate_vector_filter(logger, video_id, playlist_id)
-        vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K,
+        vector_context = get_vector_context(question, subject, logger, mode, VECTORSTORE_TOP_K, RERANKING_TOP_K,
                                             vector_filter)
 
         vector_context_text = "\n".join([doc["document"] for doc in vector_context])
@@ -175,14 +183,15 @@ def rag(
         graph_context, graph_context_metadata = question_to_graphdb(question, llm, logger)
 
     context = f"""
-        context: {vector_context_text}
+        Context from vector database: {vector_context_text}
+        Context from graph database: {graph_context}
     """
 
-    print("Context:")
-    print(context)
-
-    print("Question:")
-    print(question)
+    if mode != "fast":
+        question = f"""
+            Original question: {question}
+            Question with additional context: {improved_question}
+        """
 
     rag_chain = (
             {"context": RunnablePassthrough(), "question": RunnablePassthrough()}
@@ -191,7 +200,8 @@ def rag(
             | StrOutputParser()
     )
 
-    print(vector_context_metadata)
+    vector_sources = [f"https://youtu.be/{metadata['video_id']}?t={metadata['time']}s" for metadata in vector_context_metadata]
+
     print(graph_context_metadata)
 
     if plaintext:
@@ -199,4 +209,4 @@ def rag(
             yield chunk
     else:
         for chunk in rag_chain.stream({"context": context, "question": question}):
-            yield json.dumps({"content": chunk, "sources": []})
+            yield json.dumps({"content": chunk, "sources": vector_sources})

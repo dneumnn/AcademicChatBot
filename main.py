@@ -34,6 +34,7 @@ class ChatRequest(BaseModel):
     knowledge_base: Optional[str] = None
     stream: Optional[bool] = True
     plaintext: Optional[bool] = False
+    mode: Optional[str] = None
 
 @app.post("/chat")
 def chat(request: ChatRequest):
@@ -56,7 +57,8 @@ def chat(request: ChatRequest):
             video_id=request.video_id,
             knowledge_base=request.knowledge_base,
             stream=request.stream,
-            plaintext=request.plaintext
+            plaintext=request.plaintext,
+            mode=request.mode
         )
 
         if use_plaintext:
@@ -75,7 +77,8 @@ def chat(request: ChatRequest):
                 video_id=request.video_id,
                 knowledge_base=request.knowledge_base,
                 stream=request.stream,
-                plaintext=request.plaintext
+                plaintext=request.plaintext,
+                mode=request.mode
             ),
             media_type="text/event-stream",
             status_code=200

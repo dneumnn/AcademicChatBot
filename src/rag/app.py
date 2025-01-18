@@ -2,7 +2,7 @@ from typing import List
 import json
 
 from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, \
-    DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
+    DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING, DEFAULT_MODE
 from .models.model import get_available_models
 from .graphstore.langchain_version import ask_question_to_graphdb, mock_load_text_to_graphdb
 from .logger.logger import setup_logger
@@ -31,7 +31,8 @@ def chat_internal(
         model_parameters: dict | None = None,
         database: str | None = None,
         stream: bool | None = None,
-        plaintext: bool | None = None
+        plaintext: bool | None = None,
+        mode: str | None = None
 ):
     """
     Respond to the user's prompt
@@ -52,6 +53,10 @@ def chat_internal(
     chat("Tell me about the video", "llama3.2", [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi"}], "PL12345", "VID67890", "physics", {"temperature": 0.8, "top_p": 0.9, "top_k": 40})
     """
     logger = setup_logger()
+
+    if mode is None:
+        logger.warning(f"Mode is not provided. Using default mode: {DEFAULT_MODE}")
+        mode = DEFAULT_MODE
 
     if prompt is None or prompt == "":
         logger.error("Prompt is empty. Throwing error.")
@@ -113,7 +118,8 @@ def chat_internal(
             video_id=video_id,
             playlist_id=playlist_id,
             plaintext=plaintext,
-            database=database
+            database=database,
+            mode=mode
         )
     else:
         output = []
@@ -129,7 +135,8 @@ def chat_internal(
                 video_id=video_id,
                 playlist_id=playlist_id,
                 plaintext=plaintext,
-                database=database
+                database=database,
+                mode=mode
         ):
             output.append(chunk)
         if plaintext:
@@ -155,18 +162,18 @@ def models_internal() -> List[str]:
 ##########################################################
 
 def main():
-    pass
     #mock_load_text_to_vectordb_with_ollama_embeddings()
     #mock_load_text_to_graphdb(ALICE_PATH)
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
     print(chat_internal(
-        prompt="What is data science?",
+        prompt="What event is being talked about?",
         model_id="gpt-4o",
         database="vector",
         stream=False,
-        plaintext=False
+        plaintext=False,
+        mode="fast"
     ))
     #get_full_graph_information()
 
