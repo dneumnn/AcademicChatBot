@@ -130,6 +130,12 @@ def generate_vector_filter(logger: logging.Logger, video_id: str | None = None, 
 def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: logging.Logger, top_k: int = 25, filter: dict | None = None):
     logger.info(f"Using embeddings model: {RETRIEVAL_EMBEDDING_MODEL}")
     client = chromadb.PersistentClient(path=get_persistent_chroma_db_directory())
+
+    collections = client.list_collections()
+
+    for collection in collections:
+        logger.info(f"Collection exists: {collection.name}, meta {collection.metadata}")
+
     collection = client.get_collection(subject)
 
     model = SentenceTransformer(RETRIEVAL_EMBEDDING_MODEL)

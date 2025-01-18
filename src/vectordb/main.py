@@ -3,7 +3,7 @@ import os
 import chromadb
 import time
 import re
-from config import INPUT_DIR, DB_DIR
+from .config import INPUT_DIR, DB_DIR
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -16,7 +16,7 @@ def create_embedding(text):
         return [0.0] * 384
 
 def generate_vector_db(video_id):
-    csv_path = os.path.join(INPUT_DIR, video_id, "transcript_chunks", video_id, ".csv") # Pfad zur CSV-Datei
+    csv_path = os.path.join(INPUT_DIR, video_id, "transcripts_chunks", f"{video_id}.csv")  # Pfad zur CSV-Datei
     
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
