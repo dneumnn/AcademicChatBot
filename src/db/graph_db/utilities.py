@@ -4,27 +4,25 @@ def read_csv_chunks(video_id, meta_data):
     chunks = []
     with open(f"media/{video_id}/transcripts_chunks/{video_id}.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        for index, row in enumerate(reader, start=1):
-            node_id = f"{meta_data['id']}_{index:02d}"
+        for row in reader:
             chunks.append({
-                "node_id": node_id,
+                "node_id": meta_data["id"],
                 "sentence": row["chunks"],
-                "time": row["time"],
+                "time": float(row["time"]),
                 "length": int(row["length"]),
                 "embedding":row["chunks_embedded"]
             })
     return chunks
 
-def read_csv_frames(file_path):
+def read_csv_frames(video_id):
     frames = []
-    with open(file_path, mode="r", encoding="utf-8") as file:
+    with open(f"media/{video_id}/frames_description/frame_descriptions.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        for index, row in enumerate(reader, start=1):
-            frame_id = f"Frame{index:02d}"
+        for row in reader: 
             frames.append({
-                "frame_id": frame_id,
-                "time": row["time"],
-                "description": row["description"],
-                "file_path": row["file_path"]
+                "time": float(row["time_in_s"]),
+                "file_name": f"{video_id}_{row['file_name']}",
+                "description": row["description"]
+
             })
     return frames

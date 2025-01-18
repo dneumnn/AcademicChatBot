@@ -5,6 +5,8 @@ from langchain_chroma import Chroma
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
+from langchain_openai import OpenAI, ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from ..routing.semantic_routing import get_base_template, semantic_routing
 from ..rerankers.rerankers import rerank_passages_with_cross_encoder
@@ -12,8 +14,10 @@ from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chro
 from ..routing.logical_routing import route_query
 from ..logger.logger import setup_logger
 from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
+from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
+from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models
 
-def contextualize_and_improve_query(question: str, llm: ChatOllama, logger: logging.Logger, message_history: list[dict] = None):
+def contextualize_and_improve_query(question: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeAI, logger: logging.Logger, message_history: list[dict] = None):
     logger.info("Improving query")
     if message_history is not None:
         logger.info("Contextualizing query with provided message history")
@@ -82,16 +86,45 @@ def get_vector_context(question: str, subject: str, logger: logging.Logger, vect
 
     return reranked_context
 
-def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Logger | None = None, message_history: list[dict] = None, use_logical_routing: bool = False, knowledge_base: str | None = None, use_semantic_routing: bool = False, basic_return: bool = False):
+def rag(
+        question: str,
+        model_id: str,
+        model_parameters: dict,
+        logger: logging.Logger | None = None,
+        message_history: list[dict] = None,
+        use_logical_routing: bool = False,
+        knowledge_base: str | None = None,
+        use_semantic_routing: bool = False,
+        plaintext: bool = False
+    ):
     if logger is None:
         logger = setup_logger()
 
-    llm = ChatOllama(
+
+    if model_id in get_local_ollama_models():
+        llm = ChatOllama(
         model=model_id,
         temperature=model_parameters["temperature"],
         top_p=model_parameters["top_p"],
         top_k=model_parameters["top_k"]
     )
+    elif model_id in get_openai_models():
+        llm = ChatOpenAI(
+            model=model_id,
+            temperature=model_parameters["temperature"],
+            top_p=model_parameters["top_p"],
+            api_key=OPENAI_API_KEY
+        )
+    elif model_id in get_gemini_models():
+        llm = ChatGoogleGenerativeAI(
+            model=model_id,
+            temperature=model_parameters["temperature"],
+            top_p=model_parameters["top_p"],
+            top_k=model_parameters["top_k"],
+            api_key=GEMINI_API_KEY
+        )
+    else:
+        raise ValueError(f"Invalid model ID: {model_id}. Available models: {get_available_models()}")
 
     question = contextualize_and_improve_query(question, llm, logger, message_history)
 
@@ -104,7 +137,7 @@ def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Lo
 
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
     logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
-    subject = route_query(question) if use_logical_routing else knowledge_base
+    subject = route_query(question, llm) if use_logical_routing else knowledge_base
     logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
 
     #docs = retriever_chain.invoke(question)
@@ -122,13 +155,9 @@ def rag(question: str, model_id: str, model_parameters: dict, logger: logging.Lo
         | StrOutputParser()
     )
 
-    if basic_return:
-        output = []
+    if plaintext:
         for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
-            output.append(chunk)
-            print(chunk, end="", flush=True)
-        print()
-        logger.info(f"RAG output: {''.join(output)}")
-        return ''.join(output)
+            yield chunk
     else:
-        return rag_chain.stream({"context": vector_context_text, "question": question})
+        for chunk in rag_chain.stream({"context": vector_context_text, "question": question}):
+            yield json.dumps({"content": chunk, "sources": []})

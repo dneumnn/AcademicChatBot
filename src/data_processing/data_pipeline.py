@@ -10,7 +10,8 @@ from .chunk_processing import *
 from .visual_processing import *
 from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
-from src.db.graph_db.db_handler import GraphHandler
+from src.db.graph_db.main import *
+#from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
 
 # Static variables
@@ -25,11 +26,11 @@ API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 create_log_file(LOG_FILE_PATH)
 
 # Database Connection
-uri = "bolt://localhost:7687"
-user = "neo4j"
-password = "this_pw_is_a_test25218###1119jj"
+#uri = "bolt://localhost:7687"
+#user = "neo4j"
+#password = "this_pw_is_a_test25218###1119jj"
 
-graph_handler = GraphHandler(uri, user, password)
+#graph_handler = GraphHandler(uri, user, password)
 
 # ********************************************************
 # * Final pipeline function
@@ -147,6 +148,18 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
             if not os.path.exists(transcript_chunks_path):
                 os.makedirs(transcript_chunks_path)
+            
+            df_video_topic_overview = pd.read_csv("media/video_topic_overview.csv")
+            df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
+            topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
+
+            df["video_id"] = meta_data["id"]
+            df["video_topic"] = topic
+            df["video_title"] = meta_data["title"]
+            df["video_uploaddate"] = meta_data["upload_date"]
+            df["video_duration"] = meta_data["duration"]
+            df["channel_url"] = meta_data["uploader_url"] 
+            
             df.to_csv(f"media/{video_id}/transcripts_chunks/{video_id}.csv", index=False)
         except Exception as e:
             log.error("download_pipeline_youtube: The chunking failed: %s", e)
@@ -164,39 +177,25 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         except:
             print("Error topic definition")
 
-        # * Insert Meta Data into graph_db       
-        try:
-            graph_handler.create_meta_data_session(meta_data)
-        except Exception as e:
-            log.error("download_pipeline_youtube: Creation of Meta data Node failed: %s", e)
-            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
         try:
             chunks = read_csv_chunks(video_id, meta_data)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcript CSV chunk could not be read: %s", e)
-            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
+            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+            return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
         try:
-            graph_handler.create_transcript_chunk_session(chunks)
+            frames = read_csv_frames(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: Creation of Transcript Chunk Node failed: %s", e)
-            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
+            log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
+            return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
         try:
-            graph_handler.create_chunk_next_relation_session(chunks)
-            graph_handler.create_chunk_metadata_relation_session(chunks, meta_data)
+            load_csv_to_graphdb(chunks, frames, meta_data)
         except Exception as e:
-            log.error("download_pipeline_youtube: Creation of Transcript Chunk relations failed: %s", e)
-            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
-        try:
-            graph_handler.create_chunk_similarity_relation_session(chunks, video_id)
-        except Exception as e:
-            log.error("download_pipeline_youtube: Creation of Transcript Chunk similarity relation failed: %s", e)
-            return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
-        graph_handler.close()
-
+            log.error("download_pipeline_youtube: Transcripts CSV could not be inserted into graph_db: %s", e)
+            return 500, "Internal error when trying Insert Data into graph_db. Please contact a developer."
         processed_video_titles.append(meta_data['title'])
 
     if len(processed_video_titles) == 0:
-        log.info(f"YouTube content for URL {url} was already processed.")
+        log.warning("YouTube content for URL %s was already processed.", url)
         return 200, f"YouTube content was already processed."
     else:
         # TODO: Implement better format for the title(s)

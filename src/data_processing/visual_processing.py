@@ -94,7 +94,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             "bullet points, or other structural elements, just a clear and concise explanation of the image content."
         )
 
-
+        # TODO: Dynamically read the time to sleep (?)
         if requests_made >= 14:
             time.sleep(50)
             requests_made = 0
@@ -112,12 +112,11 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
 
         # Save response in a designated file
-        filename = file.replace(".jpg", "")
+        filename = file.replace(".jpg", "")        
         timestamp_ms = filename.split("_", 1)[1]
         filename = filename.split("_",1)[0]
-        frame_time_s = float(timestamp_ms) / 1000.0
-
-        descriptions.append({"file_name": filename, "description": response.text, "time_in_s": frame_time_s})
+        frame_time_s = float(timestamp_ms) / 1000
+        descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/frame_descriptions.csv", index=False)

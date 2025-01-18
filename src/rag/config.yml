@@ -1,6 +1,6 @@
 config:
   default_database: vector
-  default_model: llama3.2:latest
+  default_model: llama3.2
   default_model_parameters:
     temperature: 0.8
     top_p: 0.9

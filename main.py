@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
 import requests
 import logging
 from pydantic import BaseModel
@@ -20,10 +20,8 @@ def read_root():
 
 @app.get("/model")
 def model():
-    return {
-        "models": models_internal(),
-        "status_code": 200
-    }
+    models = models_internal()
+    return JSONResponse(content=models, status_code=200)
 
 class ChatRequest(BaseModel):
     prompt: str
@@ -34,6 +32,8 @@ class ChatRequest(BaseModel):
     playlist_id: Optional[str] = None
     video_id: Optional[str] = None
     knowledge_base: Optional[str] = None
+    stream: Optional[bool] = True
+    plaintext: Optional[bool] = False
 
 
 class AnalyzeRequest(BaseModel):
@@ -45,8 +45,16 @@ class AnalyzeRequest(BaseModel):
 
 @app.post("/chat", response_class=StreamingResponse)
 def chat(request: ChatRequest):
-    return StreamingResponse(
-        chat_internal(
+    use_stream = request.stream
+    if use_stream is None:
+        use_stream = True
+
+    use_plaintext = request.plaintext
+    if use_plaintext is None:
+        use_plaintext = False
+
+    if use_stream is False:
+        response = chat_internal(
             prompt=request.prompt,
             message_history=request.message_history,
             model_id=request.model_id,
@@ -54,10 +62,32 @@ def chat(request: ChatRequest):
             model_parameters=request.model_parameters,
             playlist_id=request.playlist_id,
             video_id=request.video_id,
-            knowledge_base=request.knowledge_base
-        ),
-        media_type="text/event-stream"
-    )
+            knowledge_base=request.knowledge_base,
+            stream=request.stream,
+            plaintext=request.plaintext
+        )
+
+        if use_plaintext:
+            return PlainTextResponse(content=response, status_code=200)
+        else:
+            return JSONResponse(content=response, status_code=200)
+    else:
+        return StreamingResponse(
+            content=chat_internal(
+                prompt=request.prompt,
+                message_history=request.message_history,
+                model_id=request.model_id,
+                database=request.database,
+                model_parameters=request.model_parameters,
+                playlist_id=request.playlist_id,
+                video_id=request.video_id,
+                knowledge_base=request.knowledge_base,
+                stream=request.stream,
+                plaintext=request.plaintext
+            ),
+            media_type="text/event-stream",
+            status_code=200
+        )
 
 # placeholder
 @app.get("/chathistory")

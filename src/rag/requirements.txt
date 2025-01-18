@@ -21,3 +21,4 @@ llama-index-llms-openai
 pandas
 langchain_neo4j
 langchain_openai
+langchain_google_genai
