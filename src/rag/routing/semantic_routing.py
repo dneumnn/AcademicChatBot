@@ -19,6 +19,23 @@ basic_template = """
     Answer:
 """
 
+basic_template_iteration_one = """
+    You are an assistant for question-answering tasks.
+    Use the following pieces of retrieved context to answer the question.
+    If you don't know the answer, just say that you don't know.
+    Use three sentences maximum and keep the answer concise.
+
+    Try your best to answer the question with the provided context.
+    Some context might be irrelevant, try to use only relevant information.
+    Only use the provided context to answer the question
+
+    Question: {question}
+
+    Context: {context}
+
+    Answer:
+"""
+
 physics_template = """
     You are a very smart physics professor.
     You are great at answering questions about physics in a concise and easy to understand manner.

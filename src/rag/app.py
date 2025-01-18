@@ -168,12 +168,12 @@ def main():
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
     print(chat_internal(
-        prompt="What event is being talked about?",
-        model_id="gpt-4o",
-        database="vector",
+        prompt="Whats the price of the new cards?",
+        model_id="gemini-1.5-flash",
+        database="all",
         stream=False,
-        plaintext=False,
-        mode="fast"
+        plaintext=True,
+        mode="smart"
     ))
     #get_full_graph_information()
 

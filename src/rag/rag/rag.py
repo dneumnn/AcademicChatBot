@@ -183,8 +183,8 @@ def rag(
         graph_context, graph_context_metadata = question_to_graphdb(question, llm, logger, mode)
 
     context = f"""
-        Context from vector database: {vector_context_text}
-        Context from graph database: {graph_context}
+        {vector_context_text}
+        {graph_context}
     """
 
     if mode != "fast":
