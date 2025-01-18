@@ -31,7 +31,7 @@ def get_full_graph_information():
         print("Relationships:", result_data["relationships"])
         return result_data
 
-def question_to_graphdb(question: str, llm: ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI, logger: logging.Logger) -> str:
+def question_to_graphdb(question: str, llm: ChatOpenAI | ChatOllama | ChatGoogleGenerativeAI, logger: logging.Logger, mode: str) -> str:
     try:
         with graphstore.session() as session:
             schema = session.run("""
@@ -40,37 +40,56 @@ def question_to_graphdb(question: str, llm: ChatOpenAI | ChatOllama | ChatGoogle
                 RETURN nodes, relationships
             """).single()
 
-            logger.info(f"Schema: {schema}")
-
             samples = session.run("""
-                MATCH (n)
-                WITH labels(n) as labels, count(n) as count
+                MATCH (entity)
+                WITH labels(entity) as labels, count(entity) as count
                 RETURN labels, count
-                LIMIT 300
+                LIMIT 150
             """).data()
-
-            logger.info(f"Samples: {samples}")
 
             sample_names = session.run("""
-                MATCH (n)
-                RETURN n.name
-                LIMIT 3000
+                MATCH (entity)
+                RETURN entity.name
+                LIMIT 500
             """).data()
 
-            logger.info(f"Sample names: {sample_names}")
+            sample_relationships = session.run("""
+                MATCH (entity)-[r]->(other)
+                RETURN type(r), count(r)
+                LIMIT 150
+            """).data()
 
-            prompt = f"""Given the following Neo4j graph structure:
+            properties = session.run("""
+                MATCH (entity)
+                RETURN properties(entity)
+                LIMIT 10
+            """).data()
+
+            prompt = f"""
+            MOST IMPORTANT: MAKE THE CYPHER QUERY WORK WITH THE GRAPH. NO MATTER WHAT, RETURN A WORKING QUERY.
+            ONLY USE THE name ATTRIBUTE TO ACTIVELY QUERY ENTITIES. ONLY USE KOWN LINKS BETWEEN NODES.
+
+            Given the following Neo4j graph structure:
             
+            =================================
             Node types and counts: {samples}
             Schema: {schema}
             Sample entity names: {sample_names}
+            Sample relationships: {sample_relationships}
+            These are the properties of the nodes: {properties}
+            =================================
 
             Convert this question to a Cypher query that will answer it:
             {question}
+            The query might need to be converted completely, use the information you know about the graph to try and answer the question.
+            Do not try to convert the question 1:1 to a Cypher query, try to obtain insights from the graph.
 
             Return only the Cypher query, no explanation. No Markdown. No code blocks.
             The result of the query will be used to answer the question.
             The cypher query should try to obtain insights from the graph.
+            Keep it simple, priority is that the query is correct and works.
+
+            The query should return relevant entities.
             """
 
             cypher_query = llm.invoke(prompt)
@@ -82,9 +101,12 @@ def question_to_graphdb(question: str, llm: ChatOpenAI | ChatOllama | ChatGoogle
             result = session.run(cypher_query_content)
             data = result.data()
 
-            metadata = [data]
+            metadata = []
 
             logger.info(f"Result: {data}")
+
+            if mode == "fast":
+                return (str(data), metadata)
 
             answer_prompt = f"""
             The following is the result of a Cypher query: {data}

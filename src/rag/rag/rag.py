@@ -180,7 +180,7 @@ def rag(
     graph_context_metadata = []
 
     if database == "graph" or database == "all":
-        graph_context, graph_context_metadata = question_to_graphdb(question, llm, logger)
+        graph_context, graph_context_metadata = question_to_graphdb(question, llm, logger, mode)
 
     context = f"""
         Context from vector database: {vector_context_text}
@@ -201,12 +201,11 @@ def rag(
     )
 
     vector_sources = [f"https://youtu.be/{metadata['video_id']}?t={metadata['time']}s" for metadata in vector_context_metadata]
-
-    print(graph_context_metadata)
+    graph_sources = [f"https://youtu.be/{metadata['video_id']}?t={metadata['time']}s" for metadata in graph_context_metadata]
 
     if plaintext:
         for chunk in rag_chain.stream({"context": context, "question": question}):
             yield chunk
     else:
         for chunk in rag_chain.stream({"context": context, "question": question}):
-            yield json.dumps({"content": chunk, "sources": vector_sources})
+            yield json.dumps({"content": chunk, "sources": vector_sources + graph_sources})
