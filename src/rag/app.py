@@ -161,13 +161,13 @@ def main():
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    #print(chat_internal(
-    #    prompt="What inspired the photographer?",
-    #    model_id="gpt-4o",
-    #    database="vector",
-    #    stream=False,
-    #    plaintext=False
-    #))
+    print(chat_internal(
+        prompt="What is data science?",
+        model_id="gpt-4o",
+        database="vector",
+        stream=False,
+        plaintext=False
+    ))
     #get_full_graph_information()
 
 
