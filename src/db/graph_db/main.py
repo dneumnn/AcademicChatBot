@@ -97,7 +97,8 @@ def add_attributes_to_nodes(driver, chunk, meta_data, frames):
                     n.age_limit = coalesce(n.age_limit, []) + $age_limit,
                     n.categories = coalesce(n.categories, []) + $categories,
                     n.like_count = coalesce(n.like_count, []) + $like_count,
-                    n.upload_date = coalesce(n.upload_date, []) + $upload_date
+                    n.upload_date = coalesce(n.upload_date, []) + $upload_date,
+                    n.url_id = coalesce(n.url_id, []) + $url_id
             """ 
 
             session.run(query, parameters={
@@ -182,6 +183,8 @@ def load_csv_to_graphdb(chunks, frames, meta_data) -> None:
         2. Relationships and nodes may only contain letters, numbers and underscores.
         3. If a relationship includes multiple actions (e.g., `own/created`), split it into separate relationships for each action. For example:
             - Instead of `own/created`, create `own` and `created` as two distinct relationships.
+        4. Please ensure that no relationships are created between an entity and itself. Relationships should only be established between this entity and other distinct entities. 
+           Do not allow any self-loops or cycles where an entity is related to itself.
         """
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         
