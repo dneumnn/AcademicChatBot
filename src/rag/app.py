@@ -1,7 +1,8 @@
 from typing import List
 import json
 
-from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
+from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, \
+    DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
 from .models.model import get_available_models
 from .graphstore.langchain_version import ask_question_to_graphdb, mock_load_text_to_graphdb
 from .logger.logger import setup_logger
@@ -13,11 +14,12 @@ from .graphstore.graphstore import get_full_graph_information
 VectorDB -> ChromaDB
 GraphDB -> neo4j
 """
- 
+
+
 ##########################################################
 # Final functions
 ##########################################################
- 
+
 # POST /chat
 def chat_internal(
         prompt: str,
@@ -30,7 +32,7 @@ def chat_internal(
         database: str | None = None,
         stream: bool | None = None,
         plaintext: bool | None = None
-    ):
+):
     """
     Respond to the user's prompt
  
@@ -64,7 +66,8 @@ def chat_internal(
     logger.info(f"Using database: {database}")
 
     if model_id is None or model_id not in get_available_models():
-        logger.warning(f"Invalid model ID: {model_id}. Available models: {get_available_models()}. Using default model.")
+        logger.warning(
+            f"Invalid model ID: {model_id}. Available models: {get_available_models()}. Using default model.")
         model_id = DEFAULT_MODEL
 
     logger.info(f"Using model: {model_id}")
@@ -76,7 +79,8 @@ def chat_internal(
             "top_p": DEFAULT_MODEL_PARAMETER_TOP_P,
             "top_k": DEFAULT_MODEL_PARAMETER_TOP_K
         }
-    elif "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters["temperature"] > 1:
+    elif "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters[
+        "temperature"] > 1:
         logger.warning(f"Invalid temperature: {model_parameters.get('temperature')}. Using default temperature.")
         model_parameters["temperature"] = DEFAULT_MODEL_PARAMETER_TEMPERATURE
     elif "top_p" not in model_parameters or model_parameters["top_p"] < 0 or model_parameters["top_p"] > 1:
@@ -85,7 +89,7 @@ def chat_internal(
     elif "top_k" not in model_parameters or model_parameters["top_k"] < 0:
         logger.warning(f"Invalid top_k: {model_parameters.get('top_k')}. Using default top_k.")
         model_parameters["top_k"] = DEFAULT_MODEL_PARAMETER_TOP_K
-    
+
     logger.info(f"Using model parameters: {model_parameters}")
 
     if stream is None:
@@ -114,18 +118,18 @@ def chat_internal(
     else:
         output = []
         for chunk in rag(
-            question=prompt,
-            message_history=message_history,
-            model_id=model_id,
-            knowledge_base=knowledge_base,
-            model_parameters=model_parameters,
-            use_logical_routing=USE_LOGICAL_ROUTING,
-            use_semantic_routing=USE_SEMANTIC_ROUTING,
-            logger=logger,
-            video_id=video_id,
-            playlist_id=playlist_id,
-            plaintext=plaintext,
-            database=database
+                question=prompt,
+                message_history=message_history,
+                model_id=model_id,
+                knowledge_base=knowledge_base,
+                model_parameters=model_parameters,
+                use_logical_routing=USE_LOGICAL_ROUTING,
+                use_semantic_routing=USE_SEMANTIC_ROUTING,
+                logger=logger,
+                video_id=video_id,
+                playlist_id=playlist_id,
+                plaintext=plaintext,
+                database=database
         ):
             output.append(chunk)
         if plaintext:
@@ -135,7 +139,8 @@ def chat_internal(
                 "content:": ''.join([json.loads(chunk)["content"] for chunk in output]),
                 "sources": json.loads(output[-1])["sources"]
             }
- 
+
+
 # GET /models
 def models_internal() -> List[str]:
     """
@@ -145,23 +150,26 @@ def models_internal() -> List[str]:
         List[str]: List of model IDs
     """
     return get_available_models()
- 
+
+
 ##########################################################
 
 def main():
+    pass
     #mock_load_text_to_vectordb_with_ollama_embeddings()
     #mock_load_text_to_graphdb(ALICE_PATH)
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    print(chat_internal(
-        prompt="What inspired the photographer?",
-        model_id="gpt-4o",
-        database="graph",
-        stream=False,
-        plaintext=False
-    ))
+    #print(chat_internal(
+    #    prompt="What inspired the photographer?",
+    #    model_id="gpt-4o",
+    #    database="vector",
+    #    stream=False,
+    #    plaintext=False
+    #))
     #get_full_graph_information()
- 
+
+
 if __name__ == "__main__":
     main()
