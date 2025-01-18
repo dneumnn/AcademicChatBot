@@ -174,7 +174,12 @@ def get_available_models():
     try:
         response = requests.get(f"{BASE_URL}/model")
         if response.status_code == 200:
-            return response.json().get("models", [])
+            models = response.json()
+            if isinstance(models, list) and all(isinstance(model, str) for model in models):
+                return models
+            else:
+                st.error("Unexpected response format.")
+                return []
         else:
             st.error(f"Error fetching models: {response.status_code}")
             return []
