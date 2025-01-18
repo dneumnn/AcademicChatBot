@@ -150,7 +150,7 @@ def rag(
 
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
     logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
-    subject = route_query(question, llm) if use_logical_routing else knowledge_base
+    subject = route_query(question, llm, logger) if use_logical_routing else knowledge_base
     logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
 
     #docs = retriever_chain.invoke(question)

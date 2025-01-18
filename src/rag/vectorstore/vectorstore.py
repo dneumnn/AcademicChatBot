@@ -151,3 +151,8 @@ def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: loggi
     clean_result = tidy_vectorstore_results(result)
 
     return clean_result
+
+def get_vector_collections():
+    client = chromadb.PersistentClient(path=get_persistent_chroma_db_directory())
+    collections = [collection.name for collection in client.list_collections()]
+    return collections
