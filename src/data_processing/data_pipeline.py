@@ -14,6 +14,8 @@ from src.db.graph_db.main import *
 #from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
 
+from src.vectordb.main import generate_vector_db
+
 # Static variables
 VIDEO_DIRECTORY = "./media/"
 LOG_FILE_PATH = "src/data_processing/data-processing.log"
@@ -177,22 +179,32 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         except:
             print("Error topic definition")
 
+        # Create Vector DB embedding 
         try:
-            chunks = read_csv_chunks(video_id, meta_data)
+            generate_vector_db(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
-            return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
-        try:
-            frames = read_csv_frames(video_id)
-        except Exception as e:
-            log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
-            return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
-        try:
-            load_csv_to_graphdb(chunks, frames, meta_data)
-        except Exception as e:
-            log.error("download_pipeline_youtube: Transcripts CSV could not be inserted into graph_db: %s", e)
-            return 500, "Internal error when trying Insert Data into graph_db. Please contact a developer."
-        processed_video_titles.append(meta_data['title'])
+            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
+            return 500, "Internal error when trying to generate the vector db. Please contact a developer."
+
+        ### AUSKOMMENTIEREN ###
+        #try:
+        #    chunks = read_csv_chunks(video_id, meta_data)
+        #except Exception as e:
+        #    log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+        #    return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
+        #try:
+        #    frames = read_csv_frames(video_id)
+        #except Exception as e:
+        #    log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
+        #    return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
+        #try:
+        #    load_csv_to_graphdb(chunks, frames, meta_data)
+        #except Exception as e:
+        #    log.error("download_pipeline_youtube: Transcripts CSV could not be inserted into graph_db: %s", e)
+        #    return 500, "Internal error when trying Insert Data into graph_db. Please contact a developer."
+        #processed_video_titles.append(meta_data['title'])
+        ### AUSKOMMENTIEREN ###
+        
 
     if len(processed_video_titles) == 0:
         log.warning("YouTube content for URL %s was already processed.", url)
