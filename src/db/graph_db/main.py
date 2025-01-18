@@ -7,6 +7,11 @@ from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from itertools import chain
 from src.data_processing.logger import log
+from src.db.graph_db.utilities import *
+
+
+
+
 
 
 def parse_response_to_graph(response_text):
@@ -38,7 +43,7 @@ def parse_response_to_graph(response_text):
 
     return graph_data
 
-def add_nodes_to_graphdb(graph_data, driver, chunk):
+def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
     """
     Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
     """
@@ -46,18 +51,40 @@ def add_nodes_to_graphdb(graph_data, driver, chunk):
         for node in graph_data["nodes"]:
             query = """
             MERGE (n:Entity {name: $name})
-            SET n += {
-                time: [$time],
-                text: [$sentence],
-                url_id: [$url_id]
-                } 
+            SET n.time = coalesce(n.time, []) + $time,     
+                n.text = coalesce(n.text, []) + $sentence,     
+                n.url_id = coalesce(n.url_id, []) + $url_id,
+                n.title = coalesce(n.title, []) + $title,
+                n.description = coalesce(n.description, []) + $description,
+                n.duration = coalesce(n.duration, []) + $duration,
+                n.view_count = coalesce(n.view_count, []) + $view_count,
+                n.uploader = coalesce(n.uploader, []) + $uploader,
+                n.tags = coalesce(n.tags, []) + $tags,
+                n.thumbnail = coalesce(n.thumbnail, []) + $thumbnail,
+                n.uploader_url = coalesce(n.uploader_url, []) + $uploader_url,
+                n.age_limit = coalesce(n.age_limit, []) + $age_limit,
+                n.categories = coalesce(n.categories, []) + $categories,
+                n.like_count = coalesce(n.like_count, []) + $like_count,
+                n.upload_date = coalesce(n.upload_date, []) + $upload_date
             """
 
             session.run(query, parameters={
                 "time": chunk['time'],
                 "sentence": chunk['sentence'],
                 "name": node,
-                "url_id": chunk['node_id']
+                "url_id": chunk['node_id'],
+                "title": meta_data.get('title'),
+                "description": meta_data.get('description'),
+                "duration": meta_data.get('duration'),
+                "view_count": meta_data.get('view_count'),
+                "uploader": meta_data.get('uploader'),
+                "tags": meta_data.get('tags'),
+                "thumbnail": meta_data.get('thumbnail'),
+                "uploader_url": meta_data.get('uploader_url'),
+                "age_limit": meta_data.get('age_limit'),
+                "categories": meta_data.get('categories'),
+                "like_count": meta_data.get('like_count'),
+                "upload_date": meta_data.get('upload_date')
             })
 
 
@@ -80,45 +107,45 @@ def add_nodes_to_graphdb(graph_data, driver, chunk):
             DELETE n
         """)
 
-def add_attributes_to_nodes(driver, chunk, meta_data, frames):
+def add_attributes_to_nodes(driver, meta_data, frames):
     with driver.session() as session:
-        if meta_data:
-            query = """
-                MATCH (n:Entity)
-                WHERE $url_id IN n.url_id
-                SET n.title = coalesce(n.title, []) + $title,
-                    n.description = coalesce(n.description, []) + $description,
-                    n.duration = coalesce(n.duration, []) + $duration,
-                    n.view_count = coalesce(n.view_count, []) + $view_count,
-                    n.uploader = coalesce(n.uploader, []) + $uploader,
-                    n.tags = coalesce(n.tags, []) + $tags,
-                    n.thumbnail = coalesce(n.thumbnail, []) + $thumbnail,
-                    n.uploader_url = coalesce(n.uploader_url, []) + $uploader_url,
-                    n.age_limit = coalesce(n.age_limit, []) + $age_limit,
-                    n.categories = coalesce(n.categories, []) + $categories,
-                    n.like_count = coalesce(n.like_count, []) + $like_count,
-                    n.upload_date = coalesce(n.upload_date, []) + $upload_date,
-                    n.url_id = coalesce(n.url_id, []) + $url_id
-            """ 
+        # if meta_data:
+        #     query = """
+        #         MATCH (n:Entity)
+        #         WHERE $url_id IN n.url_id
+        #         SET 
+        #             n.title = coalesce(n.title, []) + $title,
+        #             n.description = coalesce(n.description, []) + $description,
+        #             n.duration = coalesce(n.duration, []) + $duration,
+        #             n.view_count = coalesce(n.view_count, []) + $view_count,
+        #             n.uploader = coalesce(n.uploader, []) + $uploader,
+        #             n.tags = coalesce(n.tags, []) + $tags,
+        #             n.thumbnail = coalesce(n.thumbnail, []) + $thumbnail,
+        #             n.uploader_url = coalesce(n.uploader_url, []) + $uploader_url,
+        #             n.age_limit = coalesce(n.age_limit, []) + $age_limit,
+        #             n.categories = coalesce(n.categories, []) + $categories,
+        #             n.like_count = coalesce(n.like_count, []) + $like_count,
+        #             n.upload_date = coalesce(n.upload_date, []) + $upload_date
+        #     """ 
 
-            session.run(query, parameters={
-                "title": meta_data.get('title'),
-                "description": meta_data.get('description'),
-                "duration": meta_data.get('duration'),
-                "view_count": meta_data.get('view_count'),
-                "uploader": meta_data.get('uploader'),
-                "tags": meta_data.get('tags'),
-                "thumbnail": meta_data.get('thumbnail'),
-                "uploader_url": meta_data.get('uploader_url'),
-                "age_limit": meta_data.get('age_limit'),
-                "categories": meta_data.get('categories'),
-                "like_count": meta_data.get('like_count'),
-                "upload_date": meta_data.get('upload_date'),
-                "url_id": meta_data.get('id')
-            })
-        else:
-            log.error("download_pipeline_youtube: Meta_data could not be inserted into graph_db: %s")
-            return 500, "Internal error when trying to insert meta_data into graph_db. Please contact a developer."
+        #     session.run(query, parameters={
+        #         "title": meta_data.get('title'),
+        #         "description": meta_data.get('description'),
+        #         "duration": meta_data.get('duration'),
+        #         "view_count": meta_data.get('view_count'),
+        #         "uploader": meta_data.get('uploader'),
+        #         "tags": meta_data.get('tags'),
+        #         "thumbnail": meta_data.get('thumbnail'),
+        #         "uploader_url": meta_data.get('uploader_url'),
+        #         "age_limit": meta_data.get('age_limit'),
+        #         "categories": meta_data.get('categories'),
+        #         "like_count": meta_data.get('like_count'),
+        #         "upload_date": meta_data.get('upload_date'),
+        #         "url_id": meta_data.get('id')
+        #     })
+        # else:
+        #     log.error("download_pipeline_youtube: Meta_data could not be inserted into graph_db: %s")
+        #     return 500, "Internal error when trying to insert meta_data into graph_db. Please contact a developer."
         
         # Insert Frame information to respective nodes
         if frames:
@@ -152,11 +179,11 @@ def add_attributes_to_nodes(driver, chunk, meta_data, frames):
             log.error("download_pipeline_youtube: Node frames could not be inserted into graph_db: %s")
             return 500, "Internal error when trying Insert frames to nodes in graph_db. Please contact a developer."
         
-def load_csv_to_graphdb(chunks, frames, meta_data) -> None:
+def load_csv_to_graphdb(meta_data, video_id) -> None:
     # Lade Umgebungsvariablen und konfiguriere Google Gemini
     load_dotenv()
-    API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
-    genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+    API_KEY_GOOGLE_GEMINI_GRAPHDB = os.getenv("API_KEY_GOOGLE_GEMINI_GRAPHDB")
+    genai.configure(api_key=API_KEY_GOOGLE_GEMINI_GRAPHDB)
 
     # Verbindung zur Neo4j-Datenbank
     neo4j_uri = os.getenv("NEO4J_URI")
@@ -164,6 +191,17 @@ def load_csv_to_graphdb(chunks, frames, meta_data) -> None:
     neo4j_password = os.getenv("NEO4J_PASSWORD")
     driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
 
+    try:
+        chunks = read_csv_chunks(video_id, meta_data)
+    except Exception as e:
+        log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+        return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
+    try:
+        frames = read_csv_frames(video_id)
+    except Exception as e:
+        log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
+        return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
+    
     # Verarbeite jeden Chunk und speichere die Daten in der Graph-Datenbank
     requests_made = 0
     for chunk in chunks:
@@ -188,8 +226,9 @@ def load_csv_to_graphdb(chunks, frames, meta_data) -> None:
         """
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         
-        if requests_made >= 12:
-            time.sleep(60)
+        
+        if requests_made >= 14:
+            time.sleep(50)
             requests_made = 0
 
         response = model.generate_content(contents=prompt)
@@ -200,9 +239,9 @@ def load_csv_to_graphdb(chunks, frames, meta_data) -> None:
         graph_data = parse_response_to_graph(response.text)
 
         # Speichere Knoten und Beziehungen in der Graph-Datenbank
-        add_nodes_to_graphdb(graph_data, driver, chunk)
+        add_nodes_to_graphdb(graph_data, driver, chunk, meta_data)
 
-    add_attributes_to_nodes(driver, chunk, meta_data, frames)
+    add_attributes_to_nodes(driver, meta_data, frames)
     # Schließe den Neo4j-Driver
     driver.close()
 
