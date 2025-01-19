@@ -196,11 +196,15 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     if len(processed_video_titles) == 0:
         log.warning("YouTube content for URL %s was already processed.", url)
-        return 200, f"YouTube content was already processed."
+        return 200, "YouTube content was already processed."
+    elif len(processed_video_titles) == 1:
+        log.info("download_pipeline_youtube: YouTube content for video %s successfully processed! ", url)
+        return 200, f"YouTube video with title {processed_video_titles[0]} successfully processed!"
     else:
-        # TODO: Implement better format for the title(s)
-        log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url)
-        return 200, f"YouTube content with Title(s) {processed_video_titles} successfully processed."
+        log.info("download_pipeline_youtube: YouTube content for playlist %s successfully processed!", url)
+        response = "YouTube playlist successfully processed!\nProcessed videos:\n\n"
+        response += "\n".join([f"{i + 1}. {title}" for i, title in enumerate(processed_video_titles)])
+        return 200, response
 
 
 def video_with_id_already_downloaded(id: str):
