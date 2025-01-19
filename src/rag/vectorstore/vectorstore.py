@@ -108,20 +108,27 @@ def tidy_vectorstore_results(results):
     ]
     return results
 
-def generate_vector_filter(logger: logging.Logger, video_id: str | None = None, playlist_id: str | None = None):
-    if video_id is None and playlist_id is None:
-        logger.warning("No video_id or playlist_id provided. Not using vector filter.")
-        return None
-
-    filter = {}
+def generate_vector_filter(logger: logging.Logger, video_id: str | None = None, playlist_id: str | None = None, include_image_descriptions: bool | None = None):
+    filters = []
 
     # If video_id is provided, use it for the filter, otherwise if playlist_id is provided, use it for the filter
     if video_id is not None:
         logger.info(f"Using video_id: {video_id} for vector filter")
-        filter["video_id"] = video_id
+        filters.append({"video_id": video_id})
     elif playlist_id is not None:
         logger.info(f"Using playlist_id: {playlist_id} for vector filter")
-        filter["playlist_id"] = playlist_id
+        filters.append({"playlist_id": playlist_id})
+
+    # Do not include image descriptions if explicitly set to False
+    if include_image_descriptions is not None and include_image_descriptions == False:
+        filters.append({"is_image_description": False})
+
+    if len(filters) == 0:
+        logger.warning("No filters provided. Not using vector filter.")
+        return None
+
+    # Combine filters into a single filter
+    filter = {"$and": filters} if len(filters) > 1 else filters[0]
 
     logger.info(f"Using filter: {filter} for vector filter")
 

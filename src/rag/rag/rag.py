@@ -14,7 +14,7 @@ from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chro
     generate_vector_filter
 from ..routing.logical_routing import route_query
 from ..logger.logger import setup_logger
-from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
+from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE, INCLUDE_IMAGE_DESCRIPTIONS
 from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
 from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models
 from ..graphstore.graphstore import question_to_graphdb
@@ -169,7 +169,7 @@ def rag(
     if database == "vector" or database == "all":
         subject = route_query(question, llm, logger) if (use_logical_routing and knowledge_base is None) else knowledge_base
         logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
-        vector_filter = generate_vector_filter(logger, video_id, playlist_id)
+        vector_filter = generate_vector_filter(logger, video_id, playlist_id, INCLUDE_IMAGE_DESCRIPTIONS)
         vector_context = get_vector_context(question, subject, logger, mode, VECTORSTORE_TOP_K, RERANKING_TOP_K,
                                             vector_filter)
 
