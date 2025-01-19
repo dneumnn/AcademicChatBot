@@ -6,7 +6,7 @@ A modular RAG system that supports both vector and graph-based retrieval with mu
 
 ### Get Available Models
 
-Returns a list of all available LLM models from the local Ollama server. Use these model IDs when calling the chat function.
+Returns a list of all available LLM models from the local Ollama server and cloud providers. Use these model IDs when calling the chat function.
 
 ```python
 from rag.app import models
@@ -25,15 +25,18 @@ response = rag(
         {"role": "user", "content": "Previous question"},
         {"role": "assistant", "content": "Previous answer"}
     ],
-    model_id="llama3.2:latest",
+    model_id="llama3.2",
     model_parameters={
         "temperature": 0.8,
         "top_p": 0.9,
         "top_k": 40
     },
-    knowledge_base="youtube_chunks",
+    knowledge_base="fallback",
     use_logical_routing=false,
     use_semantic_routing=false,
+    stream=True,
+    plaintext=False,
+    mode="fast"
 )
 ```
 
@@ -49,7 +52,12 @@ Parameters:
 - `knowledge_base`: Specify knowledge base (defaults to "all")
 - `use_logical_routing`: Enable rule-based routing (default: False)
 - `use_semantic_routing`: Enable semantic-based routing (default: False)
-- `basic_return`: Return only response text without metadata (default: False)
+- `stream`: Set wether response should be streamed (Default: true)
+- `plaintext`: Set wether response should be limited to plaintext (Default: false)
+- `mode`: Set the mode of the RAG module ("fast" or "smart")
+- `playlist_id`: Optional YouTube playlist ID filter for context
+- `video_id`: Optional YouTube video ID filter for context
+- `database`: Database type to use ("vector", "graph", or "all")
 
 ### Chat Function - High-Level Interface
 
@@ -69,8 +77,11 @@ Parameters:
 - `knowledge_base`: Specific knowledge base to query
 - `model_parameters`: Model configuration parameters
 - `database`: Database type to use ("vector", "graph", or "all")
-- `playlist_id`: Optional YouTube playlist ID for context
-- `video_id`: Optional YouTube video ID for context
+- `playlist_id`: Optional YouTube playlist ID filter for context
+- `video_id`: Optional YouTube video ID filter for context
+- `stream`: Set wether response should be streamed (Default: true)
+- `plaintext`: Set wether response should be limited to plaintext (Default: false)
+- `mode`: Set the mode of the RAG module ("fast" or "smart")
 
 ## Setup
 
@@ -85,26 +96,31 @@ pip install -r requirements.txt
 3. (Optional) Start Neo4j for graph database support:
 
 ```bash
-MSYS_NO_PATHCONV=1 bash ./src/rag/mock/create_graph_store.sh
+docker compose up -d
 ```
 
 4. Configure settings in config.yml:
 
 ```yaml
 config:
-  default_database: vector
-  default_model: llama3.2:latest
+  default_database: all
+  default_model: gemini-1.5-flash
   default_model_parameters:
     temperature: 0.8
     top_p: 0.9
     top_k: 40
-  default_knowledge_base: youtube_chunks
+  default_knowledge_base: fallback
+  default_mode: fast
   use_semantic_routing: false
-  use_logical_routing: false
+  use_logical_routing: true
   retrieval_embedding_model: all-MiniLM-L6-v2
-  reranking_cross_encoder_model: BAAI/bge-reranker-large
-  vectorstore_top_k: 10
-  reranking_top_k: 3
+  reranking_cross_encoder_model: BAAI/bge-reranker-large # cross-encoder/stsb-roberta-base
+  vectorstore_top_k: 40
+  reranking_top_k: 10
+  neo4j_fallback:
+    uri: bolt://localhost:7687
+    user: neo4j
+    password: this_pw_is_a_test25218###1119jj
 ```
 
 Key Configuration Options:
@@ -113,21 +129,24 @@ Key Configuration Options:
 - `default_model`: Default LLM model ID
 - `default_model_parameters`: Model inference settings
 - `default_knowledge_base`: Default knowledge base to query
+- `use_semantic_routing`: Whether semantic (prompt) routing should be used
+- `use_logical_routing`: Whether logical (collection) routing should be used
 - `retrieval_embedding_model`: Model used for text embeddings
 - `reranking_cross_encoder_model`: Model used for reranking results
 - `vectorstore_top_k`: Number of initial vector results to retrieve
 - `reranking_top_k`: Number of results to keep after reranking
+- `neo4j_fallback`: Non sensitive Neo4j connection data
 
 ## Database Options
 
 ### Vector Store (ChromaDB)
 
-- Default option
+- For general queries
 - Embedded database, no setup required
 
 ### Graph Store (Neo4j)
 
-- Optional for relationship-based queries
+- For relationship-based queries
 - Requires Docker
 - Web interface: `localhost:7474` (neo4j/password)
 
