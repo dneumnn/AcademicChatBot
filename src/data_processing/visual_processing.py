@@ -6,6 +6,7 @@ import cv2
 from dotenv import load_dotenv
 import google.generativeai as genai
 import pandas as pd
+import ollama
 
 # Import other functions of the data_processing package
 from .logger import log
@@ -55,7 +56,7 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
         count += 1
 
 
-def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"):
+def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash", local_model:bool=False, local_llm:str="llama3.2-vision"):
     """
     Extract a certain number of frames of a YouTube video.
 
@@ -86,25 +87,37 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         image_file = PIL.Image.open(image_file_path)
 
         prompt = (
-            "Describe the extracted image from the instructional video, focusing solely on the relevant content related to "
-            "the subject of the lesson: AI. Ignore irrelevant elements such as facecams or placeholders that are not related to "
-            "the topic. Focus on describing concepts, diagrams, graphs, key points, or any other visual content in the image. "
-            "If key points or visual representations of constructs, concepts, or models are shown, place them in context, "
-            "explain their significance, and describe how they relate to the topic. Provide a coherent text block, with no formatting, "
-            "bullet points, or other structural elements, just a clear and concise explanation of the image content."
-        )
+                "Describe the extracted image from the instructional video, focusing solely on the relevant content related to "
+                "the subject of the lesson: AI. Ignore irrelevant elements such as facecams or placeholders that are not related to "
+                "the topic. Focus on describing concepts, diagrams, graphs, key points, or any other visual content in the image. "
+                "If key points or visual representations of constructs, concepts, or models are shown, place them in context, "
+                "explain their significance, and describe how they relate to the topic. Provide a coherent text block, with no formatting, "
+                "bullet points, or other structural elements, just a clear and concise explanation of the image content."
+            )
 
-        # TODO: Dynamically read the time to sleep (?)
-        if requests_made >= 14:
-            time.sleep(50)
-            requests_made = 0
+        if local_model == False:
+            # TODO: Dynamically read the time to sleep (?)
+            if requests_made >= 14:
+                time.sleep(50)
+                requests_made = 0
 
-        # Generate response
-        response = model.generate_content(
-            [prompt, image_file]
-        )
+            # Generate response
+            response = model.generate_content(
+                [prompt, image_file]
+            )
 
-        requests_made += 1
+            requests_made += 1
+        
+        else:
+            response = ollama.chat(
+                model=local_llm,
+                messages=[{
+                    "role": "user",
+                    "content": prompt,
+                    "images": [image_file]
+                }]
+            )
+
 
         path_dir_frame_desc = f"./media/{video_id}/frames_description/"
         if not os.path.exists(path_dir_frame_desc):
