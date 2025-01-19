@@ -108,9 +108,34 @@ def tidy_vectorstore_results(results):
     ]
     return results
 
-def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: logging.Logger, top_k: int = 25):
+def generate_vector_filter(logger: logging.Logger, video_id: str | None = None, playlist_id: str | None = None):
+    if video_id is None and playlist_id is None:
+        logger.warning("No video_id or playlist_id provided. Not using vector filter.")
+        return None
+
+    filter = {}
+
+    # If video_id is provided, use it for the filter, otherwise if playlist_id is provided, use it for the filter
+    if video_id is not None:
+        logger.info(f"Using video_id: {video_id} for vector filter")
+        filter["video_id"] = video_id
+    elif playlist_id is not None:
+        logger.info(f"Using playlist_id: {playlist_id} for vector filter")
+        filter["playlist_id"] = playlist_id
+
+    logger.info(f"Using filter: {filter} for vector filter")
+
+    return filter
+
+def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: logging.Logger, top_k: int = 25, filter: dict | None = None):
     logger.info(f"Using embeddings model: {RETRIEVAL_EMBEDDING_MODEL}")
     client = chromadb.PersistentClient(path=get_persistent_chroma_db_directory())
+
+    collections = client.list_collections()
+
+    for collection in collections:
+        logger.info(f"Collection exists: {collection.name}, meta {collection.metadata}")
+
     collection = client.get_collection(subject)
 
     model = SentenceTransformer(RETRIEVAL_EMBEDDING_MODEL)
@@ -119,9 +144,15 @@ def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: loggi
     result = collection.query(
         query_embeddings=[question_embedding],
         n_results=top_k,
-        include=["documents", "distances", "metadatas"]
+        include=["documents", "distances", "metadatas"],
+        where=filter
     )
 
     clean_result = tidy_vectorstore_results(result)
 
     return clean_result
+
+def get_vector_collections():
+    client = chromadb.PersistentClient(path=get_persistent_chroma_db_directory())
+    collections = [collection.name for collection in client.list_collections()]
+    return collections

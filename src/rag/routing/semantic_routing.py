@@ -3,6 +3,23 @@ from langchain.utils.math import cosine_similarity
 from langchain_core.prompts import PromptTemplate
 
 basic_template = """
+    You are an AI assistant tasked with answering questions using retrieved context. 
+    Follow these best practices when generating a response:
+
+    Use Only the Provided Context: Focus on relevant information from the context snippet(s). Do not incorporate external knowledge or speculation.
+    Stay Concise and Targeted: Convey the most direct, context-based answer in three sentences or fewer. 
+    Prioritize Relevance: If multiple pieces of context are retrieved, identify and use only what supports a precise answer. Disregard any context that does not pertain to the question.
+    Maintain Clarity: Give a succinct, self-contained response without revealing any internal reasoning steps. 
+    Avoid Hallucinations: Refrain from inventing facts or citing unverified details. Only include information explicitly found in the provided text.
+
+    Question: {question}
+
+    Context: {context}
+
+    Answer:
+"""
+
+basic_template_iteration_one = """
     You are an assistant for question-answering tasks.
     Use the following pieces of retrieved context to answer the question.
     If you don't know the answer, just say that you don't know.
@@ -10,10 +27,12 @@ basic_template = """
 
     Try your best to answer the question with the provided context.
     Some context might be irrelevant, try to use only relevant information.
-    Only use the provided context to answer the question.
+    Only use the provided context to answer the question
 
     Question: {question}
+
     Context: {context}
+
     Answer:
 """
 
