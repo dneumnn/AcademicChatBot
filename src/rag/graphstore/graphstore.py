@@ -65,18 +65,26 @@ def question_to_graphdb(question: str, llm: ChatOpenAI | ChatOllama | ChatGoogle
                 LIMIT 10
             """).data()
 
+            excerpt = session.run("""
+                MATCH (entity)
+                RETURN entity
+                LIMIT 3000
+            """).data()
+
             prompt = f"""
             MOST IMPORTANT: MAKE THE CYPHER QUERY WORK WITH THE GRAPH. NO MATTER WHAT, RETURN A WORKING QUERY.
-            ONLY USE THE name ATTRIBUTE TO ACTIVELY QUERY ENTITIES. ONLY USE KOWN LINKS BETWEEN NODES.
+            ONLY USE THE name AND text ATTRIBUTES TO ACTIVELY QUERY ENTITIES. ONLY USE KOWN LINKS BETWEEN NODES.
+            You can also use the contains method on the text attribute of nodes.
 
             Given the following Neo4j graph structure:
-            
+
             =================================
             Node types and counts: {samples}
             Schema: {schema}
             Sample entity names: {sample_names}
             Sample relationships: {sample_relationships}
             These are the properties of the nodes: {properties}
+            Excerpt of the graph: {excerpt}
             =================================
 
             Convert this question to a Cypher query that will answer it:
