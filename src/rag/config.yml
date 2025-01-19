@@ -8,7 +8,7 @@ config:
   default_knowledge_base: fallback
   default_mode: fast
   use_semantic_routing: false
-  use_logical_routing: true
+  use_logical_routing: false
   retrieval_embedding_model: all-MiniLM-L6-v2
   reranking_cross_encoder_model: BAAI/bge-reranker-large # cross-encoder/stsb-roberta-base
   vectorstore_top_k: 40
