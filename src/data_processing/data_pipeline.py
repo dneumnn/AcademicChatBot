@@ -17,7 +17,7 @@ from src.db.graph_db.main import *
 from src.db.graph_db.utilities import *
 
 # Static variables
-VIDEO_DIRECTORY = "./media/"
+PROCESSED_VIDEOS_DIRECTORY = "./media/"
 LOG_FILE_PATH = "src/data_processing/data-processing.log"
 
 # Env variables
@@ -79,6 +79,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     processed_video_titles = []
 
     # * Load url(s) in the video_urls list
+    # Also check if the URL type is a valid YouTube video/ playlist
     if "watch" in url and "list" not in url:
         log.info("download_pipeline_youtube: %s is a YouTube video.", url)
         video_urls.append(url)
@@ -97,24 +98,26 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     # * Try to download and process the list of YouTube videos
     for video_url in video_urls:
-        # Set needed variables
+        # Set needed result variables
         video_id = extract_youtube_video_id(video_url)
-        video_filepath = f"{VIDEO_DIRECTORY}/{video_id}/video/{video_id}.mp4"
         meta_data = {}
+
+        # Set additional constants for paths
+        VIDEO_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/video/{video_id}.mp4"
 
         # * Download video
         if video_with_id_already_downloaded(video_id):
-            log.warning("download_pipeline_youtube: video with ID %s was already downloaded and analyzed.", video_id)
+            log.warning("download_pipeline_youtube: Video with ID %s was already downloaded and analyzed.", video_id)
             continue
         try:
             log.info("download_pipeline_youtube: %s is a new URL!", url)
             download_youtube_video_pytube(video_url)
         except:
             try:
-                log.warning("download_pipeline_youtube: Downloading video with PyTube failed. Now trying to download it with yt_dlp.")
+                log.warning("download_pipeline_youtube: Downloading video %s with PyTube failed. Now trying to download it with yt_dlp.", video_id)
                 download_youtube_video_yt_dlp(video_url)
             except:
-                log.error("download_pipeline_youtube: Download failed with both PyTube and yt_dlp.")
+                log.error("download_pipeline_youtube: Downloading video %s failed with both PyTube and yt_dlp.", video_id)
                 return 500, "Internal error when trying to download the video. Please contact a developer."
 
         # * Extract meta data
@@ -130,7 +133,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Visual Processing: Extract frames with description
         try:
-            extract_frames_from_video(video_filepath, seconds_between_frames)
+            extract_frames_from_video(VIDEO_FILEPATH, seconds_between_frames)
             create_image_description(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
@@ -198,14 +201,16 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         # * Integrate data into GraphDB
         try:
             load_csv_to_graphdb(meta_data, video_id)
+            log.info("download_pipeline_youtube: Transcripts CSV for video %s successfully inserted into the GraphDB.", video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcripts CSV could not be inserted into graph_db: %s", e)
-            return 500, "Internal error when trying Insert Data into graph_db. Please contact a developer."
-        processed_video_titles.append(meta_data['title'])
+            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s", video_id, e)
+            return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
+
+        processed_video_titles.append(meta_data['title']) # Add this video title to the list of successfully processed videos
 
     # Log results and return appropriate message to the user
     if len(processed_video_titles) == 0:
-        log.warning("YouTube content for URL %s was already processed.", url)
+        log.warning("download_pipeline_youtube: YouTube content for URL %s was already processed.", url)
         return 200, "YouTube content was already processed."
     elif len(processed_video_titles) == 1:
         log.info("download_pipeline_youtube: YouTube content for video %s successfully processed! ", url)
@@ -232,7 +237,7 @@ def video_with_id_already_downloaded(id: str):
         url_already_downloaded("dQw4w9WgXcQ")
     """
 
-    if not os.path.exists(f"{VIDEO_DIRECTORY}{id}"):
+    if not os.path.exists(f"{PROCESSED_VIDEOS_DIRECTORY}{id}"):
         return False
     else:
         return True

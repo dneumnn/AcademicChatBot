@@ -87,14 +87,14 @@ def chat_history():
     pass
 
 @app.post("/analyze")
-def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, embedding_model: Optional[str] = "nomic-embed-text", seconds_between_frames: Optional[int] = 30):
+def analyze(url: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, embedding_model: Optional[str] = "nomic-embed-text", seconds_between_frames: Optional[int] = 30):
 
     # Check if the passed URL is a valid YouTube URL.
     # url = "https://www.youtube.com/oembed?format=json&url=" + video_input # ! Deprecated
-    response = requests.head(video_input, allow_redirects=True)
-    if response.status_code in range(200, 300) and "youtube" in video_input:
+    response = requests.head(url, allow_redirects=True)
+    if response.status_code in range(200, 300) and "youtube" in url:
         # Valid YouTube URL
-        status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, embedding_model, seconds_between_frames)
+        status_code, status_message = download_pipeline_youtube(url, chunk_max_length, chunk_overlap_length, embedding_model, seconds_between_frames)
         if status_code in range(200, 300):
             # Pre-Processing was successfull
             return {"message": status_message, "status_code": status_code}
@@ -103,7 +103,7 @@ def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overl
             raise HTTPException(status_code=status_code, detail=f"YouTube content could not be processed: {status_message}")
     else:
         # No valid YouTube URL
-        logging.warning(f"YouTube URL does not exist: {response.status_code}")
+        logging.warning(f"YouTube URL does not exist: Status code = {response.status_code}")
         raise HTTPException(status_code=404, detail=f"YouTube content could not be processed: This is not a valid YouTube URL.")
 
 # placeholder

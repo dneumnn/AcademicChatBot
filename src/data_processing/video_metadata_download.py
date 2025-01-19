@@ -74,7 +74,7 @@ def download_youtube_video_yt_dlp(url: str) -> None:
 
         log.info("download_youtube_video_yt_dlp: yt_dlp video download successfull. Saved file to /media/videos/%s.mp4.", videoid)
     except Exception as e:
-        log.warning("YouTube video download using yt-dlp was unsuccessful: %s", e)
+        log.warning("download_youtube_video_yt_dlp: YouTube video download using yt-dlp was unsuccessful: %s", e)
         raise e
 
 
@@ -97,11 +97,11 @@ def extract_video_urls_from_playlist(url: str) -> list:
         video_urls = [
             video_url for video_url in playlist.video_urls
         ]
-        log.info("extract_video_urls_from_playlist: Extracted %d videos from the %s URL.", len(video_urls), url)
+        log.info("extract_video_urls_from_playlist: Extracted %d videos from URL %s.", len(video_urls), url)
         return video_urls
     
     except Exception as e:
-        log.warning("Extraction of YouTube URLs from playlist was unsuccessful: %s", e)
+        log.warning("Extraction of YouTube URLs from playlist %s was unsuccessful: %s", url, e)
         raise e
 
     
