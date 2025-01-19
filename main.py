@@ -90,9 +90,9 @@ def chat_history():
 def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, embedding_model: Optional[str] = "nomic-embed-text"):
 
     # Check if the passed URL is a valid YouTube URL.
-    url = "https://www.youtube.com/oembed?format=json&url=" + video_input
-    response = requests.head(url, allow_redirects=True)
-    if response.status_code in range(200, 300):
+    # url = "https://www.youtube.com/oembed?format=json&url=" + video_input # ! Deprecated
+    response = requests.head(video_input, allow_redirects=True)
+    if response.status_code in range(200, 300) and "youtube" in video_input:
         # Valid YouTube URL
         status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, embedding_model)
         if status_code in range(200, 300):
@@ -103,8 +103,8 @@ def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overl
             raise HTTPException(status_code=status_code, detail=f"YouTube content could not be processed: {status_message}")
     else:
         # No valid YouTube URL
-        logging.error(f"YouTube URL does not exist: {response.status_code}")
-        raise HTTPException(status_code=404, detail=f"YouTube content could not be processed: YouTube URL does not exist.")
+        logging.warning(f"YouTube URL does not exist: {response.status_code}")
+        raise HTTPException(status_code=404, detail=f"YouTube content could not be processed: This is not a valid YouTube URL.")
 
 # placeholder
 @app.get("/support")

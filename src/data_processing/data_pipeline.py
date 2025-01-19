@@ -74,13 +74,18 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     processed_video_titles = []
 
     # * Load url(s) in the video_urls list
-    # TODO: Check other types of URLs, e.g. what happens, if an URL is passed, which belongs to a single video which is part of a playlist?
     if "watch" in url and "list" not in url:
         log.info("download_pipeline_youtube: %s is a YouTube video.", url)
         video_urls.append(url)
     elif "list" in url:
         log.info("download_pipeline_youtube: %s is a YouTube playlist.", url)
         video_urls = extract_video_urls_from_playlist(url)
+    elif "shorts" in url:
+        log.warning("download_pipeline_youtube: %s is a YouTube short. Not supported.", url)
+        return 415, "The URL is a shorts video. Shorts are not supported, please provide a video or playlist URL."
+    elif "@" in url:
+        log.warning("download_pipeline_youtube: %s is a YouTube channel. Not supported.", url)
+        return 415, "The URL is a channel. This is not supported, please provide a video or playlist URL."
     else:
         log.warning("download_pipeline_youtube: %s is neither a YouTube video nor a playlist.", url)
         return 415, "The URL is a valid YouTube URL, but neither a video nor a playlist."
@@ -174,11 +179,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         
         try:
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
-        except:
-            print("Error topic definition")
-
-        try:
-            chunks = read_csv_chunks(video_id, meta_data)
         except Exception as e:
             log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
             return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
