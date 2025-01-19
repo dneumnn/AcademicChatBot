@@ -18,5 +18,6 @@ RETRIEVAL_EMBEDDING_MODEL = config.get("retrieval_embedding_model")
 RERANKING_CROSS_ENCODER_MODEL = config.get("reranking_cross_encoder_model")
 VECTORSTORE_TOP_K = config.get("vectorstore_top_k")
 RERANKING_TOP_K = config.get("reranking_top_k")
+DEFAULT_MODE = config.get("default_mode")
 
 NEO4J_FALLBACK = config.get("neo4j_fallback")

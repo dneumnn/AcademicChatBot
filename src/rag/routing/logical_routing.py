@@ -1,17 +1,21 @@
+import logging
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 
 from .routes import SUBJECTS, RouteQuery
+from ..constants.config import DEFAULT_KNOWLEDGE_BASE
 
-def route_query(query: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeAI, message_history: list[dict] = None) -> str:
+def route_query(query: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeAI, logger: logging.Logger, message_history: list[dict] = None) -> str:
     system = f"""
     You are an expert at determining the subject of a user question.
     Possible subjects are: {", ".join(SUBJECTS)}
     If you are not sure, return "other".
     Based on the conversation history and last user question, determine which subject is most relevant, return only the name of the subject.
     """
+
+    logger.info(f"Logical routing with possible subjects: {SUBJECTS}")
 
     messages = [("system", system)]
     
@@ -32,7 +36,7 @@ def route_query(query: str, llm: ChatOllama | ChatOpenAI | ChatGoogleGenerativeA
         return result.subject
     except Exception as e:
         print("\033[93m" + str(e) + "\033[0m")
-        return "other"
+        return DEFAULT_KNOWLEDGE_BASE
 
 def __test__route_query():
     print(route_query("What element is copper?"))
