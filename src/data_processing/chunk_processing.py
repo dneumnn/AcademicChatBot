@@ -3,6 +3,8 @@ import re
 from dotenv import load_dotenv
 import google.generativeai as genai
 
+from .audio_processing import split_transcript
+
 # Env variables
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
@@ -142,23 +144,57 @@ def create_chunk_llm(text: str, max_chunk_length: int = 500, gemini_model: str =
     """
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
+
     prompt = (
-        f"""
-        Divide the transcript text into logical chunks, ensuring each chunk 
-        is no longer than {max_chunk_length} characters.
+            f"""
+            Divide the transcript text into logical chunks, ensuring each chunk 
+            is no longer than {max_chunk_length} characters.
 
-        Preserve the text exactly as it is, including any content within curly 
-        brackets - do not adjust, alter, or reformat it. Ensure no words are 
-        missed or omitted. Return the output in brackets "[]", with each element 
-        containing a single chunk. 
+            Preserve the text exactly as it is, including any content within curly 
+            brackets - do not adjust, alter, or reformat it. Ensure no words are 
+            missed or omitted. Return the output in brackets "[]", with each element 
+            containing a single chunk. 
 
-        Transcript text:
-        """
-    )
-    prompt_transcript = prompt + text
-    response = model.generate_content(prompt_transcript)
-    response = response.text
-    response = re.sub(r"```json|```", "", response).strip()
+            Transcript text:
+            """
+        )
+
+    if len(text) < 20000:
+
+        prompt_transcript = prompt + text
+        response = model.generate_content(prompt_transcript)
+        response = response.text
+        response = response.replace("\n", "")
+        response = response.split("%%%%%")
+        chunks = response
+
+    else:
+        chunks = []
+        last_chunk = []
+
+        text_splitted = split_transcript(text, 15000)
+
+        for i, text_snipped in enumerate(text_splitted):
+            if i == 0:
+                
+                prompt_transcript = prompt + text_snipped
+                response = model.generate_content(prompt_transcript)
+                response = response.text
+                response = response.replace("\n", "")
+                response = response.split("%%%%%")
+                last_chunk.append(response.pop())
+                chunks.extend(response)
+
+            else:
+                text_snipped = last_chunk[-1] + text_snipped
+                prompt_transcript = prompt + text_snipped
+                response = model.generate_content(prompt_transcript)
+                response = response.text
+                response = response.replace("\n", "")
+                response = response.split("%%%%%")
+                if i != len(text_splitted) -1:
+                    last_chunk.append(response.pop())
+                chunks.extend(response)
 
     return response
 
