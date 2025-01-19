@@ -10,6 +10,8 @@ INPUT_DIR = os.path.join(BASE_DIR, 'media') # AcademicChatBot/media
 DB_DIR = os.path.join(BASE_DIR, 'db', 'chromadb') # AcademicChatBot/db/chromadb
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+
+
 def create_embedding(text):
     try:
         return model.encode(text).tolist()
@@ -19,6 +21,8 @@ def create_embedding(text):
 
 def generate_vector_db(video_id):
     csv_path = os.path.join(INPUT_DIR, video_id, "transcripts_chunks", f"{video_id}.csv") # Pfad zur CSV-Datei
+    
+
     
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
@@ -38,6 +42,12 @@ def generate_vector_db(video_id):
         else:
             collection = client.create_collection(name=collection_name)
 
+        fallback_name = "fallback"
+        if fallback_name in all_collections:
+            fallback_collection = client.get_collection(name=fallback_name)
+        else:
+            fallback_collection = client.create_collection(name=fallback_name)
+
         valid_entries = 0
         for i, row in enumerate(reader):
             if not row.get("time") or not row.get("chunks") or not row.get("length"):
@@ -53,8 +63,15 @@ def generate_vector_db(video_id):
                 "video_uploaddate": row.get("video_uploaddate"),
                 "video_duration": row.get("video_duration"),
                 "channel_url": row.get("channel_url"),
+                "is_image_description": False
             }
             collection.add(
+                embeddings=[embedding],
+                documents=[row["chunks"]],
+                metadatas=[meta],
+                ids=[unique_id]
+            )
+            fallback_collection.add(
                 embeddings=[embedding],
                 documents=[row["chunks"]],
                 metadatas=[meta],
@@ -64,4 +81,37 @@ def generate_vector_db(video_id):
             if valid_entries % 50 == 0:
                 print(f"{valid_entries} Datensätze erfolgreich gespeichert.")
 
-    print(f"Fertig! Insgesamt {valid_entries} Datensätze in der Vector Datenbank gespeichert.")
+    # After processing transcript chunks, also check for frames_description.csv
+    frames_csv_path = os.path.join(INPUT_DIR, video_id, "frames_description", "frame_descriptions.csv")
+    if os.path.exists(frames_csv_path):
+        with open(frames_csv_path, mode="r", encoding="utf-8") as frames_file:
+            frames_reader = csv.DictReader(frames_file)
+            frame_entries = 0
+            for row in frames_reader:
+                if not row.get("description"):
+                    continue
+                description_embedding = create_embedding(row["description"])
+                frame_unique_id = f"frame_{frame_entries}_{int(time.time())}"
+                frame_meta = {
+                    "video_id": row.get("video_id"),
+                    "time": row.get("time_in_s"),
+                    "is_image_description": True
+                }
+                collection.add(
+                    embeddings=[description_embedding],
+                    documents=[row["description"]],
+                    metadatas=[frame_meta],
+                    ids=[frame_unique_id]
+                )
+                fallback_collection.add(
+                    embeddings=[description_embedding],
+                    documents=[row["description"]],
+                    metadatas=[frame_meta],
+                    ids=[frame_unique_id]
+                )
+                frame_entries += 1
+            print(f"Fertig! {frame_entries} Frame-Beschreibungen in die Collection '{collection_name}' und 'fallback' gespeichert.")
+    else:
+        print("Keine 'frame_descriptions.csv' Datei gefunden; Überspringe Frames.")
+
+    print(f"Fertig! Insgesamt {valid_entries} Chunks in der Vector Datenbank in der Collection '{collection_name}' und 'fallback' gespeichert.")
