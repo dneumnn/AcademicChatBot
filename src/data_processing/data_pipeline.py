@@ -150,6 +150,13 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             if not os.path.exists(transcript_chunks_path):
                 os.makedirs(transcript_chunks_path)
             
+
+            try:
+                create_topic_video(video_id, meta_data['title'], processed_text_transcript)
+            except:
+                print("Error topic definition")
+
+
             df_video_topic_overview = pd.read_csv("media/video_topic_overview.csv")
             df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
             topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
@@ -172,10 +179,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         except Exception as e:
             log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
-        try:
-            create_topic_video(video_id, meta_data['title'], processed_text_transcript)
-        except:
-            print("Error topic definition")
+ 
 
         # Create Vector DB embedding 
         try:

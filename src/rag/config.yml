@@ -5,7 +5,7 @@ config:
     temperature: 0.8
     top_p: 0.9
     top_k: 40
-  default_knowledge_base: Artificial_Intelligence
+  default_knowledge_base: Data_Science
   default_mode: fast
   use_semantic_routing: false
   use_logical_routing: true
