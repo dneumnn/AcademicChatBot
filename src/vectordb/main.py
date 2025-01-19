@@ -10,6 +10,8 @@ INPUT_DIR = os.path.join(BASE_DIR, 'media') # AcademicChatBot/media
 DB_DIR = os.path.join(BASE_DIR, 'db', 'chromadb') # AcademicChatBot/db/chromadb
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
+
+
 def create_embedding(text):
     try:
         return model.encode(text).tolist()
@@ -19,6 +21,8 @@ def create_embedding(text):
 
 def generate_vector_db(video_id):
     csv_path = os.path.join(INPUT_DIR, video_id, "transcripts_chunks", f"{video_id}.csv") # Pfad zur CSV-Datei
+    
+
     
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
@@ -37,6 +41,12 @@ def generate_vector_db(video_id):
             collection = client.get_collection(name=collection_name)
         else:
             collection = client.create_collection(name=collection_name)
+
+        fallback_name = "fallback"
+        if fallback_name in all_collections:
+            fallback_collection = client.get_collection(name=fallback_name)
+        else:
+            fallback_collection = client.create_collection(name=fallback_name)
 
         valid_entries = 0
         for i, row in enumerate(reader):
@@ -60,8 +70,14 @@ def generate_vector_db(video_id):
                 metadatas=[meta],
                 ids=[unique_id]
             )
+            fallback_collection.add(
+                embeddings=[embedding],
+                documents=[row["chunks"]],
+                metadatas=[meta],
+                ids=[unique_id]
+            )
             valid_entries += 1
             if valid_entries % 50 == 0:
                 print(f"{valid_entries} Datensätze erfolgreich gespeichert.")
 
-    print(f"Fertig! Insgesamt {valid_entries} Datensätze in der Vector Datenbank gespeichert.")
+    print(f"Fertig! Insgesamt {valid_entries} Datensätze in der Vector Datenbank in der Collection {collection_name} gespeichert.")
