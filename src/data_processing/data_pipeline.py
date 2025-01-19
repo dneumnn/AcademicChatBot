@@ -103,7 +103,12 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         meta_data = {}
 
         # Set additional constants for paths
-        VIDEO_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/video/{video_id}.mp4"
+        VIDEO_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/video/{video_id}.mp4" # ! Not fully implemented yet
+        EXTRACTED_FRAMES_DIRECTORY = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/frames" # ! Not fully implemented yet
+        FRAMES_DESCRIPTION_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/frames_description/frame_descriptions.csv" # ! Not fully implemented yet
+        EXTRACTED_TRANSCRIPTS_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/transcripts/{video_id}.txt" # ! Not fully implemented yet
+        CHUNKED_TRANSCRIPTS_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/transcripts_chunks/{video_id}.csv" # ! Not fully implemented yet
+        VIDEO_TOPIC_OVERVIEW_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/video_topic_overview.csv" # ! Not fully implemented yet
 
         # * Download video
         if video_with_id_already_downloaded(video_id):
@@ -163,10 +168,10 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 os.makedirs(transcript_chunks_path)
 
             # Create topic_overview.csv if it does not already exist
-            if not os.path.exists("media/video_topic_overview.csv"):
-                os.makedirs(os.path.dirname("media/video_topic_overview.csv"), exist_ok=True)
+            if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
+                os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
                 df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
-                df_video_topic_overview.to_csv("media/video_topic_overview.csv", index=False)
+                df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
             # TODO: Comment and clean up from here on
             
             # * Create Video Topic
@@ -176,7 +181,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
                 return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
             
-            df_video_topic_overview = pd.read_csv("media/video_topic_overview.csv")
+            df_video_topic_overview = pd.read_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH)
             df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
             topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
 
