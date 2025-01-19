@@ -4,17 +4,27 @@ A modular RAG system that supports both vector and graph-based retrieval with mu
 
 ## Core Functions
 
-### Get Available Models
+### [HTTP /GET] Get Available Models
 
 Returns a list of all available LLM models from the local Ollama server and cloud providers. Use these model IDs when calling the chat function.
 
 ```python
-from rag.app import models
+from rag.app import models_internal
 
-available_models = models() # e.g. ["llama3.2:latest", "mistral:latest"]
+available_models = models_internal() # e.g. ["llama3.2:latest", "mistral:latest"]
 ```
 
-### RAG Function - Direct Access to RAG Pipeline
+### [HTTP /GET] Get Available Collections (Knowledge Bases)
+
+Returns a list of all available collections for the local vector database.
+
+```python
+from rag.app import collections_internal
+
+available_collections = collections_internal() # e.g. ["Data_Science", "fallback"]
+```
+
+### [INTERNAL] RAG Function - Direct Access to RAG Pipeline
 
 ```python
 from rag.rag import rag
@@ -59,12 +69,12 @@ Parameters:
 - `video_id`: Optional YouTube video ID filter for context
 - `database`: Database type to use ("vector", "graph", or "all")
 
-### Chat Function - High-Level Interface
+### [HTTP /POST] Chat Function - High-Level Interface
 
 ```python
-from rag.app import chat
+from rag.app import chat_internal
 
-response = chat(
+response = chat_internal(
     prompt="What is machine learning?"
 )
 ```
@@ -72,10 +82,13 @@ response = chat(
 Parameters:
 
 - `prompt`: Your query
-- `model_id`: Optional model ID (defaults to latest available)
+- `model_id`: Optional model ID (defaults to gemini-1.5-flash)
 - `message_history`: Previous conversation history
-- `knowledge_base`: Specific knowledge base to query
-- `model_parameters`: Model configuration parameters
+- `knowledge_base`: Specific knowledge base to query (example: fallback)
+- `model_parameters`: Dictionary containing:
+  - `temperature`: Controls randomness (0.0-1.0)
+  - `top_p`: Nucleus sampling parameter (0.0-1.0)
+  - `top_k`: Number of tokens to consider
 - `database`: Database type to use ("vector", "graph", or "all")
 - `playlist_id`: Optional YouTube playlist ID filter for context
 - `video_id`: Optional YouTube video ID filter for context
@@ -114,7 +127,7 @@ config:
   default_knowledge_base: fallback
   default_mode: fast
   use_semantic_routing: false
-  use_logical_routing: true
+  use_logical_routing: false
   retrieval_embedding_model: all-MiniLM-L6-v2
   reranking_cross_encoder_model: BAAI/bge-reranker-large # cross-encoder/stsb-roberta-base
   vectorstore_top_k: 40
@@ -123,6 +136,7 @@ config:
     uri: bolt://localhost:7687
     user: neo4j
     password: this_pw_is_a_test25218###1119jj
+  include_image_descriptions: false
 ```
 
 Key Configuration Options:
@@ -138,6 +152,7 @@ Key Configuration Options:
 - `vectorstore_top_k`: Number of initial vector results to retrieve
 - `reranking_top_k`: Number of results to keep after reranking
 - `neo4j_fallback`: Non sensitive Neo4j connection data
+- `include_image_descriptions`: Wether image descriptions of the youtube video should be considered in vector space or only the transcript
 
 ## Database Options
 
