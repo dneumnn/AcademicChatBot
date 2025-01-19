@@ -35,7 +35,7 @@ create_log_file(LOG_FILE_PATH)
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text"):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text", seconds_between_frames: int=30):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -47,6 +47,8 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         url (str): URL of the YouTube video or playlist.
         chunk_max_length (int): Maximum length of character of each chunk.
         chunk_overlap_length (int): Number of characters each chunk si overlapping.
+        embedding_model (str): Model used for the embedding step. Needs to be installed through Ollama.
+        seconds_between_frames (int): How many seconds should pass between the extracted frames.
 
     Returns:
         status_code (int): The status code that should be returned by the Fast API endpoint.
@@ -68,6 +70,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     log.info("download_pipeline_youtube: Parameter 2: chunk_max_length = %s", chunk_max_length)
     log.info("download_pipeline_youtube: Parameter 3: chunk_overlap_length = %s", chunk_overlap_length)
     log.info("download_pipeline_youtube: Parameter 4: embedding_model = %s", embedding_model)
+    log.info("download_pipeline_youtube: Parameter 5: seconds_between_frames = %s", seconds_between_frames)
 
     chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
@@ -125,7 +128,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Visual Processing: Extract frames with description
         try:
-            extract_frames_from_video(video_filepath, 600)
+            extract_frames_from_video(video_filepath, seconds_between_frames)
             create_image_description(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
