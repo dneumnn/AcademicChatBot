@@ -10,8 +10,10 @@ from .chunk_processing import *
 from .visual_processing import *
 from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
+
+# Import other functions of the graphDB package
 from src.db.graph_db.main import *
-#from src.db.graph_db.db_handler import GraphHandler
+# from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
 
 # Static variables
@@ -26,11 +28,11 @@ API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 create_log_file(LOG_FILE_PATH)
 
 # Database Connection
-#uri = "bolt://localhost:7687"
-#user = "neo4j"
-#password = "this_pw_is_a_test25218###1119jj"
+# GRAPHDB_URI = os.getenv("GRAPHDB_URI")
+# GRAPHDB_USER = os.getenv("GRAPHDB_USER")
+# GRAPHDB_PASSWORD = os.getenv("GRAPHDB_PASSWORD")
 
-#graph_handler = GraphHandler(uri, user, password)
+# graph_handler = GraphHandler(GRAPHDB_URI, GRAPHDB_USER, GRAPHDB_PASSWORD)
 
 # ********************************************************
 # * Final pipeline function
@@ -201,6 +203,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             return 500, "Internal error when trying Insert Data into graph_db. Please contact a developer."
         processed_video_titles.append(meta_data['title'])
 
+    # Log results and return appropriate message to the user
     if len(processed_video_titles) == 0:
         log.warning("YouTube content for URL %s was already processed.", url)
         return 200, "YouTube content was already processed."
