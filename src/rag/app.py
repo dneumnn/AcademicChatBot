@@ -4,6 +4,7 @@ import json
 from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, \
     DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING, DEFAULT_MODE
 from .models.model import get_available_models
+from .vectorstore.vectorstore import get_vector_collections
 from .graphstore.langchain_version import ask_question_to_graphdb, mock_load_text_to_graphdb
 from .logger.logger import setup_logger
 from .rag.rag import rag
@@ -32,7 +33,9 @@ def chat_internal(
         database: str | None = None,
         stream: bool | None = None,
         plaintext: bool | None = None,
-        mode: str | None = None
+        mode: str | None = None,
+        use_logical_routing: bool | None = None,
+        use_semantic_routing: bool | None = None
 ):
     """
     Respond to the user's prompt
@@ -105,6 +108,14 @@ def chat_internal(
         logger.warning("Plaintext is not provided. Using default value.")
         plaintext = False
 
+    if use_logical_routing is None:
+        logger.warning("Use logical routing is not provided. Using default value.")
+        use_logical_routing = USE_LOGICAL_ROUTING
+
+    if use_semantic_routing is None:
+        logger.warning("Use semantic routing is not provided. Using default value.")
+        use_semantic_routing = USE_SEMANTIC_ROUTING
+
     if stream:
         return rag(
             question=prompt,
@@ -112,8 +123,8 @@ def chat_internal(
             model_id=model_id,
             knowledge_base=knowledge_base,
             model_parameters=model_parameters,
-            use_logical_routing=USE_LOGICAL_ROUTING,
-            use_semantic_routing=USE_SEMANTIC_ROUTING,
+            use_logical_routing=use_logical_routing,
+            use_semantic_routing=use_semantic_routing,
             logger=logger,
             video_id=video_id,
             playlist_id=playlist_id,
@@ -129,8 +140,8 @@ def chat_internal(
                 model_id=model_id,
                 knowledge_base=knowledge_base,
                 model_parameters=model_parameters,
-                use_logical_routing=USE_LOGICAL_ROUTING,
-                use_semantic_routing=USE_SEMANTIC_ROUTING,
+                use_logical_routing=use_logical_routing,
+                use_semantic_routing=use_semantic_routing,
                 logger=logger,
                 video_id=video_id,
                 playlist_id=playlist_id,
@@ -157,6 +168,17 @@ def models_internal() -> List[str]:
         List[str]: List of model IDs
     """
     return get_available_models()
+
+
+# GET /collections
+def collections_internal() -> List[str]:
+    """
+    List all available collections
+ 
+    Returns:
+        List[str]: List of collection names
+    """
+    return get_vector_collections()
 
 
 ##########################################################
