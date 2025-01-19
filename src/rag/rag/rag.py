@@ -167,7 +167,7 @@ def rag(
     vector_context_metadata = []
 
     if database == "vector" or database == "all":
-        subject = route_query(question, llm, logger) if use_logical_routing else knowledge_base
+        subject = route_query(question, llm, logger) if (use_logical_routing and knowledge_base is None) else knowledge_base
         logger.info(f"Using subject: {subject}, use_logical_routing={use_logical_routing}")
         vector_filter = generate_vector_filter(logger, video_id, playlist_id)
         vector_context = get_vector_context(question, subject, logger, mode, VECTORSTORE_TOP_K, RERANKING_TOP_K,

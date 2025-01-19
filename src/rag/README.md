@@ -82,6 +82,8 @@ Parameters:
 - `stream`: Set wether response should be streamed (Default: true)
 - `plaintext`: Set wether response should be limited to plaintext (Default: false)
 - `mode`: Set the mode of the RAG module ("fast" or "smart")
+- `use_logical_routing`: Enable rule-based routing (default: False)
+- `use_semantic_routing`: Enable semantic-based routing (default: False)
 
 ## Setup
 
