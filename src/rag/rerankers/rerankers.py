@@ -1,7 +1,7 @@
 import logging
 from typing import List
 from sentence_transformers import CrossEncoder, SentenceTransformer
-from llama_index.retrievers.bm25 import BM25Retriever
+#from llama_index.retrievers.bm25 import BM25Retriever
 from llama_index.core import Document
 import Stemmer
 from torch import cosine_similarity
