@@ -133,7 +133,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         
         # * Audio Processing: Download and pre-process transcripts
         try:
-            download_preprocess_youtube_transcript(video_url)
+            download_preprocess_youtube_transcript(video_url, local_model=True, local_llm="llama3")
             # Read the downloaded transcript into the variable "processed_text_transcript"
             with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file:
                 processed_text_transcript = file.read()
