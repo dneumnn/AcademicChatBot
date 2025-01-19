@@ -10,10 +10,6 @@ from src.data_processing.logger import log
 from src.db.graph_db.utilities import *
 
 
-
-
-
-
 def parse_response_to_graph(response_text):
     """
     Verarbeitet die generierte Antwort von Gemini und extrahiert Knoten und Beziehungen.
@@ -109,44 +105,6 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
 
 def add_attributes_to_nodes(driver, meta_data, frames):
     with driver.session() as session:
-        # if meta_data:
-        #     query = """
-        #         MATCH (n:Entity)
-        #         WHERE $url_id IN n.url_id
-        #         SET 
-        #             n.title = coalesce(n.title, []) + $title,
-        #             n.description = coalesce(n.description, []) + $description,
-        #             n.duration = coalesce(n.duration, []) + $duration,
-        #             n.view_count = coalesce(n.view_count, []) + $view_count,
-        #             n.uploader = coalesce(n.uploader, []) + $uploader,
-        #             n.tags = coalesce(n.tags, []) + $tags,
-        #             n.thumbnail = coalesce(n.thumbnail, []) + $thumbnail,
-        #             n.uploader_url = coalesce(n.uploader_url, []) + $uploader_url,
-        #             n.age_limit = coalesce(n.age_limit, []) + $age_limit,
-        #             n.categories = coalesce(n.categories, []) + $categories,
-        #             n.like_count = coalesce(n.like_count, []) + $like_count,
-        #             n.upload_date = coalesce(n.upload_date, []) + $upload_date
-        #     """ 
-
-        #     session.run(query, parameters={
-        #         "title": meta_data.get('title'),
-        #         "description": meta_data.get('description'),
-        #         "duration": meta_data.get('duration'),
-        #         "view_count": meta_data.get('view_count'),
-        #         "uploader": meta_data.get('uploader'),
-        #         "tags": meta_data.get('tags'),
-        #         "thumbnail": meta_data.get('thumbnail'),
-        #         "uploader_url": meta_data.get('uploader_url'),
-        #         "age_limit": meta_data.get('age_limit'),
-        #         "categories": meta_data.get('categories'),
-        #         "like_count": meta_data.get('like_count'),
-        #         "upload_date": meta_data.get('upload_date'),
-        #         "url_id": meta_data.get('id')
-        #     })
-        # else:
-        #     log.error("download_pipeline_youtube: Meta_data could not be inserted into graph_db: %s")
-        #     return 500, "Internal error when trying to insert meta_data into graph_db. Please contact a developer."
-        
         # Insert Frame information to respective nodes
         if frames:
             query = """
@@ -180,12 +138,12 @@ def add_attributes_to_nodes(driver, meta_data, frames):
             return 500, "Internal error when trying Insert frames to nodes in graph_db. Please contact a developer."
         
 def load_csv_to_graphdb(meta_data, video_id) -> None:
-    # Lade Umgebungsvariablen und konfiguriere Google Gemini
+
     load_dotenv()
     API_KEY_GOOGLE_GEMINI_GRAPHDB = os.getenv("API_KEY_GOOGLE_GEMINI_GRAPHDB")
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI_GRAPHDB)
 
-    # Verbindung zur Neo4j-Datenbank
+    # Connection to neo4j database
     neo4j_uri = os.getenv("NEO4J_URI")
     neo4j_user = os.getenv("NEO4J_USER")
     neo4j_password = os.getenv("NEO4J_PASSWORD")
@@ -202,71 +160,64 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
         log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
         return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
     
-    # Verarbeite jeden Chunk und speichere die Daten in der Graph-Datenbank
     requests_made = 0
-    for chunk in chunks:
-        # Prompt, um Entitäten und Beziehungen zu extrahieren
-        prompt = f"""
-        Extract all Entities and their relation from following text:
-        {chunk}. Entities can be people, places, organizations, concepts, or other meaningful items. Relationships represent how these entities are connected.
+    
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
+        You are an expert in Machine Learning (ML) and Natural Language Processing (NLP). 
+        Your task is to extract entities and relationships specifically relevant to ML from text.
 
-        Return the output in the following format:
+        Entities include:
+        - ML methods, algorithms, datasets, tools, frameworks, performance metrics, and general concepts.
+
+        Relationships are:
+        - Domain-specific actions or associations (e.g., uses, trains, evaluates, is_based_on).
+
+        Output should strictly follow this format:
         Node: <Entity1>
         Node: <Entity2>
-        Relationship: <Entity1> , <Relationship> , <Entity2>
+        Relationship: <Entity1>, <Relationship>, <Entity2>
 
-        Follow these rules strictly:
+        Focus on extracting only meaningful ML-related entities and relationships.
+        Do not include generic or unrelated information. Adhere to all formatting rules.
+        """)
 
-        1. If Relationships consist of more than one word use _ to separate them. If two entities have more than one relation to one another make to separate relationships.
-        2. Relationships and nodes may only contain letters, numbers and underscores.
-        3. If a relationship includes multiple actions (e.g., `own/created`), split it into separate relationships for each action. For example:
-            - Instead of `own/created`, create `own` and `created` as two distinct relationships.
-        4. Please ensure that no relationships are created between an entity and itself. Relationships should only be established between this entity and other distinct entities. 
-           Do not allow any self-loops or cycles where an entity is related to itself.
-        """
-        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        
-        
+    for chunk in chunks:
+        user_prompt = f"""
+            Extract all Entities and their relationships from the following text:
+            {chunk}
+            """
+      
         if requests_made >= 14:
+            log.info("Rate limit reached. Sleeping for 50 seconds.")
             time.sleep(50)
             requests_made = 0
 
-        response = model.generate_content(contents=prompt)
-
-        requests_made += 1
-
-        # Verarbeite die Antwort von Gemini
-        graph_data = parse_response_to_graph(response.text)
-
-        # Speichere Knoten und Beziehungen in der Graph-Datenbank
-        add_nodes_to_graphdb(graph_data, driver, chunk, meta_data)
-
-    add_attributes_to_nodes(driver, meta_data, frames)
-    # Schließe den Neo4j-Driver
+        # Extract entities and relation from transcript chunks
+        try:
+            response = model.generate_content(contents=user_prompt)
+            print(response.text)
+            requests_made += 1
+        except Exception as e:
+            log.error("load_csv_to_graphdb: API Call failed: %s", e)
+            return 500, "Internal error when trying get response from API Call for graph_db Entity extraction. Please contact a developer."
+               
+        # Prepare LLM-answer for graph_db
+        try:
+            graph_data = parse_response_to_graph(response.text)
+        except Exception as e:
+            log.error("load_csv_to_graphdb: Data preparation for graph_db failed: %s", e)
+            return 500, "Internal error when trying prepare LLM response for graph_db. Please contact a developer."
+        
+        # Insert Nodes and Relations to graph_db
+        try:
+            add_nodes_to_graphdb(graph_data, driver, chunk, meta_data)
+        except Exception as e:
+            log.error("load_csv_to_graphdb: Node/relation insertion failed: %s", e)
+            return 500, "Internal error when trying to insert nodes and relations into graph_db. Please contact a developer."
+    try:
+        add_attributes_to_nodes(driver, meta_data, frames)
+    except Exception as e:
+        log.error("load_csv_to_graphdb: Node attribute insertion failed: %s", e)
+        return 500, "Internal error when trying to insert nodes attributes. Please contact a developer."
+    
     driver.close()
-
-'''
-meta_data = {
-    'id': 'dQw4w9WgXcQ',
-    'title': 'Never Gonna Give You Up',
-    'description': 'Never gonna give you up... (Textbeschreibung)',
-    'upload_date': '2021-10-01',
-    'duration': 213,
-    'view_count': 1000000,
-    'uploader_url': 'https://www.youtube.com/channel/UC1234567890',
-    'uploader_id': 'UC1234567890',
-    'channel_id': None,
-    'uploader': 'Bob dylan',
-    'thumbnail': 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
-    'like_count': None,
-    'tags': ['rick', 'astley', 'never gonna give you up'],
-    'categories': None,
-    'age_limit': None,
-}
-'''
-
-#load_csv_to_graphdb(documents, meta_data)
-
-# Lösche alle Knoten und Beziehungen 
-# MATCH (n)
-# DETACH DELETE n
