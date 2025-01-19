@@ -3,9 +3,11 @@ import os
 import chromadb
 import time
 import re
-from .config import INPUT_DIR, DB_DIR
+# from config import INPUT_DIR, DB_DIR
 from sentence_transformers import SentenceTransformer
-
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')) # AcademicChatBot
+INPUT_DIR = os.path.join(BASE_DIR, 'media') # AcademicChatBot/media
+DB_DIR = os.path.join(BASE_DIR, 'db', 'chromadb') # AcademicChatBot/db/chromadb
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 def create_embedding(text):
@@ -16,7 +18,7 @@ def create_embedding(text):
         return [0.0] * 384
 
 def generate_vector_db(video_id):
-    csv_path = os.path.join(INPUT_DIR, video_id, "transcripts_chunks", f"{video_id}.csv")  # Pfad zur CSV-Datei
+    csv_path = os.path.join(INPUT_DIR, video_id, "transcripts_chunks", f"{video_id}.csv") # Pfad zur CSV-Datei
     
     with open(csv_path, mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
@@ -26,12 +28,15 @@ def generate_vector_db(video_id):
             return
         collection_name = first_row["video_topic"].strip()
         collection_name = re.sub(r'[^a-zA-Z0-9_-]', '_', collection_name)
-        # Stelle sicher, dass wir nach dem Lesen der ersten Zeile wieder zum Anfang springen
         file.seek(0)
         reader = csv.DictReader(file)
 
         client = chromadb.PersistentClient(path=DB_DIR)
-        collection = client.create_collection(name=collection_name)
+        all_collections = [c.name for c in client.list_collections()]
+        if collection_name in all_collections:
+            collection = client.get_collection(name=collection_name)
+        else:
+            collection = client.create_collection(name=collection_name)
 
         valid_entries = 0
         for i, row in enumerate(reader):
@@ -59,4 +64,4 @@ def generate_vector_db(video_id):
             if valid_entries % 50 == 0:
                 print(f"{valid_entries} Datensätze erfolgreich gespeichert.")
 
-    print(f"Fertig! Insgesamt {valid_entries} Datensätze gespeichert.")
+    print(f"Fertig! Insgesamt {valid_entries} Datensätze in der Vector Datenbank gespeichert.")

@@ -13,8 +13,7 @@ from .logger import log, create_log_file, write_empty_line
 from src.db.graph_db.main import *
 #from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
-
-from src.vectordb.main import generate_vector_db
+from src.vectordb.main import *
 
 # Static variables
 VIDEO_DIRECTORY = "./media/"
@@ -177,11 +176,14 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except:
             print("Error topic definition")
+
+        # Create Vector DB embedding 
         try:
             generate_vector_db(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: The vector db could not be created: %s", e)
-            return 500, "Internal error when trying to create the vector db. Please contact a developer."
+            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
+            return 500, "Internal error when trying to generate the vector db. Please contact a developer."
+
         try:
             load_csv_to_graphdb(meta_data, video_id)
         except Exception as e:
