@@ -154,7 +154,7 @@ def chat_internal(
             return ''.join(output)
         else:
             return {
-                "content:": ''.join([json.loads(chunk)["content"] for chunk in output]),
+                "content": ''.join([json.loads(chunk)["content"] for chunk in output]),
                 "sources": json.loads(output[-1])["sources"]
             }
 
