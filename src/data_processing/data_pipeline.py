@@ -10,33 +10,34 @@ from .chunk_processing import *
 from .visual_processing import *
 from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
+
+# Import other functions of the DB packages
 from src.db.graph_db.main import *
-#from src.db.graph_db.db_handler import GraphHandler
+# from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
 from src.vectordb.main import *
 
-# Static variables
-VIDEO_DIRECTORY = "./media/"
-LOG_FILE_PATH = "src/data_processing/data-processing.log"
-
-# Env variables
+# Env variables Data Pre-Processing
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
+PROCESSED_VIDEOS_PATH = os.getenv("PROCESSED_VIDEOS_PATH")
+TOPIC_OVERVIEW_PATH = os.getenv("TOPIC_OVERVIEW_PATH")
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH")
 
 # Create log file
 create_log_file(LOG_FILE_PATH)
 
-# Database Connection
-#uri = "bolt://localhost:7687"
-#user = "neo4j"
-#password = "this_pw_is_a_test25218###1119jj"
+# Env variables Database Connection
+# GRAPHDB_URI = os.getenv("GRAPHDB_URI")
+# GRAPHDB_USER = os.getenv("GRAPHDB_USER")
+# GRAPHDB_PASSWORD = os.getenv("GRAPHDB_PASSWORD")
 
-#graph_handler = GraphHandler(uri, user, password)
+# graph_handler = GraphHandler(GRAPHDB_URI, GRAPHDB_USER, GRAPHDB_PASSWORD)
 
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text"):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=30, local_model: bool = False, enabled_detailed_chunking: bool = False):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -46,8 +47,11 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     Args:
         url (str): URL of the YouTube video or playlist.
-        chunk_max_length (int): Maximum length of character of each chunk.
-        chunk_overlap_length (int): Number of characters each chunk si overlapping.
+        chunk_max_length (int, optional): Maximum length of character of each chunk.
+        chunk_overlap_length (int, optional): Number of characters each chunk is overlapping.
+        seconds_between_frames (int, optional): How many seconds should pass between the extracted frames.
+        local_model (bool, optional): False: a Gemini model using an API key is used. True: A local Ollama model is used.
+        enabled_detailed_chunking (bool, optional): False: A simpler, sentence-based chunking method is used. True: A detailed, LLM-based chunking method is used. 
 
     Returns:
         status_code (int): The status code that should be returned by the Fast API endpoint.
@@ -56,56 +60,69 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
-
-    TODO:
-        - Document in the README all LLMs that are being used.
-        - Add enhanced images in /images.
-        - Add placeholder .env.
     """
+
+    # Check if passed parameters are valid
+    if chunk_max_length < 1:
+        return 500, "YouTube content could not be processed: The chunk_max_length parameter cannot be below 1!"
+    if chunk_overlap_length < 1:
+        return 400, "YouTube content could not be processed: The chunk_overlap_length parameter cannot be below 1!"
+    if chunk_max_length < chunk_overlap_length:
+        return 400, "YouTube content could not be processed: The chunk_max_length parameter cannot be below the chunk_overlap_length parameter!"
+    if seconds_between_frames < 1:
+        return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
+
 
     write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
     log.info("download_pipeline_youtube: Parameter 1: url = %s", url)
     log.info("download_pipeline_youtube: Parameter 2: chunk_max_length = %s", chunk_max_length)
     log.info("download_pipeline_youtube: Parameter 3: chunk_overlap_length = %s", chunk_overlap_length)
-    log.info("download_pipeline_youtube: Parameter 4: embedding_model = %s", embedding_model)
+    log.info("download_pipeline_youtube: Parameter 4: seconds_between_frames = %s", seconds_between_frames)
+    log.info("download_pipeline_youtube: Parameter 5: local_model = %s", local_model)
+    log.info("download_pipeline_youtube: Parameter 6: enabled_detailed_chunking = %s", enabled_detailed_chunking)
 
     chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
     processed_video_titles = []
 
     # * Load url(s) in the video_urls list
-    # TODO: Check other types of URLs, e.g. what happens, if an URL is passed, which belongs to a single video which is part of a playlist?
+    # Also check if the URL type is a valid YouTube video/ playlist
     if "watch" in url and "list" not in url:
         log.info("download_pipeline_youtube: %s is a YouTube video.", url)
         video_urls.append(url)
     elif "list" in url:
         log.info("download_pipeline_youtube: %s is a YouTube playlist.", url)
         video_urls = extract_video_urls_from_playlist(url)
+    elif "shorts" in url:
+        log.warning("download_pipeline_youtube: %s is a YouTube short. Not supported.", url)
+        return 415, "The URL is a shorts video. Shorts are not supported, please provide a video or playlist URL."
+    elif "@" in url:
+        log.warning("download_pipeline_youtube: %s is a YouTube channel. Not supported.", url)
+        return 415, "The URL is a channel. This is not supported, please provide a video or playlist URL."
     else:
         log.warning("download_pipeline_youtube: %s is neither a YouTube video nor a playlist.", url)
         return 415, "The URL is a valid YouTube URL, but neither a video nor a playlist."
 
     # * Try to download and process the list of YouTube videos
     for video_url in video_urls:
-        # Set needed variables
+        # Set needed result variables
         video_id = extract_youtube_video_id(video_url)
-        video_filepath = f"{VIDEO_DIRECTORY}/{video_id}/video/{video_id}.mp4"
         meta_data = {}
 
         # * Download video
         if video_with_id_already_downloaded(video_id):
-            log.warning("download_pipeline_youtube: video with ID %s was already downloaded and analyzed.", video_id)
+            log.warning("download_pipeline_youtube: Video with ID %s was already downloaded and analyzed.", video_id)
             continue
         try:
             log.info("download_pipeline_youtube: %s is a new URL!", url)
             download_youtube_video_pytube(video_url)
         except:
             try:
-                log.warning("download_pipeline_youtube: Downloading video with PyTube failed. Now trying to download it with yt_dlp.")
+                log.warning("download_pipeline_youtube: Downloading video %s with PyTube failed. Now trying to download it with yt_dlp.", video_id)
                 download_youtube_video_yt_dlp(video_url)
             except:
-                log.error("download_pipeline_youtube: Download failed with both PyTube and yt_dlp.")
+                log.error("download_pipeline_youtube: Downloading video %s failed with both PyTube and yt_dlp.", video_id)
                 return 500, "Internal error when trying to download the video. Please contact a developer."
 
         # * Extract meta data
@@ -121,36 +138,53 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Visual Processing: Extract frames with description
         try:
-            extract_frames_from_video(video_filepath, 600)
-            create_image_description(video_id)
+            # extract_frames_from_video(f"media/{video_id}/video/{video_id}.mp4", seconds_between_frames)
+            extract_frames_from_video(video_id, seconds_between_frames)
+            create_image_description(video_id, local_model=local_model)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
             return 500, "Internal error when trying to process the video visual. Please contact a developer."
         
         # * Audio Processing: Download and pre-process transcripts
         try:
-            download_preprocess_youtube_transcript(video_url)
+            download_preprocess_youtube_transcript(video_url, local_model=local_model)
             # Read the downloaded transcript into the variable "processed_text_transcript"
-            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file:
+            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file: # TODO: maybe directly return through method
                 processed_text_transcript = file.read()
         except Exception as e:
             log.error("download_pipeline_youtube: The audio processing failed: %s", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
+        # * Create Video Topic and Update Chunked Data
+        try:
+            # Create topic_overview.csv if it does not already exist
+            VIDEO_TOPIC_OVERVIEW_FILEPATH = "/media/video_topic_overview.csv"
+            if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
+                os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
+            df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
+            df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
+            create_topic_video(video_id, meta_data['title'], processed_text_transcript)
+        except Exception as e:
+            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+            return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
+
+        # TODO: Comment and clean up from here on
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
             extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
             merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
             chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
 
+            # TODO: Place 
             # Rename column "sentence" into "chunks" for the chunked data csv
             df = pd.DataFrame(chunked_text)
             df = df.rename(columns={"sentence":"chunks"})
             transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
             if not os.path.exists(transcript_chunks_path):
                 os.makedirs(transcript_chunks_path)
-            
-            df_video_topic_overview = pd.read_csv("media/video_topic_overview.csv")
+
+            # TODO: Place before chunking
+            df_video_topic_overview = pd.read_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH)
             df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
             topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
 
@@ -168,36 +202,40 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Embed text chunks
         try:
-            embed_text_chunks(video_id, embedding_model)
+            embed_text_chunks(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
-        try:
-            create_topic_video(video_id, meta_data['title'], processed_text_transcript)
-        except:
-            print("Error topic definition")
 
-        # Create Vector DB embedding 
+        # * Integrate data into VectorDB
         try:
             generate_vector_db(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
             return 500, "Internal error when trying to generate the vector db. Please contact a developer."
 
+        # * Integrate data into GraphDB
         try:
             load_csv_to_graphdb(meta_data, video_id)
+            log.info("download_pipeline_youtube: Transcripts CSV for video %s successfully inserted into the GraphDB.", video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcripts CSV could not be inserted into graph_db: %s", e)
-            return 500, "Internal error when trying Insert Data into graph_db. Please contact a developer."
-        processed_video_titles.append(meta_data['title'])
+            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s", video_id, e)
+            return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
+        processed_video_titles.append(meta_data['title']) # Add this video title to the list of successfully processed videos
+
+    # * Log results and return appropriate message to the user
     if len(processed_video_titles) == 0:
-        log.warning("YouTube content for URL %s was already processed.", url)
-        return 200, f"YouTube content was already processed."
+        log.warning("download_pipeline_youtube: YouTube content for URL %s was already processed.", url)
+        return 200, "YouTube content was already processed."
+    elif len(processed_video_titles) == 1:
+        log.info("download_pipeline_youtube: YouTube content for video %s successfully processed! ", url)
+        return 200, f"YouTube video with title {processed_video_titles[0]} successfully processed!"
     else:
-        # TODO: Implement better format for the title(s)
-        log.info("download_pipeline_youtube: The video with URL %s was successfully processed!", url)
-        return 200, f"YouTube content with Title(s) {processed_video_titles} successfully processed."
+        log.info("download_pipeline_youtube: YouTube content for playlist %s successfully processed!", url)
+        response = "YouTube playlist successfully processed!\nProcessed videos:\n\n"
+        response += "\n".join([f"{i + 1}. {title}" for i, title in enumerate(processed_video_titles)])
+        return 200, response
 
 
 def video_with_id_already_downloaded(id: str):
@@ -215,7 +253,9 @@ def video_with_id_already_downloaded(id: str):
         url_already_downloaded("dQw4w9WgXcQ")
     """
 
-    if not os.path.exists(f"{VIDEO_DIRECTORY}{id}"):
+    processed_video_path = PROCESSED_VIDEOS_PATH.replace("_videoid_", id)
+
+    if not os.path.exists(processed_video_path):
         return False
     else:
         return True

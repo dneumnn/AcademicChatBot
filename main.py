@@ -6,7 +6,7 @@ import logging
 from pydantic import BaseModel
 
 from src.data_processing.data_pipeline import download_pipeline_youtube
-from src.rag.app import chat_internal, models_internal
+from src.rag.app import chat_internal, models_internal, collections_internal
 
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO) # default=INFO (DEBUG, INFO, WARNING, ERROR, CRITICAL)
@@ -22,6 +22,11 @@ def read_root():
 def model():
     models = models_internal()
     return JSONResponse(content=models, status_code=200)
+
+@app.get("/collection")
+def collection():
+    collections = collections_internal()
+    return JSONResponse(content=collections, status_code=200)
 
 class ChatRequest(BaseModel):
     prompt: str
@@ -66,7 +71,9 @@ def chat(request: ChatRequest):
             knowledge_base=request.knowledge_base,
             stream=request.stream,
             plaintext=request.plaintext,
-            mode=request.mode
+            mode=request.mode,
+            use_logical_routing=request.use_logical_routing,
+            use_semantic_routing=request.use_semantic_routing
         )
 
         if use_plaintext:
@@ -86,7 +93,9 @@ def chat(request: ChatRequest):
                 knowledge_base=request.knowledge_base,
                 stream=request.stream,
                 plaintext=request.plaintext,
-                mode=request.mode
+                mode=request.mode,
+                use_logical_routing=request.use_logical_routing,
+                use_semantic_routing=request.use_semantic_routing
             ),
             media_type="text/event-stream",
             status_code=200
@@ -107,11 +116,11 @@ def analyze(request: AnalyzeRequest):
 
     logging.info(f"Video {video_input}")
     # Check if the passed URL is a valid YouTube URL.
-    url = "https://www.youtube.com/oembed?format=json&url=" + video_input
-    response = requests.head(url, allow_redirects=True)
-    if response.status_code in range(200, 300):
+    # url = "https://www.youtube.com/oembed?format=json&url=" + video_input # ! Deprecated
+    response = requests.head(video_input, allow_redirects=True)
+    if response.status_code in range(200, 300) and "youtube" in video_input:
         # Valid YouTube URL
-        status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, embedding_model)
+        status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, seconds_between_frames, local_model, enabled_detailed_chunking)
         if status_code in range(200, 300):
             # Pre-Processing was successfull
             return {"message": status_message, "status_code": status_code}
@@ -120,8 +129,8 @@ def analyze(request: AnalyzeRequest):
             raise HTTPException(status_code=status_code, detail=f"YouTube content could not be processed: {status_message}")
     else:
         # No valid YouTube URL
-        logging.error(f"YouTube URL does not exist: {response.status_code}")
-        raise HTTPException(status_code=404, detail=f"YouTube content could not be processed: YouTube URL does not exist.")
+        logging.warning(f"YouTube URL does not exist: Status code = {response.status_code}")
+        raise HTTPException(status_code=404, detail=f"YouTube content could not be processed: This is not a valid YouTube URL.")
 
 # placeholder
 @app.get("/support")
