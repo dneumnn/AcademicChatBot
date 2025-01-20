@@ -7,6 +7,7 @@ import sqlite3
 import hashlib
 import requests
 import logging
+import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 DB_PATH = "database/chatbot.db"
@@ -79,7 +80,7 @@ def authenticate_user(username, password):
     return False
     
 #TO-DO: use optional params if needed
-def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None):
+def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None, stream=True, plaintext=False,mode=None, use_logical_routing=False, use_semantic_routing=False):
 
     model_parameters = {
         "temperature": st.session_state.settings["temperature"],
@@ -95,8 +96,6 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
 
     if st.session_state.settings["history"]:
         message_history = get_chat_history(st.session_state.username, True)
-        logging.info(f"Message History: {message_history}")
-        logging.info(f"Prompt: {prompt}")
 
     if st.session_state.settings["database"] != "All":
         database = st.session_state.settings["database"]
@@ -110,9 +109,16 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
         "model_parameters": model_parameters,
         "playlist_id": playlist_id,
         "video_id": video_id,
-        "knowledge_base": knowledge_base
+        "knowledge_base": knowledge_base,
+        "stream": st.session_state.settings["stream"],
+        "plaintext": st.session_state.settings["plaintext"],
+        "mode": st.session_state.settings["mode"],
+       # "use_logical_routing": st.session_state.settings["use_logical_routing"],
+       # "use_semantic_routing": st.session_state.settings["use_semantic_routing"]
+
+
     }
-    response = requests.post(f"{BASE_URL}/chat", json=payload, stream=True)
+    response = requests.post(f"{BASE_URL}/chat", json=payload)
     return response.iter_lines()
 
 def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, embedding_model="nomic-embed-text"):
@@ -232,16 +238,21 @@ if "themes" not in st.session_state:
 if "settings" not in st.session_state:
     st.session_state.settings = {
         "history": False,
-        "database": "All",
-        "routing": True,
+        "database": "all",
         "temperature": 0.8,
         "top_p": 0.9,
         "top_k": 40,
         "playlist_id":None, 
         "video_id":None,
+        "stream": True,
+        "plaintext": False,
+        "mode": "fast",
+        "use_logical_routing": False,
+        "use_semantic_routing": False,
         "chunk_max_length": 550,
         "chunk_overlap_length": 50,
-        "embedding_model": "nomic-embed-text"
+        "embedding_model": "nomic-embed-text",
+        "knowledge_base": "Data Science"
     }
 
 # Session management
@@ -363,17 +374,31 @@ if page == "Settings":
 
     with col1:
         st.markdown("### Chat Settings")
+        st.markdown("#### Settings for the creation model")
         history = st.checkbox("Use the context of the chat history ", st.session_state.settings["history"])
         database = st.selectbox(
             "Select Database Type",
-            ["All", "Vector", "Graph"],
-            index=["All", "Vector", "Graph"].index(str(st.session_state.settings["database"]).strip())) 
-        routing = st.checkbox("Use Logical Routing", st.session_state.settings["routing"])
+            ["all", "vector", "graph"],
+            index=["all", "vector", "graph"].index(str(st.session_state.settings["database"]).strip())) 
         temperature = st.slider("Controls randomness (lower = precise, higher = creative)", 0.0, 1.0, st.session_state.settings["temperature"])
         top_p = st.slider("Chooses tokens based on cumulative probability (higher = diverse)", 0.0, 1.0, st.session_state.settings["top_p"])
         top_k = st.slider("Limits the number of tokens considered (higher = creative)", 1, 100, st.session_state.settings["top_k"])
+        knowledge_base = st.selectbox(
+            "Select a Knowledge Base",
+            ["Data Science", "IDK"],
+            index=["Data Science", "IDK"].index(str(st.session_state.settings["knowledge_base"]).strip()))
         playlist_id = st.text_input("Enter a Playlist to use as context", st.session_state.settings["playlist_id"])
         video_id = st.text_input("Enter a Video to use as context", st.session_state.settings["video_id"])
+        mode = st.selectbox(
+            "Select mode of text Generation",
+            ["fast", "smart"],
+            index=["fast", "smart"].index(str(st.session_state.settings["mode"]).strip())) 
+        use_logical_routing = st.checkbox("Use Logical Routing", st.session_state.settings["use_logical_routing"])
+        use_semantic_routing = st.checkbox("Use Semantic Routing", st.session_state.settings["use_semantic_routing"])
+        st.markdown("#### Settings for the output of the answer")
+        stream = st.checkbox("Get answer as a stream", st.session_state.settings["stream"])
+        plaintext = st.checkbox("Only get text without sources", st.session_state.settings["plaintext"])
+        
 
     with spacer:
         st.write("")
@@ -389,20 +414,21 @@ if page == "Settings":
 
     st.session_state.settings["history"] = history
     st.session_state.settings["database"] = database
-    st.session_state.settings["routing"] = routing
     st.session_state.settings["chunk_max_length"] = chunk_max_length
     st.session_state.settings["chunk_overlap_length"] = chunk_overlap_length
     st.session_state.settings["embedding_model"] = embedding_model
-    st.session_state.settings["tempreature"] = temperature
+    st.session_state.settings["temperature"] = temperature
     st.session_state.settings["top_p"] = top_p
     st.session_state.settings["top_k"] = top_k
     st.session_state.settings["playlist_id"] = playlist_id
     st.session_state.settings["video_id"] = video_id
-
-    # Display current settings
-    st.markdown("### Current Settings")
-    st.write(f"Chatsettings:{st.session_state.settings['history']}{st.session_state.settings['database']}{st.session_state.settings['routing']}{st.session_state.settings['temperature']}{st.session_state.settings['top_p']}{st.session_state.settings['top_k']}{st.session_state.settings['playlist_id']}{st.session_state.settings['video_id']}")
-    st.write(f"Chatsettings:{st.session_state.settings['chunk_max_length']}{st.session_state.settings['chunk_overlap_length']}{st.session_state.settings['embedding_model']}")
+    st.session_state.settings["stream"] = stream
+    st.session_state.settings["plaintext"] = plaintext
+    st.session_state.settings["mode"] = mode
+    st.session_state.settings["use_logical_routing"] = use_logical_routing
+    st.session_state.settings["use_semantic_routing"] = use_semantic_routing
+    st.session_state.settings["knowledge_base"] = knowledge_base
+    
 
 # CHAT
 elif page == "Chat":
@@ -425,6 +451,7 @@ elif page == "Chat":
 
         with st.chat_message("assistant"):
             response_placeholder = st.empty()  # placeholder
+            source_placeholder = st.empty()
             response_content = ""
             if "youtube.com" in prompt or "youtu.be" in prompt:
                 lines = get_analyze_response(prompt)
@@ -432,15 +459,52 @@ elif page == "Chat":
             else:
                 lines = get_chat_response(prompt)
 
-            for line in lines:
-                if line:
-                    word = line.decode('utf-8')
-                    response_content += word + " "
-                    response_placeholder.markdown(response_content)
-                    time.sleep(0.05)
-            st.session_state.messages.append({"role": "assistant", "content": response_content})
-            # TO-DO: timestamp correctly    
-            save_chat(st.session_state.username, prompt, response_content)
+
+            if st.session_state.settings["plaintext"]== False:
+                combined_content = ""
+                all_sources = set()
+
+                buffer = ""  # Puffer für unvollständige JSON-Objekte
+
+                for line in lines:
+                    if line:
+                        try:
+                            # Füge die neue Zeile in den Puffer ein
+                            buffer += line.decode("utf-8")
+                            
+                            # Versuche, JSON zu dekodieren
+                            while buffer:
+                                try:
+                                    # Dekodiere ein JSON-Objekt aus dem Puffer
+                                    data, index = json.JSONDecoder().raw_decode(buffer)
+                                    
+                                    # Verarbeite das JSON-Objekt
+                                    combined_content += data.get("content", "")
+                                    response_placeholder.markdown(combined_content)
+                                    all_sources.update(data.get("sources", []))
+                                    source_placeholder.markdown("Sources: " + ", ".join(all_sources))
+                                    
+                                    # Entferne das verarbeitete Objekt aus dem Puffer
+                                    buffer = buffer[index:].lstrip()
+                                except json.JSONDecodeError:
+                                    # Falls der Puffer unvollständig ist, warte auf weitere Daten
+                                    break
+                        except Exception as e:
+                            print(f"Fehler beim Verarbeiten der Zeile: {e}")
+                st.session_state.messages.append({"role": "assistant", "content": combined_content, "sources": all_sources})
+                content = combined_content + "Sources: " + ", ".join(all_sources)
+                save_chat(st.session_state.username, prompt, content)
+
+            else:
+                    for line in lines:
+                        if line:
+                            word = line.decode('utf-8')
+                            response_content += word + " "
+                            response_placeholder.markdown(response_content)
+                            time.sleep(0.05)
+                    st.session_state.messages.append({"role": "assistant", "content": response_content})
+                    # TO-DO: timestamp correctly    
+                    save_chat(st.session_state.username, prompt, response_content)
 
 elif page == "Support":
     st.title("Support")
