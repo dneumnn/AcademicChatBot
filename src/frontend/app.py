@@ -113,8 +113,8 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
         "stream": st.session_state.settings["stream"],
         "plaintext": st.session_state.settings["plaintext"],
         "mode": st.session_state.settings["mode"],
-       # "use_logical_routing": st.session_state.settings["use_logical_routing"],
-       # "use_semantic_routing": st.session_state.settings["use_semantic_routing"]
+        "use_logical_routing": st.session_state.settings["use_logical_routing"],
+        "use_semantic_routing": st.session_state.settings["use_semantic_routing"]
 
 
     }
@@ -177,11 +177,14 @@ def get_all_support_requests():
 
 
 def get_available_models():
+    excluded_model_name = "nomic-embed-text"
     try:
         response = requests.get(f"{BASE_URL}/model")
         if response.status_code == 200:
             models = response.json()
             if isinstance(models, list) and all(isinstance(model, str) for model in models):
+                if excluded_model_name:
+                    models = [model for model in models if model != excluded_model_name]
                 return models
             else:
                 st.error("Unexpected response format.")
@@ -252,7 +255,10 @@ if "settings" not in st.session_state:
         "chunk_max_length": 550,
         "chunk_overlap_length": 50,
         "embedding_model": "nomic-embed-text",
-        "knowledge_base": "Data Science"
+        "knowledge_base": "Data Science",
+        "seconds_between_frames": 30,
+        "local_model": False,
+        "enabled_detailed_chunking": False
     }
 
 # Session management
@@ -411,6 +417,10 @@ if page == "Settings":
             "Select Embedding Model",
             ["nomic-embed-text"],
             index=["nomic-embed-text"].index(str(st.session_state.settings["embedding_model"]).strip()))
+        
+        seconds_between_frames = st.slider("Select a value for the seconds between frames", 1, 100, st.session_state.settings["seconds_between_frames"])
+        local_model = st.checkbox("Use local model", st.session_state.settings["local_model"])
+        enabled_detailed_chunking = st.checkbox("Enable detailed chunking", st.session_state.settings["enabled_detailed_chunking"])
 
     st.session_state.settings["history"] = history
     st.session_state.settings["database"] = database
@@ -428,6 +438,10 @@ if page == "Settings":
     st.session_state.settings["use_logical_routing"] = use_logical_routing
     st.session_state.settings["use_semantic_routing"] = use_semantic_routing
     st.session_state.settings["knowledge_base"] = knowledge_base
+    st.session_state.settings["seconds_between_frames"] = seconds_between_frames
+    st.session_state.settings["local_model"] = local_model
+    st.session_state.settings["enabled_detailed_chunking"] = enabled_detailed_chunking
+
     
 
 # CHAT
@@ -454,10 +468,12 @@ elif page == "Chat":
             source_placeholder = st.empty()
             response_content = ""
             if "youtube.com" in prompt or "youtu.be" in prompt:
-                lines = get_analyze_response(prompt)
+                with st.spinner("Analyzing video..."):
+                    lines = get_analyze_response(prompt)
 
             else:
-                lines = get_chat_response(prompt)
+                with st.spinner("Generating response..."):
+                    lines = get_chat_response(prompt)
 
 
             if st.session_state.settings["plaintext"]== False:

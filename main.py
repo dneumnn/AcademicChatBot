@@ -49,6 +49,9 @@ class AnalyzeRequest(BaseModel):
     chunk_max_length: Optional[int] = 550
     chunk_overlap_length: Optional[int] = 50
     embedding_model: Optional[str] = "nomic-embed-text"
+    seconds_between_frames: Optional[int] = 30
+    local_model: Optional[bool] = False
+    enabled_detailed_chunking: Optional[bool] = False
 
 
 @app.post("/chat", response_class=StreamingResponse)
@@ -114,6 +117,9 @@ def analyze(request: AnalyzeRequest):
     chunk_max_length = request.chunk_max_length
     chunk_overlap_length = request.chunk_overlap_length
     embedding_model = request.embedding_model
+    seconds_between_frames = request.seconds_between_frames
+    local_model  = request.local_model
+    enabled_detailed_chunking = request.enabled_detailed_chunking
     
 
     logging.info(f"Video {video_input}")
