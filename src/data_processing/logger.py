@@ -25,20 +25,22 @@ log = logging.getLogger("data_processing")
 
 
 def create_log_file(filename: str):
-    if not os.path.exists(filename) or os.stat(filename).st_size == 0:
+    try:
+        if not os.path.exists(filename) or os.stat(filename).st_size == 0:
 
-        # Get current timestamp and the used timezone
-        tz = pytz.timezone('CET') # Central European Time
-        timestamp = datetime.now(tz)
-        formated_timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
-        timezone = timestamp.strftime('%Z')
+            # Get current timestamp and the used timezone
+            tz = pytz.timezone('CET') # Central European Time
+            timestamp = datetime.now(tz)
+            formated_timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
+            timezone = timestamp.strftime('%Z')
 
-        # Write into the log file.
-        with open(filename, 'w') as file:
-            file.write("# Application Log - Service: Data Pre-Processing\n")
-            file.write(f"# Generated on: {formated_timestamp} {timezone}\n")
-            file.write("================================================================================================================================================================\n")
-
+            # Write into the log file.
+            with open(filename, 'w') as file:
+                file.write("# Application Log - Service: Data Pre-Processing\n")
+                file.write(f"# Generated on: {formated_timestamp} {timezone}\n")
+                file.write("================================================================================================================================================================\n")
+    except:
+        print("log file creation failed")
 
 def write_empty_line(filename: str):
     with open(filename, 'a') as file:
