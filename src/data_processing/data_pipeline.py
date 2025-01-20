@@ -11,7 +11,7 @@ from .visual_processing import *
 from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
 
-# Import other functions of the graphDB package
+# Import other functions of the DB packages
 from src.db.graph_db.main import *
 # from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
@@ -61,6 +61,17 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
     """
+
+    # Check if passed parameters are valid
+    if chunk_max_length < 1:
+        return 500, "YouTube content could not be processed: The chunk_max_length parameter cannot be below 1!"
+    if chunk_overlap_length < 1:
+        return 400, "YouTube content could not be processed: The chunk_overlap_length parameter cannot be below 1!"
+    if chunk_max_length < chunk_overlap_length:
+        return 400, "YouTube content could not be processed: The chunk_max_length parameter cannot be below the chunk_overlap_length parameter!"
+    if seconds_between_frames < 1:
+        return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
+
 
     write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
@@ -144,6 +155,19 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             log.error("download_pipeline_youtube: The audio processing failed: %s", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
+        # * Create Video Topic and Update Chunked Data
+        try:
+            # Create topic_overview.csv if it does not already exist
+            VIDEO_TOPIC_OVERVIEW_FILEPATH = "/media/video_topic_overview.csv"
+            if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
+                os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
+            df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
+            df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
+            create_topic_video(video_id, meta_data['title'], processed_text_transcript)
+        except Exception as e:
+            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+            return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
+
         # TODO: Comment and clean up from here on
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
@@ -160,20 +184,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 os.makedirs(transcript_chunks_path)
 
             # TODO: Place before chunking
-            # Create topic_overview.csv if it does not already exist
-            VIDEO_TOPIC_OVERVIEW_FILEPATH = "/media/video_topic_overview.csv"
-            if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
-                os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
-                df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
-                df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
-            
-            # * Create Video Topic and Update Chunked Data
-            try:
-                create_topic_video(video_id, meta_data['title'], processed_text_transcript)
-            except Exception as e:
-                log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
-                return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
-            
             df_video_topic_overview = pd.read_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH)
             df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
             topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
