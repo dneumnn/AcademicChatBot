@@ -1,9 +1,11 @@
 from typing import List
 import json
 
-from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
+from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, \
+    DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING, DEFAULT_MODE
 from .models.model import get_available_models
-from .graphstore.langchain import ask_question_to_graphdb, mock_load_text_to_graphdb
+from .vectorstore.vectorstore import get_vector_collections
+from .graphstore.langchain_version import ask_question_to_graphdb, mock_load_text_to_graphdb
 from .logger.logger import setup_logger
 from .rag.rag import rag
 from .__tests__.generation import test_complete_generation
@@ -13,11 +15,12 @@ from .graphstore.graphstore import get_full_graph_information
 VectorDB -> ChromaDB
 GraphDB -> neo4j
 """
- 
+
+
 ##########################################################
 # Final functions
 ##########################################################
- 
+
 # POST /chat
 def chat_internal(
         prompt: str,
@@ -29,8 +32,11 @@ def chat_internal(
         model_parameters: dict | None = None,
         database: str | None = None,
         stream: bool | None = None,
-        plaintext: bool | None = None
-    ):
+        plaintext: bool | None = None,
+        mode: str | None = None,
+        use_logical_routing: bool | None = None,
+        use_semantic_routing: bool | None = None
+):
     """
     Respond to the user's prompt
  
@@ -51,6 +57,10 @@ def chat_internal(
     """
     logger = setup_logger()
 
+    if mode is None:
+        logger.warning(f"Mode is not provided. Using default mode: {DEFAULT_MODE}")
+        mode = DEFAULT_MODE
+
     if prompt is None or prompt == "":
         logger.error("Prompt is empty. Throwing error.")
         raise ValueError("Prompt is empty")
@@ -64,7 +74,8 @@ def chat_internal(
     logger.info(f"Using database: {database}")
 
     if model_id is None or model_id not in get_available_models():
-        logger.warning(f"Invalid model ID: {model_id}. Available models: {get_available_models()}. Using default model.")
+        logger.warning(
+            f"Invalid model ID: {model_id}. Available models: {get_available_models()}. Using default model.")
         model_id = DEFAULT_MODEL
 
     logger.info(f"Using model: {model_id}")
@@ -76,7 +87,8 @@ def chat_internal(
             "top_p": DEFAULT_MODEL_PARAMETER_TOP_P,
             "top_k": DEFAULT_MODEL_PARAMETER_TOP_K
         }
-    elif "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters["temperature"] > 1:
+    elif "temperature" not in model_parameters or model_parameters["temperature"] < 0 or model_parameters[
+        "temperature"] > 1:
         logger.warning(f"Invalid temperature: {model_parameters.get('temperature')}. Using default temperature.")
         model_parameters["temperature"] = DEFAULT_MODEL_PARAMETER_TEMPERATURE
     elif "top_p" not in model_parameters or model_parameters["top_p"] < 0 or model_parameters["top_p"] > 1:
@@ -85,7 +97,7 @@ def chat_internal(
     elif "top_k" not in model_parameters or model_parameters["top_k"] < 0:
         logger.warning(f"Invalid top_k: {model_parameters.get('top_k')}. Using default top_k.")
         model_parameters["top_k"] = DEFAULT_MODEL_PARAMETER_TOP_K
-    
+
     logger.info(f"Using model parameters: {model_parameters}")
 
     if stream is None:
@@ -96,6 +108,14 @@ def chat_internal(
         logger.warning("Plaintext is not provided. Using default value.")
         plaintext = False
 
+    if use_logical_routing is None:
+        logger.warning("Use logical routing is not provided. Using default value.")
+        use_logical_routing = USE_LOGICAL_ROUTING
+
+    if use_semantic_routing is None:
+        logger.warning("Use semantic routing is not provided. Using default value.")
+        use_semantic_routing = USE_SEMANTIC_ROUTING
+
     if stream:
         return rag(
             question=prompt,
@@ -103,23 +123,31 @@ def chat_internal(
             model_id=model_id,
             knowledge_base=knowledge_base,
             model_parameters=model_parameters,
-            use_logical_routing=USE_LOGICAL_ROUTING,
-            use_semantic_routing=USE_SEMANTIC_ROUTING,
+            use_logical_routing=use_logical_routing,
+            use_semantic_routing=use_semantic_routing,
             logger=logger,
-            plaintext=plaintext
+            video_id=video_id,
+            playlist_id=playlist_id,
+            plaintext=plaintext,
+            database=database,
+            mode=mode
         )
     else:
         output = []
         for chunk in rag(
-            question=prompt,
-            message_history=message_history,
-            model_id=model_id,
-            knowledge_base=knowledge_base,
-            model_parameters=model_parameters,
-            use_logical_routing=USE_LOGICAL_ROUTING,
-            use_semantic_routing=USE_SEMANTIC_ROUTING,
-            logger=logger,
-            plaintext=plaintext
+                question=prompt,
+                message_history=message_history,
+                model_id=model_id,
+                knowledge_base=knowledge_base,
+                model_parameters=model_parameters,
+                use_logical_routing=use_logical_routing,
+                use_semantic_routing=use_semantic_routing,
+                logger=logger,
+                video_id=video_id,
+                playlist_id=playlist_id,
+                plaintext=plaintext,
+                database=database,
+                mode=mode
         ):
             output.append(chunk)
         if plaintext:
@@ -129,7 +157,8 @@ def chat_internal(
                 "content:": ''.join([json.loads(chunk)["content"] for chunk in output]),
                 "sources": json.loads(output[-1])["sources"]
             }
- 
+
+
 # GET /models
 def models_internal() -> List[str]:
     """
@@ -139,7 +168,19 @@ def models_internal() -> List[str]:
         List[str]: List of model IDs
     """
     return get_available_models()
+
+
+# GET /collections
+def collections_internal() -> List[str]:
+    """
+    List all available collections
  
+    Returns:
+        List[str]: List of collection names
+    """
+    return get_vector_collections()
+
+
 ##########################################################
 
 def main():
@@ -148,24 +189,16 @@ def main():
     #print(ask_question_to_graphdb("Which book is Lewis Carroll the author of?"))
     #rag(database_path=DATABASE_PATH, question="What is allices opinion on getting older?")
     #test_complete_generation(DATABASE_PATH, generate_output_first=False)
-    chat_internal(
-        prompt="What are other types and what do they do?",
-        message_history=[
-            {"role": "user", "content": "What are discriminative models?"},
-            {"role": "assistant", "content": "Discriminative models are a type of machine learning model that are used to classify data into different categories."},
-            {"role": "user", "content": "What do they do?"},
-            {"role": "assistant", "content": "Discriminative models learn from the relationship between labels of data points and can only classify those data points. They learn from labeled data and predict labels for new, unlabeled data points. Examples include image classification tasks like identifying cats or dogs."},
-            {"role": "user", "content": "What are other types and what do they do?"}
-        ],
-        model_id="llama3.2:latest",
-        database="vector",
-        model_parameters={
-            "temperature": 0.8,
-            "top_p": 0.9,
-            "top_k": 40
-        }
-    )
+    print(chat_internal(
+        prompt="Whats the price of the new cards?",
+        model_id="gemini-1.5-flash",
+        database="all",
+        stream=False,
+        plaintext=True,
+        mode="smart"
+    ))
     #get_full_graph_information()
- 
+
+
 if __name__ == "__main__":
     main()

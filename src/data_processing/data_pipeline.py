@@ -15,6 +15,7 @@ from .logger import log, create_log_file, write_empty_line
 from src.db.graph_db.main import *
 # from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
+from src.vectordb.main import *
 
 # Env variables Data Pre-Processing
 load_dotenv() 
@@ -195,6 +196,13 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         except Exception as e:
             log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
+
+        # * Integrate data into VectorDB
+        try:
+            generate_vector_db(video_id)
+        except Exception as e:
+            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
+            return 500, "Internal error when trying to generate the vector db. Please contact a developer."
 
         # * Integrate data into GraphDB
         try:
