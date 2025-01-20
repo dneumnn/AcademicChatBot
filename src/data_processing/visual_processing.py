@@ -104,8 +104,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
                 "bullet points, or other structural elements, just a clear and concise explanation of the image content."
             )
 
-        if local_model == False:
-            # TODO: Dynamically read the time to sleep (?)
+        if not local_model:
             if requests_made >= 10:
                 time.sleep(60)
                 requests_made = 0

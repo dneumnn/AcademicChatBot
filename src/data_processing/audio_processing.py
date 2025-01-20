@@ -67,7 +67,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
     raw_combined_transcript = " ".join(combinded_transcript)
     
     try:
-        if local_model == False:
+        if not local_model:
             max_length = 20000  
             transcript_chunks = split_transcript(raw_combined_transcript, max_length)
 
