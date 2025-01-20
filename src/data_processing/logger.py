@@ -3,6 +3,9 @@ import logging
 import os
 import uuid
 import pytz
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Generate unique session ID at the start of the application
 session_id = str(uuid.uuid4())[:8] # Shortened UUID
@@ -20,7 +23,7 @@ logging.basicConfig (
     level=logging.INFO, # Logging level
     format=f'%(asctime)s [Session-{session_id}] %(levelname)s - %(message)s' # Format of the log messages
 )
-
+ 
 log = logging.getLogger("data_processing")
 
 

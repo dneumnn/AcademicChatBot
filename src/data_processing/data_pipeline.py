@@ -40,7 +40,7 @@ create_log_file(LOG_FILE_PATH)
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=30, local_model: bool = False, enabled_detailed_chunking: bool = False):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=120, local_model: bool = False, enabled_detailed_chunking: bool = False):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -199,11 +199,10 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         # * Create Video Topic and Update Chunked Data
         try:
             # Create topic_overview.csv if it does not already exist
-            VIDEO_TOPIC_OVERVIEW_FILEPATH = "/media/video_topic_overview.csv"
-            if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
-                os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
-            df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
-            df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
+            if not os.path.exists(TOPIC_OVERVIEW_PATH):
+                os.makedirs(os.path.dirname(TOPIC_OVERVIEW_PATH), exist_ok=True)
+                df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
+                df_video_topic_overview.to_csv(TOPIC_OVERVIEW_PATH, index=False)
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except Exception as e:
             log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
@@ -225,7 +224,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 os.makedirs(transcript_chunks_path)
 
             # TODO: Place before chunking
-            df_video_topic_overview = pd.read_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH)
+            df_video_topic_overview = pd.read_csv(TOPIC_OVERVIEW_PATH)
             df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
             topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
 
@@ -329,3 +328,4 @@ def model_exists(model_name: str):
     except FileNotFoundError:
         # Ollama command-line tool is not installed or not in PATH
         return False, "Ollama not found"
+    

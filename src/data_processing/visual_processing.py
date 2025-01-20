@@ -106,8 +106,8 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
         if local_model == False:
             # TODO: Dynamically read the time to sleep (?)
-            if requests_made >= 14:
-                time.sleep(50)
+            if requests_made >= 10:
+                time.sleep(60)
                 requests_made = 0
 
             # Generate response
