@@ -40,6 +40,8 @@ class ChatRequest(BaseModel):
     stream: Optional[bool] = True
     plaintext: Optional[bool] = False
     mode: Optional[str] = None
+    use_logical_routing: Optional[bool] = None
+    use_semantic_routing: Optional[bool] = None
 
 
 class AnalyzeRequest(BaseModel):
