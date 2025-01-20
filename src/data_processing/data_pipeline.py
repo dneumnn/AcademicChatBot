@@ -62,6 +62,17 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
     """
 
+    # Check if passed parameters are valid
+    if chunk_max_length < 1:
+        return 500, "YouTube content could not be processed: The chunk_max_length parameter cannot be below 1!"
+    if chunk_overlap_length < 1:
+        return 400, "YouTube content could not be processed: The chunk_overlap_length parameter cannot be below 1!"
+    if chunk_max_length < chunk_overlap_length:
+        return 400, "YouTube content could not be processed: The chunk_max_length parameter cannot be below the chunk_overlap_length parameter!"
+    if seconds_between_frames < 1:
+        return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
+
+
     write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
     log.info("download_pipeline_youtube: Parameter 1: url = %s", url)
