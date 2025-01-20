@@ -16,18 +16,17 @@ from src.db.graph_db.main import *
 # from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
 
-# Static variables
-PROCESSED_VIDEOS_DIRECTORY = "./media/"
-LOG_FILE_PATH = "src/data_processing/data-processing.log"
-
-# Env variables
+# Env variables Data Pre-Processing
 load_dotenv() 
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
+PROCESSED_VIDEOS_PATH = os.getenv("PROCESSED_VIDEOS_PATH")
+TOPIC_OVERVIEW_PATH = os.getenv("TOPIC_OVERVIEW_PATH")
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH")
 
 # Create log file
 create_log_file(LOG_FILE_PATH)
 
-# Database Connection
+# Env variables Database Connection
 # GRAPHDB_URI = os.getenv("GRAPHDB_URI")
 # GRAPHDB_USER = os.getenv("GRAPHDB_USER")
 # GRAPHDB_PASSWORD = os.getenv("GRAPHDB_PASSWORD")
@@ -37,7 +36,7 @@ create_log_file(LOG_FILE_PATH)
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, embedding_model: str="nomic-embed-text", seconds_between_frames: int=30):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=30, local_model: bool = False, enabled_detailed_chunking: bool = False):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -47,10 +46,11 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     Args:
         url (str): URL of the YouTube video or playlist.
-        chunk_max_length (int): Maximum length of character of each chunk.
-        chunk_overlap_length (int): Number of characters each chunk si overlapping.
-        embedding_model (str): Model used for the embedding step. Needs to be installed through Ollama.
-        seconds_between_frames (int): How many seconds should pass between the extracted frames.
+        chunk_max_length (int, optional): Maximum length of character of each chunk.
+        chunk_overlap_length (int, optional): Number of characters each chunk is overlapping.
+        seconds_between_frames (int, optional): How many seconds should pass between the extracted frames.
+        local_model (bool, optional): False: a Gemini model using an API key is used. True: A local Ollama model is used.
+        enabled_detailed_chunking (bool, optional): False: A simpler, sentence-based chunking method is used. True: A detailed, LLM-based chunking method is used. 
 
     Returns:
         status_code (int): The status code that should be returned by the Fast API endpoint.
@@ -59,11 +59,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     Example:
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
-
-    TODO:
-        - Document in the README all LLMs that are being used.
-        - Add enhanced images in /images.
-        - Add placeholder .env.
     """
 
     write_empty_line("src/data_processing/data-processing.log")
@@ -71,8 +66,9 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     log.info("download_pipeline_youtube: Parameter 1: url = %s", url)
     log.info("download_pipeline_youtube: Parameter 2: chunk_max_length = %s", chunk_max_length)
     log.info("download_pipeline_youtube: Parameter 3: chunk_overlap_length = %s", chunk_overlap_length)
-    log.info("download_pipeline_youtube: Parameter 4: embedding_model = %s", embedding_model)
-    log.info("download_pipeline_youtube: Parameter 5: seconds_between_frames = %s", seconds_between_frames)
+    log.info("download_pipeline_youtube: Parameter 4: seconds_between_frames = %s", seconds_between_frames)
+    log.info("download_pipeline_youtube: Parameter 5: local_model = %s", local_model)
+    log.info("download_pipeline_youtube: Parameter 6: enabled_detailed_chunking = %s", enabled_detailed_chunking)
 
     chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
@@ -102,14 +98,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         video_id = extract_youtube_video_id(video_url)
         meta_data = {}
 
-        # Set additional constants for paths
-        VIDEO_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/video/{video_id}.mp4" # ! Not fully implemented yet
-        EXTRACTED_FRAMES_DIRECTORY = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/frames" # ! Not fully implemented yet
-        FRAMES_DESCRIPTION_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/frames_description/frame_descriptions.csv" # ! Not fully implemented yet
-        EXTRACTED_TRANSCRIPTS_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/transcripts/{video_id}.txt" # ! Not fully implemented yet
-        CHUNKED_TRANSCRIPTS_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/{video_id}/transcripts_chunks/{video_id}.csv" # ! Not fully implemented yet
-        VIDEO_TOPIC_OVERVIEW_FILEPATH = f"{PROCESSED_VIDEOS_DIRECTORY}/video_topic_overview.csv" # ! Not fully implemented yet
-
         # * Download video
         if video_with_id_already_downloaded(video_id):
             log.warning("download_pipeline_youtube: Video with ID %s was already downloaded and analyzed.", video_id)
@@ -138,28 +126,31 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Visual Processing: Extract frames with description
         try:
-            extract_frames_from_video(VIDEO_FILEPATH, seconds_between_frames)
-            create_image_description(video_id)
+            # extract_frames_from_video(f"media/{video_id}/video/{video_id}.mp4", seconds_between_frames)
+            extract_frames_from_video(video_id, seconds_between_frames)
+            create_image_description(video_id, local_model=local_model)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
             return 500, "Internal error when trying to process the video visual. Please contact a developer."
         
         # * Audio Processing: Download and pre-process transcripts
         try:
-            download_preprocess_youtube_transcript(video_url, local_model=True, local_llm="llama3")
+            download_preprocess_youtube_transcript(video_url, local_model=local_model)
             # Read the downloaded transcript into the variable "processed_text_transcript"
-            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file:
+            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file: # TODO: maybe directly return through method
                 processed_text_transcript = file.read()
         except Exception as e:
             log.error("download_pipeline_youtube: The audio processing failed: %s", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
+        # TODO: Comment and clean up from here on
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
             extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
             merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
             chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
 
+            # TODO: Place 
             # Rename column "sentence" into "chunks" for the chunked data csv
             df = pd.DataFrame(chunked_text)
             df = df.rename(columns={"sentence":"chunks"})
@@ -167,14 +158,15 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             if not os.path.exists(transcript_chunks_path):
                 os.makedirs(transcript_chunks_path)
 
+            # TODO: Place before chunking
             # Create topic_overview.csv if it does not already exist
+            VIDEO_TOPIC_OVERVIEW_FILEPATH = "/media/video_topic_overview.csv"
             if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
                 os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
                 df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
                 df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
-            # TODO: Comment and clean up from here on
             
-            # * Create Video Topic
+            # * Create Video Topic and Update Chunked Data
             try:
                 create_topic_video(video_id, meta_data['title'], processed_text_transcript)
             except Exception as e:
@@ -199,7 +191,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Embed text chunks
         try:
-            embed_text_chunks(video_id, embedding_model)
+            embed_text_chunks(video_id)
         except Exception as e:
             log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
@@ -214,7 +206,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         processed_video_titles.append(meta_data['title']) # Add this video title to the list of successfully processed videos
 
-    # Log results and return appropriate message to the user
+    # * Log results and return appropriate message to the user
     if len(processed_video_titles) == 0:
         log.warning("download_pipeline_youtube: YouTube content for URL %s was already processed.", url)
         return 200, "YouTube content was already processed."
@@ -243,7 +235,9 @@ def video_with_id_already_downloaded(id: str):
         url_already_downloaded("dQw4w9WgXcQ")
     """
 
-    if not os.path.exists(f"{PROCESSED_VIDEOS_DIRECTORY}{id}"):
+    processed_video_path = PROCESSED_VIDEOS_PATH.replace("_videoid_", id)
+
+    if not os.path.exists(processed_video_path):
         return False
     else:
         return True

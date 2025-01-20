@@ -18,30 +18,31 @@ load_dotenv()
 API_KEY_GOOGLE_GEMINI = os.getenv("API_KEY_GOOGLE_GEMINI")
 
 
-def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
+def extract_frames_from_video(video_id: str, interval_in_sec: int = 30):
     """
     Extract a certain number of frames of a YouTube video.
 
     Args:
-        video_filepath (str): The filepath of the video.
-        interval_in_sec (int): Interval in seconds between each frame to be extracted. This specifies how frequently frames are captured from the video.
+        video_id (str): The ID of the video that should be processed.
+        interval_in_sec (int, optional): Interval in seconds between each frame to be extracted. This specifies how frequently frames are captured from the video.
 
     Example:
-        extract_frames_from_video("./media/videos/my_example_video.mp4", 5)
-
-    TODO:
-        - Extract only the frames that differ significantly from the previous ones.
+        extract_frames_from_video("ndm5Xsq45jM", 50)
     """
 
     log.info("extract_frames_from_video: Begin extraction of video frames...")
 
     # Extract filename from file path
-    filename = re.search(r"video/(.+?)\.mp4", video_filepath).group(1)
-    if not os.path.exists(f"./media/{filename}/frames/"):
-        os.makedirs(f"./media/{filename}/frames/")
+    # filename = re.search(r"video/(.+?)\.mp4", save_path).group(1)
+    # if not os.path.exists(f"./media/{filename}/frames/"):
+    #     os.makedirs(f"./media/{filename}/frames/")
+
+    frames_folder = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/frames"
+    if not os.path.exists(frames_folder):
+        os.makedirs(frames_folder)
 
     # Calculate interval in frames
-    cam = cv2.VideoCapture(video_filepath)
+    cam = cv2.VideoCapture(f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/video/{video_id}.mp4")
     video_fps = cam.get(cv2.CAP_PROP_FPS)
     interval_in_frames = round(video_fps * interval_in_sec)
     log.info(f"extract_frames_from_video: Calculated frames interval = {interval_in_frames}.")
@@ -51,9 +52,9 @@ def extract_frames_from_video(video_filepath: str, interval_in_sec: int = 30):
     count = 0
     while success:
         if count % interval_in_frames == 0:
-            log.info(f"extract_frames_from_video: Extracting frame {count} for video {filename}.")
+            log.info(f"extract_frames_from_video: Extracting frame {count} for video with ID {video_id}.")
             timestamp_ms = cam.get(cv2.CAP_PROP_POS_MSEC)
-            cv2.imwrite(f"./media/{filename}/frames/frame{count}_{timestamp_ms}.jpg", image)
+            cv2.imwrite(f"{frames_folder}/frame{count}_{timestamp_ms}.jpg", image)
         success, image = cam.read()
         count += 1
 
@@ -63,8 +64,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     Extract a certain number of frames of a YouTube video.
 
     Args:
-        video_id (str): The ID of the video that should be processed. Needs to match the directory name in /media/frames/video_id
-        gemini_model (int): The used gemini genai model. Defaults to 'gemini-1.5-flash'.
+        video_id (str): The ID of the video that should be processed.
+        gemini_model (int, optional): The used gemini genai model. Defaults to 'gemini-1.5-flash'.
+        local_model (bool, optional): False: a Gemini model using an API key is used. True: A local Ollama model is used.
+        local_llm (str, optional): The used local genai model. Defaults to 'llama3.2-vision'
 
     Example:
         create_image_description("njjBbKpkmFI", "gemini-1.5-flash")
@@ -76,8 +79,12 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
 
-    path_dir = f"./media/{video_id}/frames/"
-    all_image_files = os.listdir(path_dir)
+    # Paths
+    frames_path_dir = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/frames"
+    path_dir_frame_desc = f"{frames_path_dir.replace('/frames', '/frames_description')}"
+    file_frame_desc = "frame_descriptions.csv"
+
+    all_image_files = os.listdir(frames_path_dir)
 
     descriptions = []
 
@@ -85,7 +92,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     # Iterate through all image files
     for file in all_image_files:
 
-        image_file_path = path_dir + "/" + file
+        image_file_path = frames_path_dir + "/" + file
         image_file = PIL.Image.open(image_file_path)
 
         prompt = (
@@ -121,7 +128,6 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             )
 
 
-        path_dir_frame_desc = f"./media/{video_id}/frames_description/"
         if not os.path.exists(path_dir_frame_desc):
             os.makedirs(path_dir_frame_desc)
 
@@ -134,7 +140,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
 
     df = pd.DataFrame(descriptions)
-    df.to_csv(f"{path_dir_frame_desc}/frame_descriptions.csv", index=False)
+    df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)
 
     log.info("creating_image_description: Successfully created an image description for file %s.", filename)
 

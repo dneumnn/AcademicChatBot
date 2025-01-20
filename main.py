@@ -87,14 +87,15 @@ def chat_history():
     pass
 
 @app.post("/analyze")
-def analyze(url: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, embedding_model: Optional[str] = "nomic-embed-text", seconds_between_frames: Optional[int] = 30):
+def analyze(video_input: str, chunk_max_length: Optional[int] = 550, chunk_overlap_length: Optional[int] = 50, seconds_between_frames: Optional[int] = 30, local_model: Optional[bool] = False, enabled_detailed_chunking: Optional[bool] = False):
+### Check the documentation of src/data_processing/data_pipeline.py to understand the parameters
 
     # Check if the passed URL is a valid YouTube URL.
     # url = "https://www.youtube.com/oembed?format=json&url=" + video_input # ! Deprecated
-    response = requests.head(url, allow_redirects=True)
-    if response.status_code in range(200, 300) and "youtube" in url:
+    response = requests.head(video_input, allow_redirects=True)
+    if response.status_code in range(200, 300) and "youtube" in video_input:
         # Valid YouTube URL
-        status_code, status_message = download_pipeline_youtube(url, chunk_max_length, chunk_overlap_length, embedding_model, seconds_between_frames)
+        status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, seconds_between_frames, local_model, enabled_detailed_chunking)
         if status_code in range(200, 300):
             # Pre-Processing was successfull
             return {"message": status_message, "status_code": status_code}
