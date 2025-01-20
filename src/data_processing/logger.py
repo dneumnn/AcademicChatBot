@@ -16,7 +16,7 @@ session_id = str(uuid.uuid4())[:8] # Shortened UUID
 
 # * Configure logging
 logging.basicConfig (
-    filename="src/data_processing/data-processing.log", # Name of the log file
+    filename=os.getenv("LOG_FILE_PATH"), # Name of the log file
     level=logging.INFO, # Logging level
     format=f'%(asctime)s [Session-{session_id}] %(levelname)s - %(message)s' # Format of the log messages
 )
