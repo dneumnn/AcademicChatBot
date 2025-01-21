@@ -262,7 +262,7 @@ def format_llm_chunks(chunk_list):
         chunk_cleaned = re.sub(r"\{.*?\}", "", chunk)
         chunk_cleaned_length = len(chunk_cleaned)
 
-        merged_results.append({"time": timestamp, "senence": chunk_cleaned, "length": chunk_cleaned_length})
+        merged_results.append({"time": timestamp, "sentence": chunk_cleaned, "length": chunk_cleaned_length})
 
     return merged_results
 
