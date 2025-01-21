@@ -241,6 +241,7 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
 
     """
     transcript_cleaned = re.sub(r'\s+', ' ', re.sub(r'\{.*?\}', '', video_transcript)).strip()[:video_transcript_len].rsplit(' ', 1)[0] if len(video_transcript) > video_transcript_len else video_transcript
+    csv_path = os.getenv("TOPIC_OVERVIEW_PATH")
 
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
@@ -261,7 +262,6 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
     response = model.generate_content(prompt)
     response = response.text
 
-    csv_path = f"media/video_topic_overview.csv"
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path)
 
@@ -285,6 +285,7 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
     
     else:
+        # Create topic_overview.csv if it does not already exist
         df = pd.DataFrame([{"video_id": videoid, "video_topic": response}])
     
     df.to_csv(csv_path, index=False)
