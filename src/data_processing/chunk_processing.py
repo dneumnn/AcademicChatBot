@@ -1,5 +1,6 @@
 import os
 import re
+import time
 from dotenv import load_dotenv
 import google.generativeai as genai
 import pandas as pd
@@ -130,7 +131,7 @@ def add_chunk_overlap(data, max_overlap) -> list:
     return processed_data
 
 
-def create_chunk_llm(text: str, max_chunk_length: int = 500, gemini_model: str = "gemini-1.5-flash") -> list:
+def create_chunk_llm(text: str, gemini_model: str = "gemini-1.5-flash", max_input_length_llm: int = 15000) -> list:
     """
     Create chunks based on LLM.
 
@@ -148,32 +149,36 @@ def create_chunk_llm(text: str, max_chunk_length: int = 500, gemini_model: str =
 
     prompt = (
             f"""
-            Divide the transcript text into logical chunks, ensuring each chunk 
-            is no longer than {max_chunk_length} characters.
+            Divide the following transcript text into logical and consistent chunks. 
+            Each chunk should be approximately the same size. Make sure no chunk is way longer than the others.
+            Ensure that each chunk retains the relevant context so that meaning is not lost. 
+            Pay special attention to the final chunk to ensure it is not longer than 
+            the others—divide it into smaller chunks if necessary.
 
-            Preserve the text exactly as it is, including any content within curly 
+            Preserve the text within each chunk exactly as it is, including any content within curly 
             brackets - do not adjust, alter, or reformat it. Ensure no words are 
-            missed or omitted. Return the output in brackets "[]", with each element 
-            containing a single chunk. 
+            missed or omitted. 
+            
+            Return the output in one textblock each chunk separted by "%%%", 
+            with each element containing one chunk.
 
             Transcript text:
             """
         )
 
-    if len(text) < 20000:
+    if len(text) < max_input_length_llm:
 
         prompt_transcript = prompt + text
         response = model.generate_content(prompt_transcript)
         response = response.text
         response = response.replace("\n", "")
-        response = response.split("%%%%%")
-        chunks = response
+        response = response.split("%%%%")
 
     else:
         chunks = []
         last_chunk = []
 
-        text_splitted = split_transcript(text, 15000)
+        text_splitted = split_transcript(text, max_input_length_llm)
 
         for i, text_snipped in enumerate(text_splitted):
             if i == 0:
@@ -182,22 +187,84 @@ def create_chunk_llm(text: str, max_chunk_length: int = 500, gemini_model: str =
                 response = model.generate_content(prompt_transcript)
                 response = response.text
                 response = response.replace("\n", "")
-                response = response.split("%%%%%")
+                response = response.split("%%%%")
                 last_chunk.append(response.pop())
                 chunks.extend(response)
 
             else:
+                if i % 10 == 0:
+                    time.sleep(60)
                 text_snipped = last_chunk[-1] + text_snipped
                 prompt_transcript = prompt + text_snipped
                 response = model.generate_content(prompt_transcript)
                 response = response.text
+                
                 response = response.replace("\n", "")
-                response = response.split("%%%%%")
+                response = response.split("%%%%")
+                
                 if i != len(text_splitted) -1:
                     last_chunk.append(response.pop())
                 chunks.extend(response)
 
     return response
+
+
+def check_llm_chucks(chunk_response, chunk_max_length):
+    chunk_response = chunk_response[0].replace("\n", "").replace("\\", "")
+    chunk_list = chunk_response.split("%%%")
+    long_chunks = [(index, element) for index, element in enumerate(chunk_list) if len(element) > chunk_max_length]
+
+    genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
+    model = genai.GenerativeModel("gemini-1.5-flash")
+
+    prompt = (
+        f"""
+        Divide the following transcript text into logical and consistent chunks.
+        Each chunk should be approximately the same size. Make sure no chunk is way longer than the others. 
+        Ensure that each chunk retains the relevant context so that meaning is not lost. 
+
+        Preserve the text within each chunk exactly as it is, including any content within curly 
+        brackets - do not adjust, alter, or reformat it. Ensure no words are 
+        missed or omitted. 
+                    
+        Return the output in one textblock each chunk separted by "%%%", 
+        with each element containing one chunk.
+
+        Transcript text:
+        """
+    )
+
+    for i, chunk in long_chunks:
+        if i % 10 == 0:
+            time.sleep(60)
+        prompt_with_chunk = prompt + chunk
+        response = model.generate_content(prompt_with_chunk)
+        response = response.text.replace("\n", "").replace("\\", "")
+        response = response.split("%%%")
+        
+        chunk_list[i:i + 1] = response
+
+    chunk_list = [element for element in chunk_list if len(element) > 1]
+
+    return chunk_list
+
+
+def format_llm_chunks(chunk_list):
+    merged_results = []
+    for chunk in chunk_list:
+
+        match = re.search(r"\{(.*?)\}", chunk)
+        if match:
+            timestamp = float(match.group(1))
+        else:
+            timestamp = None
+
+        chunk_cleaned = re.sub(r"\{.*?\}", "", chunk)
+        chunk_cleaned_length = len(chunk_cleaned)
+
+        merged_results.append({"time": timestamp, "senence": chunk_cleaned, "length": chunk_cleaned_length})
+
+    return merged_results
 
 
 def append_meta_data(meta_data: dict, video_id: str, chunked_text):

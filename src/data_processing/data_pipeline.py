@@ -205,9 +205,15 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
-            extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
-            merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
-            chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
+            if enabled_detailed_chunking == False:
+                extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
+                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
+                chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
+            else:
+                detailed_llm_chunks = create_chunk_llm(processed_text_transcript)
+                check_detailed_llm_chunks = check_llm_chucks(detailed_llm_chunks, 1000)
+                format_detailed_llm_chunks = format_llm_chunks(check_detailed_llm_chunks)
+                chunked_text = add_chunk_overlap(format_detailed_llm_chunks, chunk_overlap_length)
             append_meta_data(meta_data, video_id, chunked_text)
         except Exception as e:
             log.error("download_pipeline_youtube: The chunking failed: %s", e)
