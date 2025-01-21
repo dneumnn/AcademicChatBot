@@ -91,7 +91,6 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     requests_made = 0
     # Iterate through all image files
     for file in all_image_files:
-
         image_file_path = frames_path_dir + "/" + file
         image_file = PIL.Image.open(image_file_path)
 
@@ -101,7 +100,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
                 "the topic. Focus on describing concepts, diagrams, graphs, key points, or any other visual content in the image. "
                 "If key points or visual representations of constructs, concepts, or models are shown, place them in context, "
                 "explain their significance, and describe how they relate to the topic. Provide a coherent text block, with no formatting, "
-                "bullet points, or other structural elements, just a clear and concise explanation of the image content."
+                "bullet points, or other structural elements, just a clear and concise explanation of the image content. Also no line breaks or other special characters!"
             )
 
         if not local_model:
@@ -118,11 +117,11 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         
         else:
             response = ollama.chat(
-                model=local_llm,
+                model="llama3.2-vision",
                 messages=[{
                     "role": "user",
                     "content": prompt,
-                    "images": [image_file]
+                    "images": [image_file_path]
                 }]
             )
 
@@ -136,7 +135,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         timestamp_ms = filename.split("_", 1)[1]
         filename = filename.split("_",1)[0]
         frame_time_s = float(timestamp_ms) / 1000
-        descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
+        descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)

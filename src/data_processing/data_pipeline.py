@@ -115,7 +115,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             return 424, "Error while trying to fetch the Gemini API. Please provide a valid API key and check your internet connection."
     else:
         # Check local ollama models
-        required_models = ["llama3.2-vision", "nomic-embed-text"]
+        required_models = ["llama3.2-vision", "nomic-embed-text", "llama3.2"]
         for model in required_models:
             check_passed, message = model_exists(model)
             if not check_passed:
