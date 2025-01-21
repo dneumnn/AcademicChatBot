@@ -197,7 +197,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             download_preprocess_youtube_transcript(video_url, local_model=local_model)
             # Read the downloaded transcript into the variable "processed_text_transcript"
-            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file: # TODO: maybe directly return through method
+            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r", encoding="utf-8") as file: # TODO: maybe directly return through method
                 processed_text_transcript = file.read()
         except Exception as e:
             log.error("download_pipeline_youtube: The audio processing failed: %s", e)
