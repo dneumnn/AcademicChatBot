@@ -135,7 +135,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         timestamp_ms = filename.split("_", 1)[1]
         filename = filename.split("_",1)[0]
         frame_time_s = float(timestamp_ms) / 1000
-        descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
+        if not local_model:
+            descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
+        else:
+            descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)
