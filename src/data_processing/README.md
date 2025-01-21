@@ -102,11 +102,12 @@ Another example that utilizes the optional parameters `seconds_between_frames` a
 
 ## Used AI Models
 
-| Language Model   | Function        | Description  |
-| --------------   | --------------- | ------------ |
+| Language Model   | Function        | Description                                                 |
+| --------------   | --------------- | ----------------------------------------------------------- |
 | gemini-1.5-flash | LLM             | Gemini model that can be used through the API key.          |
-| llama3.2-vision  | LLM             | Local alternativate to the gemini model. |
-| nomic-embed-test | Embedding Model | Model used for the embedding step. **DEPRECATED.**  |
+| llama3.2         | LLM             | Local alternative to the gemini model: audio processing.    |
+| llama3.2-vision  | LLM             | Local alternativate to the gemini model: visual processing. |
+| nomic-embed-test | Embedding Model | Model used for the embedding step. **DEPRECATED.**          |
 
 ---
 

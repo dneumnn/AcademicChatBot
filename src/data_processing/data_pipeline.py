@@ -196,13 +196,8 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             log.error("download_pipeline_youtube: The audio processing failed: %s", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
-        # * Create Video Topic and Update Chunked Data
+        # * Create Video Topic
         try:
-            # Create topic_overview.csv if it does not already exist
-            if not os.path.exists(TOPIC_OVERVIEW_PATH):
-                os.makedirs(os.path.dirname(TOPIC_OVERVIEW_PATH), exist_ok=True)
-                df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
-                df_video_topic_overview.to_csv(TOPIC_OVERVIEW_PATH, index=False)
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except Exception as e:
             log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
