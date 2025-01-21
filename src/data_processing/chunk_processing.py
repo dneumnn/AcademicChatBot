@@ -2,6 +2,7 @@ import os
 import re
 from dotenv import load_dotenv
 import google.generativeai as genai
+import pandas as pd
 
 from .audio_processing import split_transcript
 
@@ -198,3 +199,29 @@ def create_chunk_llm(text: str, max_chunk_length: int = 500, gemini_model: str =
 
     return response
 
+
+def append_meta_data(meta_data: dict, video_id: str, chunked_text):
+    """
+    
+    """
+    csv_dict = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/transcripts_chunks/"
+    csv_path = f"{csv_dict}{video_id}.csv"
+    topic_overview_path = os.getenv("TOPIC_OVERVIEW_PATH")
+
+    df = pd.DataFrame(chunked_text)
+    df = df.rename(columns={"sentence":"chunks"})
+    if not os.path.exists(csv_dict):
+        os.makedirs(csv_dict)
+
+    df_video_topic_overview = pd.read_csv(topic_overview_path)
+    df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
+    topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
+
+    df["video_id"] = meta_data["id"]
+    df["video_topic"] = topic
+    df["video_title"] = meta_data["title"]
+    df["video_uploaddate"] = meta_data["upload_date"]
+    df["video_duration"] = meta_data["duration"]
+    df["channel_url"] = meta_data["uploader_url"]
+
+    df.to_csv(csv_path, index=False)
