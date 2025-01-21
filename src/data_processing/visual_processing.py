@@ -161,7 +161,7 @@ def extract_number(filename):
     return int(match.group(1)) if match else float('inf')
 
 
-def remove_duplicate_images(image_folder_path:str, threshold: int=0.9):
+def remove_duplicate_images(video_id:str, threshold: int=0.9):
     """
      Args:
         image_folder_path (str): Path to the folder containing the images to process.
@@ -171,14 +171,16 @@ def remove_duplicate_images(image_folder_path:str, threshold: int=0.9):
     Returns:
         None: The function modifies the folder by deleting duplicate images.
     """
+    frames_path_dir = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/frames"
+
     file_names = [
-        file for file in os.listdir(image_folder_path)
-        if os.path.isfile(os.path.join(image_folder_path, file))
+        file for file in os.listdir(frames_path_dir)
+        if os.path.isfile(os.path.join(frames_path_dir, file))
     ]
 
     file_names_sorted = sorted(file_names, key=extract_number)
 
-    file_names_sorted = [os.path.join(image_folder_path, filename) for filename in file_names_sorted]
+    file_names_sorted = [os.path.join(frames_path_dir, filename) for filename in file_names_sorted]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)

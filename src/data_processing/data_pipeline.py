@@ -99,7 +99,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     # Validate API Key or check for local ollama
     if not local_model:
-        pass
         # Validate gemini API
         api_key = os.getenv("API_KEY_GOOGLE_GEMINI")
         print(api_key)
@@ -181,6 +180,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             # extract_frames_from_video(f"media/{video_id}/video/{video_id}.mp4", seconds_between_frames)
             extract_frames_from_video(video_id, seconds_between_frames)
+            remove_duplicate_images(video_id)
             create_image_description(video_id, local_model=local_model)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
