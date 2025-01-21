@@ -66,14 +66,15 @@ Install ollama and execute `$ ollama pull llama3.2-vision` to pull the local mod
 
 #### Query Parameter
 
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `video_input` | `string` | The URL of the YouTube video or playlist to analyze. |
-| `chunk_max_length (optional)` | `int` | Specifies the maximum number of characters allowed in each chunk. Defaults to 550. |
-| `chunk_overlap_length (optional)` | `int` | Determines how many characters overlap between consecutive chunks. Defaults to 50. |
-| `seconds_between_frames (optional)` | `int` | Decides how many seconds should pass between the extracted and analyzed frames. Defaults to 30. |
-| `local_model (optional)` | `bool` | Decides if a local model should be used, instead of using the Gemini API. Defaults to False. |
-| `enabled_detailed_chunking (optional)` | `bool` | Decides if a detailed, LLM-based chunking should be used, instead of sentence-based chunking. Defaults to False. |
+| Parameter | Type | Description | Allowed Values |
+| --- | --- | --- | --- |
+| `video_input` | `string` | The URL of the YouTube video or playlist to analyze. | Valid YouTube URLs |
+| `chunk_max_length (optional)` | `int` | Specifies the maximum number of characters allowed in each chunk. Defaults to 550. | X>1 |
+| `chunk_overlap_length (optional)` | `int` | Determines how many characters overlap between consecutive chunks. Defaults to 50. | X>1 |
+| `seconds_between_frames (optional)` | `int` | Decides how many seconds should pass between the extracted and analyzed frames. Defaults to 30. | X>1 |
+| `max_limit_similarity (optional)` | `float` | Decides how similar the extracted frames can be. If they surpass this value, they will be removed and not be analyzed. The lower the value, the higher the chance of removal. Defaults to 0.85. | X>0.1 X<1 |
+| `local_model (optional)` | `bool` | Decides if a local model should be used, instead of using the Gemini API. Defaults to False. | True or False |
+| `enabled_detailed_chunking (optional)` | `bool` | Decides if a detailed, LLM-based chunking should be used, instead of sentence-based chunking. Defaults to False. | True or False |
 
 #### Response
 
