@@ -185,6 +185,10 @@ def remove_duplicate_images(video_id:str, threshold: int=0.9):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
 
+    if len(file_names_sorted) <= 1:
+        log.warning("remove_duplicate_images: Skipped removing duplicate images, because less than two images are available.")
+        return
+
     del_image_index = []
     r_i = 0
 
