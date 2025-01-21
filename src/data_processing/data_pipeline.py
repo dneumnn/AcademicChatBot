@@ -208,36 +208,12 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
             return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
 
-        # TODO: Comment and clean up from here on
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
             extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
             merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
             chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
             append_meta_data(meta_data, video_id, chunked_text)
-
-
-            # # TODO: Place the following code into a dedicated function
-            # # Rename column "sentence" into "chunks" for the chunked data csv
-            # df = pd.DataFrame(chunked_text)
-            # df = df.rename(columns={"sentence":"chunks"})
-            # transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
-            # if not os.path.exists(transcript_chunks_path):
-            #     os.makedirs(transcript_chunks_path)
-
-            # # Extract video topic
-            # df_video_topic_overview = pd.read_csv(TOPIC_OVERVIEW_PATH)
-            # df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
-            # topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
-
-            # df["video_id"] = meta_data["id"]
-            # df["video_topic"] = topic
-            # df["video_title"] = meta_data["title"]
-            # df["video_uploaddate"] = meta_data["upload_date"]
-            # df["video_duration"] = meta_data["duration"]
-            # df["channel_url"] = meta_data["uploader_url"] 
-            
-            # df.to_csv(f"media/{video_id}/transcripts_chunks/{video_id}.csv", index=False)
         except Exception as e:
             log.error("download_pipeline_youtube: The chunking failed: %s", e)
             return 500, "Internal error when trying to chunk the video content. Please contact a developer."
