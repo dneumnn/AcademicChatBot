@@ -1,7 +1,10 @@
 import os
+import subprocess
 from dotenv import load_dotenv
 import pandas as pd
 import csv
+
+import requests
 
 # Import other functions of the data_processing package
 from .video_metadata_download import *
@@ -37,7 +40,7 @@ create_log_file(LOG_FILE_PATH)
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=30, local_model: bool = False, enabled_detailed_chunking: bool = False):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=120, local_model: bool = False, enabled_detailed_chunking: bool = False):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -62,17 +65,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         download_pipeline_youtube("https://www.youtube.com/watch?v=example")
     """
 
-    # Check if passed parameters are valid
-    if chunk_max_length < 1:
-        return 500, "YouTube content could not be processed: The chunk_max_length parameter cannot be below 1!"
-    if chunk_overlap_length < 1:
-        return 400, "YouTube content could not be processed: The chunk_overlap_length parameter cannot be below 1!"
-    if chunk_max_length < chunk_overlap_length:
-        return 400, "YouTube content could not be processed: The chunk_max_length parameter cannot be below the chunk_overlap_length parameter!"
-    if seconds_between_frames < 1:
-        return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
-
-
     write_empty_line("src/data_processing/data-processing.log")
     log.info("download_pipeline_youtube: Start data pipeline.")
     log.info("download_pipeline_youtube: Parameter 1: url = %s", url)
@@ -81,6 +73,55 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     log.info("download_pipeline_youtube: Parameter 4: seconds_between_frames = %s", seconds_between_frames)
     log.info("download_pipeline_youtube: Parameter 5: local_model = %s", local_model)
     log.info("download_pipeline_youtube: Parameter 6: enabled_detailed_chunking = %s", enabled_detailed_chunking)
+
+    # Check if passed parameters are valid
+    if chunk_max_length < 1:
+        log.error("download_pipeline_youtube: chunk_max_length input invalid.")
+        return 500, "YouTube content could not be processed: The chunk_max_length parameter cannot be below 1!"
+    if chunk_overlap_length < 1:
+        log.error("download_pipeline_youtube: chunk_overlap_length input invalid.")
+        return 400, "YouTube content could not be processed: The chunk_overlap_length parameter cannot be below 1!"
+    if chunk_max_length < chunk_overlap_length:
+        log.error("download_pipeline_youtube: chunk_max_length and chunk_overlap_length combination input invalid.")
+        return 400, "YouTube content could not be processed: The chunk_max_length parameter cannot be below the chunk_overlap_length parameter!"
+    if seconds_between_frames < 1:
+        log.error("download_pipeline_youtube: seconds_between_frames input invalid.")
+        return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
+    
+    # Validate ENV Variables
+    required_env_vars = ["PROCESSED_VIDEOS_PATH", "TOPIC_OVERVIEW_PATH", "LOG_FILE_PATH"]
+    for env_var in required_env_vars:
+        env_var_value = os.getenv(env_var)
+        if not env_var_value:
+            log.error("download_pipeline_youtube: Variable %s not set.", env_var)
+            return 424, f"Env variable '{env_var}' is not set. Please contact a developer."
+    log.info("download_pipeline_youtube: All required env variables are set.")
+
+    # Validate API Key or check for local ollama
+    if not local_model:
+        pass
+        # Validate gemini API
+        api_key = os.getenv("API_KEY_GOOGLE_GEMINI")
+        print(api_key)
+        if not api_key:
+            return 424, "Error while trying to fetch the Gemini API. Please provide an API key!"
+        gemini_url = f'https://generativelanguage.googleapis.com/v1beta2/models?key={api_key}'
+        response = requests.get(gemini_url)
+        if response.status_code == 200:
+            log.info("download_pipeline_youtube: Gemini API call test succeeded!")
+        else:
+            log.error("download_pipeline_youtube: Gemini API call test failed!: %s", response.status_code)
+            print(response.text)
+            return 424, "Error while trying to fetch the Gemini API. Please provide a valid API key and check your internet connection."
+    else:
+        # Check local ollama models
+        required_models = ["llama3.2-vision", "nomic-embed-text"]
+        for model in required_models:
+            check_passed, message = model_exists(model)
+            if not check_passed:
+                log.info("download_pipeline_youtube: Error while validating the local model: %s.", message)
+                return 424, f"Error while validating the local model: {message}. Please contact a developer."
+        log.info("download_pipeline_youtube: Required local models were found.")
 
     chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
@@ -158,11 +199,10 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         # * Create Video Topic and Update Chunked Data
         try:
             # Create topic_overview.csv if it does not already exist
-            VIDEO_TOPIC_OVERVIEW_FILEPATH = "/media/video_topic_overview.csv"
-            if not os.path.exists(VIDEO_TOPIC_OVERVIEW_FILEPATH):
-                os.makedirs(os.path.dirname(VIDEO_TOPIC_OVERVIEW_FILEPATH), exist_ok=True)
-            df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
-            df_video_topic_overview.to_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH, index=False)
+            if not os.path.exists(TOPIC_OVERVIEW_PATH):
+                os.makedirs(os.path.dirname(TOPIC_OVERVIEW_PATH), exist_ok=True)
+                df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
+                df_video_topic_overview.to_csv(TOPIC_OVERVIEW_PATH, index=False)
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except Exception as e:
             log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
@@ -184,7 +224,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 os.makedirs(transcript_chunks_path)
 
             # TODO: Place before chunking
-            df_video_topic_overview = pd.read_csv(VIDEO_TOPIC_OVERVIEW_FILEPATH)
+            df_video_topic_overview = pd.read_csv(TOPIC_OVERVIEW_PATH)
             df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
             topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
 
@@ -253,10 +293,39 @@ def video_with_id_already_downloaded(id: str):
         url_already_downloaded("dQw4w9WgXcQ")
     """
 
-    processed_video_path = PROCESSED_VIDEOS_PATH.replace("_videoid_", id)
+    processed_video_path = PROCESSED_VIDEOS_PATH.replace("_video_id_", id)
 
     if not os.path.exists(processed_video_path):
         return False
     else:
         return True
 
+
+def model_exists(model_name: str):
+    """
+    Helper function.
+    Checks if a local ollama modell is available.
+
+    Args:
+        model_name (str): The mode name.
+    
+    Returns:
+        bool: True if the model exists, False if not.
+        message: Contains a message with additional information.
+    
+    Example:
+        model_exists("llama3.2-vision")
+    """
+    try:
+        # Get the list of available models
+        result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
+        models = result.stdout.splitlines()
+        # Check if the specified model is in the list
+        return any(model_name in model for model in models), "Model not found"
+    except subprocess.CalledProcessError as e:
+        # Error occured while checking models
+        return False, "Error occured"
+    except FileNotFoundError:
+        # Ollama command-line tool is not installed or not in PATH
+        return False, "Ollama not found"
+    

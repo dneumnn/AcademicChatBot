@@ -87,6 +87,7 @@ The endpoint will return a status indicating whether the processing was successf
 | 400 | Bad Request | The input parameters or the configuration could not be validated. |
 | 404 | Not Found | The requested video URL does not exist. |
 | 415 | Unsupported Media Type | The video URL exists, but its type is not supported. |
+| 424 | Failed Dependency | Either an env variable is not set, the API key does not work or the local models are not available. |
 | 500 | Internal Server Error | Something went wrong, most propably a backend programming error. |
 
 #### Example Request
