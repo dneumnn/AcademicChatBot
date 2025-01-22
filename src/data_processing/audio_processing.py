@@ -41,7 +41,7 @@ def split_transcript(transcript: str, max_length: int) -> list:
     
     return chunks
 
-def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash", local_model:bool=False, local_llm:str="llama3.2-vision") -> None:
+def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_model: str="gemini-1.5-flash", local_model:bool=False, local_llm:str="llama3.2") -> None:
     """
     Download and add start time information into the transcript. 
     Time information is inserted in curly brackets inbetween the text. 
@@ -67,7 +67,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
     raw_combined_transcript = " ".join(combinded_transcript)
     
     try:
-        if local_model == False:
+        if not local_model:
             max_length = 20000  
             transcript_chunks = split_transcript(raw_combined_transcript, max_length)
 

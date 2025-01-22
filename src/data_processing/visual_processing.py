@@ -91,7 +91,6 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
     requests_made = 0
     # Iterate through all image files
     for file in all_image_files:
-
         image_file_path = frames_path_dir + "/" + file
         image_file = PIL.Image.open(image_file_path)
 
@@ -101,11 +100,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
                 "the topic. Focus on describing concepts, diagrams, graphs, key points, or any other visual content in the image. "
                 "If key points or visual representations of constructs, concepts, or models are shown, place them in context, "
                 "explain their significance, and describe how they relate to the topic. Provide a coherent text block, with no formatting, "
-                "bullet points, or other structural elements, just a clear and concise explanation of the image content."
+                "bullet points, or other structural elements, just a clear and concise explanation of the image content. Also no line breaks or other special characters!"
             )
 
-        if local_model == False:
-            # TODO: Dynamically read the time to sleep (?)
+        if not local_model:
             if requests_made >= 10:
                 time.sleep(60)
                 requests_made = 0
@@ -119,11 +117,11 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         
         else:
             response = ollama.chat(
-                model=local_llm,
+                model="llama3.2-vision",
                 messages=[{
                     "role": "user",
                     "content": prompt,
-                    "images": [image_file]
+                    "images": [image_file_path]
                 }]
             )
 
@@ -137,7 +135,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         timestamp_ms = filename.split("_", 1)[1]
         filename = filename.split("_",1)[0]
         frame_time_s = float(timestamp_ms) / 1000
-        descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
+        if not local_model:
+            descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
+        else:
+            descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)
@@ -160,7 +161,7 @@ def extract_number(filename):
     return int(match.group(1)) if match else float('inf')
 
 
-def remove_duplicate_images(image_folder_path:str, threshold: int=0.9):
+def remove_duplicate_images(video_id:str, threshold: int=0.9):
     """
      Args:
         image_folder_path (str): Path to the folder containing the images to process.
@@ -170,17 +171,23 @@ def remove_duplicate_images(image_folder_path:str, threshold: int=0.9):
     Returns:
         None: The function modifies the folder by deleting duplicate images.
     """
+    frames_path_dir = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/frames"
+
     file_names = [
-        file for file in os.listdir(image_folder_path)
-        if os.path.isfile(os.path.join(image_folder_path, file))
+        file for file in os.listdir(frames_path_dir)
+        if os.path.isfile(os.path.join(frames_path_dir, file))
     ]
 
     file_names_sorted = sorted(file_names, key=extract_number)
 
-    file_names_sorted = [os.path.join(image_folder_path, filename) for filename in file_names_sorted]
+    file_names_sorted = [os.path.join(frames_path_dir, filename) for filename in file_names_sorted]
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("ViT-B/32", device=device)
+
+    if len(file_names_sorted) <= 1:
+        log.warning("remove_duplicate_images: Skipped removing duplicate images, because less than two images are available.")
+        return
 
     del_image_index = []
     r_i = 0

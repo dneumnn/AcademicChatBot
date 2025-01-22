@@ -40,7 +40,7 @@ create_log_file(LOG_FILE_PATH)
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=120, local_model: bool = False, enabled_detailed_chunking: bool = False):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=120, max_limit_similarity: float=0.85, local_model: bool = False, enabled_detailed_chunking: bool = False):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -71,8 +71,9 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     log.info("download_pipeline_youtube: Parameter 2: chunk_max_length = %s", chunk_max_length)
     log.info("download_pipeline_youtube: Parameter 3: chunk_overlap_length = %s", chunk_overlap_length)
     log.info("download_pipeline_youtube: Parameter 4: seconds_between_frames = %s", seconds_between_frames)
-    log.info("download_pipeline_youtube: Parameter 5: local_model = %s", local_model)
-    log.info("download_pipeline_youtube: Parameter 6: enabled_detailed_chunking = %s", enabled_detailed_chunking)
+    log.info("download_pipeline_youtube: Parameter 5: max_limit_similarity = %s", max_limit_similarity)
+    log.info("download_pipeline_youtube: Parameter 6: local_model = %s", local_model)
+    log.info("download_pipeline_youtube: Parameter 7: enabled_detailed_chunking = %s", enabled_detailed_chunking)
 
     # Check if passed parameters are valid
     if chunk_max_length < 1:
@@ -87,6 +88,12 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     if seconds_between_frames < 1:
         log.error("download_pipeline_youtube: seconds_between_frames input invalid.")
         return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
+    if max_limit_similarity < 0.1:
+        log.error("download_pipeline_youtube: max_limit_similarity input invalid.")
+        return 400, "YouTube content could not be processed: The parameter max_limit_similarity cannot be below 0.1!"
+    if max_limit_similarity > 1:
+        log.error("download_pipeline_youtube: max_limit_similarity input invalid.")
+        return 400, "YouTube content could not be processed: The parameter max_limit_similarity cannot be above 1.0!"
     
     # Validate ENV Variables
     required_env_vars = ["PROCESSED_VIDEOS_PATH", "TOPIC_OVERVIEW_PATH", "LOG_FILE_PATH"]
@@ -99,7 +106,6 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
 
     # Validate API Key or check for local ollama
     if not local_model:
-        pass
         # Validate gemini API
         api_key = os.getenv("API_KEY_GOOGLE_GEMINI")
         print(api_key)
@@ -115,7 +121,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             return 424, "Error while trying to fetch the Gemini API. Please provide a valid API key and check your internet connection."
     else:
         # Check local ollama models
-        required_models = ["llama3.2-vision", "nomic-embed-text"]
+        required_models = ["llama3.2-vision", "nomic-embed-text", "llama3.2"]
         for model in required_models:
             check_passed, message = model_exists(model)
             if not check_passed:
@@ -181,6 +187,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             # extract_frames_from_video(f"media/{video_id}/video/{video_id}.mp4", seconds_between_frames)
             extract_frames_from_video(video_id, seconds_between_frames)
+            remove_duplicate_images(video_id, max_limit_similarity)
             create_image_description(video_id, local_model=local_model)
         except Exception as e:
             log.error("download_pipeline_youtube: The visual processing failed: %s", e)
@@ -190,57 +197,37 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             download_preprocess_youtube_transcript(video_url, local_model=local_model)
             # Read the downloaded transcript into the variable "processed_text_transcript"
-            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file: # TODO: maybe directly return through method
+            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r", encoding="utf-8") as file: # TODO: maybe directly return through method
                 processed_text_transcript = file.read()
         except Exception as e:
             log.error("download_pipeline_youtube: The audio processing failed: %s", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
-        # * Create Video Topic and Update Chunked Data
+        # * Create Video Topic
         try:
-            # Create topic_overview.csv if it does not already exist
-            if not os.path.exists(TOPIC_OVERVIEW_PATH):
-                os.makedirs(os.path.dirname(TOPIC_OVERVIEW_PATH), exist_ok=True)
-                df_video_topic_overview = pd.DataFrame(columns=["video_id", "video_topic"])
-                df_video_topic_overview.to_csv(TOPIC_OVERVIEW_PATH, index=False)
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except Exception as e:
             log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
             return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
 
-        # TODO: Comment and clean up from here on
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
-            extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
-            merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
-            chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
-
-            # TODO: Place 
-            # Rename column "sentence" into "chunks" for the chunked data csv
-            df = pd.DataFrame(chunked_text)
-            df = df.rename(columns={"sentence":"chunks"})
-            transcript_chunks_path = f"media/{video_id}/transcripts_chunks/"
-            if not os.path.exists(transcript_chunks_path):
-                os.makedirs(transcript_chunks_path)
-
-            # TODO: Place before chunking
-            df_video_topic_overview = pd.read_csv(TOPIC_OVERVIEW_PATH)
-            df_video_topic_overview_filtered = df_video_topic_overview[df_video_topic_overview["video_id"] == video_id]
-            topic = df_video_topic_overview_filtered["video_topic"].iloc[0] if not df_video_topic_overview_filtered.empty else None
-
-            df["video_id"] = meta_data["id"]
-            df["video_topic"] = topic
-            df["video_title"] = meta_data["title"]
-            df["video_uploaddate"] = meta_data["upload_date"]
-            df["video_duration"] = meta_data["duration"]
-            df["channel_url"] = meta_data["uploader_url"] 
-            
-            df.to_csv(f"media/{video_id}/transcripts_chunks/{video_id}.csv", index=False)
+            if not enabled_detailed_chunking:
+                extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
+                merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
+                chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
+            else:
+                detailed_llm_chunks = create_chunk_llm(processed_text_transcript)
+                check_detailed_llm_chunks = check_llm_chucks(detailed_llm_chunks, chunk_max_length)
+                format_detailed_llm_chunks = format_llm_chunks(check_detailed_llm_chunks)
+                chunked_text = add_chunk_overlap(format_detailed_llm_chunks, chunk_overlap_length)
+            append_meta_data(meta_data, video_id, chunked_text)
         except Exception as e:
             log.error("download_pipeline_youtube: The chunking failed: %s", e)
             return 500, "Internal error when trying to chunk the video content. Please contact a developer."
 
         # * Embed text chunks
+        # ! Deprecated
         try:
             embed_text_chunks(video_id)
         except Exception as e:
