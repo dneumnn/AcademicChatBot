@@ -350,24 +350,25 @@ if st.session_state.username:
 else:
     st.sidebar.markdown("👤 **User:** Gast")
 
+# Change Theme Button
+btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
+if st.sidebar.button(btn_face, help="Thema wechseln"):
+    ChangeTheme()
+
 # LLM-Auswahl
 st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
+
+# Info-Bereich
+st.sidebar.subheader("ℹ️ About the Bot")
+st.sidebar.info("""
+This chatbot is an academic tool that processes YouTube videos for interactive user engagement.
+""")
+
 
 if st.sidebar.button("Logout", key="logout"):
     st.session_state.page = "Login"
     st.session_state.username = None
     st.rerun()
-
-# Info-Bereich
-st.sidebar.subheader("ℹ️ About the Bot")
-st.sidebar.info("""
-Hier die Erklärung über den Bot einfügen.
-""")
-
-# Farbschema-Wechsel
-btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
-if st.sidebar.button(btn_face, help="Thema wechseln"):
-    ChangeTheme()
 
 
 if page == "Settings":
