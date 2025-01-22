@@ -80,6 +80,7 @@ def authenticate_user(username, password):
     
 def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None, stream=True, plaintext=False,mode=None, use_logical_routing=False, use_semantic_routing=False):
 
+    knowledge_base= "fallback"
     model_parameters = {
         "temperature": st.session_state.settings["temperature"],
         "top_p": st.session_state.settings["top_p"],
@@ -195,6 +196,7 @@ def get_available_models():
 
 
 def ChangeTheme():
+
     # Toggle the current theme
     if st.session_state.themes["current_theme"] == "light":
         st.session_state.themes["current_theme"] = "dark"
@@ -252,7 +254,7 @@ if "settings" not in st.session_state:
         "chunk_max_length": 550,
         "chunk_overlap_length": 50,
         "embedding_model": "nomic-embed-text",
-        "knowledge_base": "Data Science",
+      #  "knowledge_base": "all",
         "seconds_between_frames": 30,
         "local_model": False,
         "enabled_detailed_chunking": False
@@ -279,38 +281,51 @@ if st.session_state.rerun:
 
 # Login/Register Page
 if st.session_state.page == "Login":
+    # not good, but it works
+    st.session_state.models = get_available_models()
     st.title("Login")
 
     def login_user():
         if authenticate_user(st.session_state.login_username, st.session_state.login_password):
             st.session_state.username = st.session_state.login_username
             st.session_state.page = "Chat"
-            st.session_state.models = get_available_models()
-            st.session_state.rerun = True
+            logging.info(f"User {st.session_state.username} logged in.")
+            st.rerun()
+            logging.info(f"Rerun.")
         else:
             st.error("Invalid username or password.")
 
+    def register():
+        if register_user(st.session_state.login_username, st.session_state.login_password):
+                st.success("Registration successful! You can now log in.")
+        else:
+                st.error("Username already exists.")
+
+    def fix_on_change():
+        time.sleep(1)
+        login_user()
+
     #TODO: change behavior of on_change logging in -> prioritize register?
     st.text_input("Username", key="login_username")
-    st.text_input("Password", type="password", key="login_password", on_change=login_user)
+    st.text_input("Password", type="password", key="login_password", on_change=fix_on_change)
 
     login_button, register_button = st.columns(2)
     if login_button.button("Login"):
         login_user()
 
-
-    def register_user_and_login():
-        if register_user(st.session_state.login_username, st.session_state.login_password):
-            st.success("Registration successful! You can now log in.")
-            st.session_state.username = st.session_state.login_username
-            st.session_state.page = "Chat"
-            st.session_state.rerun = True
-        else:
-            st.error("Username already exists.")
+    # def register_user_and_login():
+    #     if register_user(st.session_state.login_username, st.session_state.login_password):
+    #         st.success("Registration successful! You can now log in.")
+    #         st.session_state.username = st.session_state.login_username
+    #         st.session_state.page = "Chat"
+    #         st.session_state.rerun = True
+    #     else:
+    #         st.error("Username already exists.")
 
 
     if register_button.button("Register"):
-        register_user_and_login()
+        register()
+
 
     st.stop()
 
@@ -357,8 +372,14 @@ btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["bu
 if st.sidebar.button(btn_face, help="Thema wechseln"):
     ChangeTheme()
 
-# LLM-Auswahl
-st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
+
+# LLM-search
+search_query = st.sidebar.text_input("🔍 **Search Models**")
+
+# filtered LLMs
+filtered_models = [model for model in st.session_state.models if search_query.lower() in model.lower()]
+
+st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", filtered_models)
 
 # Info-Bereich
 st.sidebar.subheader("ℹ️ About the Bot")
@@ -389,10 +410,10 @@ if page == "Settings":
         temperature = st.slider("Controls randomness (lower = precise, higher = creative)", 0.0, 1.0, st.session_state.settings["temperature"])
         top_p = st.slider("Chooses tokens based on cumulative probability (higher = diverse)", 0.0, 1.0, st.session_state.settings["top_p"])
         top_k = st.slider("Limits the number of tokens considered (higher = creative)", 1, 100, st.session_state.settings["top_k"])
-        knowledge_base = st.selectbox(
-            "Select a Knowledge Base",
-            ["Data Science", "IDK"],
-            index=["Data Science", "IDK"].index(str(st.session_state.settings["knowledge_base"]).strip()))
+      #  knowledge_base = st.selectbox(
+       #     "Select a Knowledge Base",
+        #    ["all", "IDK"],
+         #   index=["all", "IDK"].index(str(st.session_state.settings["knowledge_base"]).strip()))
         playlist_id = st.text_input("Enter a Playlist to use as context", st.session_state.settings["playlist_id"])
         video_id = st.text_input("Enter a Video to use as context", st.session_state.settings["video_id"])
         mode = st.selectbox(
@@ -437,7 +458,7 @@ if page == "Settings":
     st.session_state.settings["mode"] = mode
     st.session_state.settings["use_logical_routing"] = use_logical_routing
     st.session_state.settings["use_semantic_routing"] = use_semantic_routing
-    st.session_state.settings["knowledge_base"] = knowledge_base
+ #   st.session_state.settings["knowledge_base"] = knowledge_base
     st.session_state.settings["seconds_between_frames"] = seconds_between_frames
     st.session_state.settings["local_model"] = local_model
     st.session_state.settings["enabled_detailed_chunking"] = enabled_detailed_chunking
@@ -471,8 +492,11 @@ elif page == "Chat":
                     lines = get_analyze_response(prompt)
 
             else:
+
                 with st.spinner("Generating response..."):
                     lines = get_chat_response(prompt)
+                    st.session_state.spinner_active = False 
+        
 
             #TODO: stream response instead of writing all at once    
             if st.session_state.settings["plaintext"]== False:
