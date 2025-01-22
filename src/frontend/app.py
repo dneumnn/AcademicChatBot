@@ -496,9 +496,11 @@ elif page == "Chat":
                                     
                                     # Verarbeite das JSON-Objekt
                                     combined_content += data.get("content", "")
+                                    combined_content += data.get("message", "")
                                     response_placeholder.markdown(combined_content)
-                                    all_sources.update(data.get("sources", []))
-                                    source_placeholder.markdown("Sources: " + ", ".join(all_sources))
+                                    if(data.get("sources", []) != []):
+                                        all_sources.update(data.get("sources", []))
+                                        source_placeholder.markdown("Sources: " + ", ".join(all_sources))
                                     
                                     # Entferne das verarbeitete Objekt aus dem Puffer
                                     buffer = buffer[index:].lstrip()
