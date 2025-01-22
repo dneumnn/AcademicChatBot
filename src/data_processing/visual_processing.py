@@ -30,9 +30,9 @@ def extract_frames_from_video(video_id: str, interval_in_sec: int = 30):
         extract_frames_from_video("ndm5Xsq45jM", 50)
     """
 
-    log.info("extract_frames_from_video: Begin extraction of video frames...")
+    log.info("extract_frames_from_video: Begin extraction of video frames for video with ID %s.", video_id)
 
-    # Extract filename from file path
+    # Extract filename from file path # ! Deprecated
     # filename = re.search(r"video/(.+?)\.mp4", save_path).group(1)
     # if not os.path.exists(f"./media/{filename}/frames/"):
     #     os.makedirs(f"./media/{filename}/frames/")
@@ -50,13 +50,16 @@ def extract_frames_from_video(video_id: str, interval_in_sec: int = 30):
     # Extract frames
     success, image = cam.read()
     count = 0
+    extracted_frames = 0
     while success:
         if count % interval_in_frames == 0:
             log.info(f"extract_frames_from_video: Extracting frame {count} for video with ID {video_id}.")
             timestamp_ms = cam.get(cv2.CAP_PROP_POS_MSEC)
             cv2.imwrite(f"{frames_folder}/frame{count}_{timestamp_ms}.jpg", image)
+            extracted_frames += 1
         success, image = cam.read()
         count += 1
+    log.info("extract_frames_from_video: Successfully extracted %s frames from the video.", extracted_frames)
 
 
 def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash", local_model:bool=False, local_llm:str="llama3.2-vision"):
@@ -73,8 +76,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         create_image_description("njjBbKpkmFI", "gemini-1.5-flash")
     """
 
-    log.info("create_image_description: Start creating descriptions for images using %s as LLM.", gemini_model)
-
+    if not local_model:
+        log.info("create_image_description: Start creating image descriptions for video with ID %s using %s as LLM.", video_id, gemini_model)
+    else:
+        log.info("create_image_description: Start creating image descriptions for video with ID %s using %s as LLM.", video_id, local_llm)
     # Configure and load genai model
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
@@ -105,6 +110,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
         if not local_model:
             if requests_made >= 10:
+                log.warning("create_image_description: Too many API calls. Sleep for 60 seconds.")
                 time.sleep(60)
                 requests_made = 0
 
@@ -117,7 +123,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
         
         else:
             response = ollama.chat(
-                model="llama3.2-vision",
+                model=local_llm,
                 messages=[{
                     "role": "user",
                     "content": prompt,
@@ -139,16 +145,18 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
         else:
             descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
+        log.info("creating_image_description: Successfully created an image description for file %s.", filename)
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)
 
-    log.info("creating_image_description: Successfully created an image description for file %s.", filename)
+    log.info("creating_image_description: Successfully described all images for video with ID %s.", video_id)
 
 
 def extract_number(filename):
     """
     Extracts numeric frame id from a file name based on a specific pattern and returns it.
+    Helper function for remove_duplicate_images.
 
     Args:
         filename (str): The name of the file to process.
@@ -171,12 +179,14 @@ def remove_duplicate_images(video_id:str, threshold: int=0.9):
     Returns:
         None: The function modifies the folder by deleting duplicate images.
     """
+    log.info("remove_duplicate_images: Start removal of image duplicates using %s as the threshold.", threshold)
     frames_path_dir = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/frames"
 
     file_names = [
         file for file in os.listdir(frames_path_dir)
         if os.path.isfile(os.path.join(frames_path_dir, file))
     ]
+    log.info("remove_duplicate_images: Found %s images to compare.", len(file_names))
 
     file_names_sorted = sorted(file_names, key=extract_number)
 
@@ -212,3 +222,4 @@ def remove_duplicate_images(video_id:str, threshold: int=0.9):
     del_image_path = [file_names_sorted[i] for i in del_image_index if 0 <= i < len(file_names_sorted)]
     for remove_image in del_image_path:
         os.remove(remove_image)
+    log.info("remove_duplicate_images: Removed %s images, as they seem to be duplicates. Kept %s unique images.", len(del_image_index), len(file_names)-len(del_image_index))

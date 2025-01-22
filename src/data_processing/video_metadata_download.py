@@ -240,6 +240,7 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
         List of chunks.
 
     """
+    log.info("create_topic_video: Starting to create video topic for video %s.", video_title)
     transcript_cleaned = re.sub(r'\s+', ' ', re.sub(r'\{.*?\}', '', video_transcript)).strip()[:video_transcript_len].rsplit(' ', 1)[0] if len(video_transcript) > video_transcript_len else video_transcript
     csv_path = os.getenv("TOPIC_OVERVIEW_PATH")
 
@@ -261,6 +262,7 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
     
     response = model.generate_content(prompt)
     response = response.text
+    log.info("create_topic_video: Successfully generated a topic category for video %s.", video_title)
 
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path)
@@ -283,10 +285,12 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
 
         new_row = {"video_id": videoid, "video_topic": final_topic}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        log.info("create_topic_video: Appended topic %s for video %s to %s.", final_topic, video_title, csv_path)
     
     else:
         # Create topic_overview.csv if it does not already exist
         df = pd.DataFrame([{"video_id": videoid, "video_topic": response}])
+        log.info("create_topic_video: Created %s with topic %s for video %s.", csv_path, final_topic, video_title)
     
     df.to_csv(csv_path, index=False)
 

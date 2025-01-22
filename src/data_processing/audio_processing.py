@@ -25,6 +25,7 @@ def split_transcript(transcript: str, max_length: int) -> list:
     Returns:
         list: List of transcript chunks.
     """
+    log.info("split_transcript: Start chunking of audio transcript.")
     chunks = []
     current_chunk = []
 
@@ -38,6 +39,7 @@ def split_transcript(transcript: str, max_length: int) -> list:
     # Add the last chunk
     if current_chunk:
         chunks.append(" ".join(current_chunk))
+    log.info("split_transcript: Chunked the passed transcript into %s chunks.", len(chunks))
     
     return chunks
 
@@ -57,7 +59,14 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         Creation of a transcript file in the folder media/transcripts with the video id as name.
     """
     video_id = extract_youtube_video_id(url)
+
+    if not local_model:
+        log.info("download_preprocess_youtube_transcript: Start downloading and improving audio transcript for video with ID %s using %s as LLM.", video_id, gemini_model)
+    else:
+        log.info("download_preprocess_youtube_transcript: Start downloading and improving audio transcript for video with ID %s using %s as LLM.", video_id, local_llm)
+
     raw_transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=[language])
+    log.info("download_preprocess_youtube_transcript: Downloaded audio transcript for URL %s with %s items.", url, len(raw_transcript))
     
     combinded_transcript = []
     for item in raw_transcript:
@@ -70,7 +79,8 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         if not local_model:
             max_length = 20000  
             transcript_chunks = split_transcript(raw_combined_transcript, max_length)
-
+            log.info("download_preprocess_youtube_transcript: Splitted raw transcript into %s chunks.", len(transcript_chunks))
+            log.warning("download_preprocess_youtube_transcript: Too many API calls. Sleep now for 60 seconds.")
             time.sleep(60)
             genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
             model = genai.GenerativeModel(gemini_model)
@@ -86,6 +96,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
 
             improved_chunks = []
             for chunk in transcript_chunks:
+                log.info("download_preprocess_youtube_transcript: Waiting for response for chunk %s.", len(improved_chunks)+1)
                 response = model.generate_content(prompt + chunk)
                 improved_chunks.append(response.text)
         
@@ -94,6 +105,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
         else:
             max_length = 2500  
             transcript_chunks = split_transcript(raw_combined_transcript, max_length)
+            log.info("download_preprocess_youtube_transcript: Splitted raw transcript into %s chunks.", len(transcript_chunks))
             prompt =  """Please improve the following transcript by correcting any grammar mistakes, 
                 fixing capitalization errors, fixing punctuation missings and mistakes, 
                 and correcting any misspelled or misheard words. Do not modify the formatting 
@@ -105,6 +117,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
 
             improved_chunks = []
             for chunk in transcript_chunks:
+                log.info("download_preprocess_youtube_transcript: Waiting for response for chunk %s.", len(improved_chunks)+1)
                 response: ChatResponse = chat(model=local_llm, messages=[
                 {
                     'role': 'user',
@@ -125,5 +138,5 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
 
     with open(transcript_file_path, "w", encoding="utf-8") as datei:
         datei.write(improved_transcript)
-        log.info("Transcript was successfully extracted and improved.")
+        log.info("download_preprocess_youtube_transcript: Audio transcript was successfully extracted and improved.")
 

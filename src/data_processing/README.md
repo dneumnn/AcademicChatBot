@@ -21,7 +21,7 @@ These pre-processed outputs are structured for further use by the **GraphDB** an
 **9. Transcript Enhancement:** Appends a fitting timestamp for each sentence and enhances the transcript quality through a **LLM**.  
 **10. Create topic**: Create a topic to categorize the video. This helps to get an overview over the analyzed videos.  
 **11. Data Chunking:** Combines processed sentences into structured, manageable chunks for downstream tasks.  
-**12. Embedding:** Use an embedding model to embed chunks of text. **DEPRECATED**.
+**12. Embedding:** Use an embedding model to embed chunks of text. **DEPRECATED**.  
 **13. Return to user:** Return a structured message with key information to the user that called the API.  
 
 Steps 4 to 12 are repeated for every video that should be processed, if a playlist was passed to the pipeline.
@@ -57,8 +57,9 @@ In order for the data pipeline to work properly, please create a `.env` file in 
 
 See the .env.example file, which contains recommended values for those variables.
 
-If you want to use local models, you will need to pull those models through [Ollama](https://ollama.com/).
-Install ollama and execute `$ ollama pull llama3.2-vision` to pull the local model (or your preferred model).
+For the embedding, you will need a model from [Ollama](https://ollama.com/).
+Install Ollama and execute `$ ollama pull nomic-embed-test`. If you want to use the local LLM instead of using the Gemini API, you will also need to execute `$ ollama pull llama3.2-vision` (or your preferred model).
+Please ensure, that Ollama is running on port 11434 while you are trying to execute the pipeline.
 
 ### Method
 
