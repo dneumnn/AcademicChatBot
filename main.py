@@ -23,11 +23,6 @@ async def lifespan(app: FastAPI):
     
 app = FastAPI(lifespan=lifespan)
 
-# placeholder
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
 @app.get("/model")
 def model():
     models = models_internal()
@@ -117,11 +112,6 @@ def chat(request: ChatRequest):
             status_code=200
         )
 
-# placeholder
-@app.get("/chathistory")
-def chat_history():
-    pass
-
 @app.post("/analyze")
 def analyze(request: AnalyzeRequest):
     video_input = request.video_input
@@ -151,8 +141,3 @@ def analyze(request: AnalyzeRequest):
         # No valid YouTube URL
         logging.warning(f"YouTube URL does not exist: Status code = {response.status_code}")
         raise HTTPException(status_code=404, detail=f"YouTube content could not be processed: This is not a valid YouTube URL.")
-
-# placeholder
-@app.get("/support")
-def support():
-    pass
