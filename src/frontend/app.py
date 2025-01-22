@@ -1,4 +1,3 @@
-import random
 from typing import Dict, List, Optional
 import time
 import streamlit as st
@@ -79,7 +78,6 @@ def authenticate_user(username, password):
         return stored_password == hash_password(password)
     return False
     
-#TO-DO: use optional params if needed
 def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None, stream=True, plaintext=False,mode=None, use_logical_routing=False, use_semantic_routing=False):
 
     model_parameters = {
@@ -280,7 +278,6 @@ if st.session_state.rerun:
     st.session_state.rerun = False
     st.rerun()
 
-# TO-DO: change behavior of on_change logging in -> prioritize register?
 # Login/Register Page
 if st.session_state.page == "Login":
     st.title("Login")
