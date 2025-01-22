@@ -124,7 +124,6 @@ if __name__ == "__main__":
     
     #with open(sample_file, "r", encoding="utf-8") as file:
        # chunks = file.read()
-   
     llm_entities = llm_entities_extraction(chunks)
     print("\nLLM-extracted-Entities:", llm_entities)
     
