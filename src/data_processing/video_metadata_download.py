@@ -290,7 +290,7 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
     else:
         # Create topic_overview.csv if it does not already exist
         df = pd.DataFrame([{"video_id": videoid, "video_topic": response}])
-        log.info("create_topic_video: Created %s with topic %s for video %s.", csv_path, final_topic, video_title)
+        log.info("create_topic_video: Created %s for video %s.", csv_path, video_title)
     
     df.to_csv(csv_path, index=False)
 

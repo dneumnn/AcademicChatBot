@@ -85,7 +85,8 @@ The endpoint will return a status indicating whether the processing was successf
 
 | Status Code | Meaning | Description |
 | ---- | ---- | ---- |
-| 200 | OK | Video successfully processed. |
+| 200 | OK | Video or Playlist was already analyzed. |
+| 201 | Created | Video or Playlist successfully analyzed. |
 | 400 | Bad Request | The input parameters or the configuration could not be validated. |
 | 404 | Not Found | The requested video URL does not exist. |
 | 415 | Unsupported Media Type | The video URL exists, but its type is not supported. |
