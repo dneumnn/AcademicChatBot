@@ -6,6 +6,7 @@ import google.generativeai as genai
 import pandas as pd
 
 from .audio_processing import split_transcript
+from .logger import log
 
 # Env variables
 load_dotenv() 
@@ -22,6 +23,12 @@ def extract_time_and_sentences(text: str) -> list:
     Returns:
         list: List of elements containing dictionaries with time, sentence & sentence length.
     """
+    log.info("extract_time_and_sentences: Starting to process text and extract timestamps for sentences.")
+
+    if not text:
+        log.warning("extract_time_and_sentences: Input text is invalid. Return empty list.")
+        return []
+
     split_text = re.split(r'(?<=[.?!])\s+', text)
     
     time_pattern = r'\{([^}]+)\}' 
@@ -48,6 +55,7 @@ def extract_time_and_sentences(text: str) -> list:
         
         result.append({'time': time, 'sentence': sentence, 'length': sentence_length})
     
+    log.info("extract_time_and_sentences: Processed %s sentences with timestamps.", len(result))
     return result
 
 
@@ -209,7 +217,7 @@ def create_chunk_llm(text: str, gemini_model: str = "gemini-1.5-flash", max_inpu
     return response
 
 
-def check_llm_chucks(chunk_response, chunk_max_length):
+def check_llm_chuncks(chunk_response, chunk_max_length):
     chunk_response = chunk_response[0].replace("\n", "").replace("\\", "")
     chunk_list = chunk_response.split("%%%")
     long_chunks = [(index, element) for index, element in enumerate(chunk_list) if len(element) > chunk_max_length]

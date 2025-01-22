@@ -119,15 +119,29 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         else:
             log.error("download_pipeline_youtube: Gemini API call test failed!: %s.", response.status_code)
             return 424, "Error while trying to fetch the Gemini API. Please provide a valid API key and check your internet connection."
-    else:
-        # Check local ollama models
-        required_models = ["llama3.2-vision", "nomic-embed-text", "llama3.2"]
-        for model in required_models:
-            check_passed, message = model_exists(model)
-            if not check_passed:
-                log.info("download_pipeline_youtube: Error while validating the local model: %s.", message)
-                return 424, f"Error while validating the local model: {message}. Please contact a developer."
-        log.info("download_pipeline_youtube: Required local models were found.")
+    # Check local ollama models
+    required_models = ["nomic-embed-text"]
+    if local_model:
+        required_models.append("llama3.2-vision")
+        required_models.append("llama3.2")
+    for model in required_models:
+        check_passed, message = model_exists(model)
+        if not check_passed:
+            log.error("download_pipeline_youtube: Error while validating the local model: %s.", message)
+            return 424, f"Error while validating the local model: {message}. Please contact a developer."
+    log.info("download_pipeline_youtube: Required local models were found.")
+
+    # Check if Ollama is running
+    ollama_url = "http://localhost:11434"
+    try:
+        response = requests.get(ollama_url)
+        if not response.status_code == 200:
+            log.error("download_pipeline_youtube: Error while validating that Ollama is running. Ollama was not found under port 11434.")
+            return 424, f"Error while validating that Ollama is running on port 11434 on the server. Please contact a developer."
+    except:
+        log.error("download_pipeline_youtube: Error while validating that Ollama is running. Ollama was not found under port 11434.")
+        return 424, f"Error while validating that Ollama is running on port 11434 on the server. Please contact a developer."
+    log.info("download_pipeline_youtube: Validating Ollama running on port 11434 succeeded.")
 
     chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
@@ -218,7 +232,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
             else:
                 detailed_llm_chunks = create_chunk_llm(processed_text_transcript)
-                check_detailed_llm_chunks = check_llm_chucks(detailed_llm_chunks, chunk_max_length)
+                check_detailed_llm_chunks = check_llm_chuncks(detailed_llm_chunks, chunk_max_length)
                 format_detailed_llm_chunks = format_llm_chunks(check_detailed_llm_chunks)
                 chunked_text = add_chunk_overlap(format_detailed_llm_chunks, chunk_overlap_length)
             append_meta_data(meta_data, video_id, chunked_text)
