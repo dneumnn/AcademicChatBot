@@ -1,5 +1,6 @@
 import time
 import os
+import ast
 import google.generativeai as genai
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
@@ -10,34 +11,6 @@ from src.data_processing.logger import log
 from src.db.graph_db.utilities import *
 
 
-def parse_response_to_graph(response_text):
-    """
-    Verarbeitet die generierte Antwort von Gemini und extrahiert Knoten und Beziehungen.
-    Diese Funktion muss an die genaue Antwortstruktur angepasst werden.
-    """
-    # Beispiel: Antwort in ein Wörterbuch mit Knoten und Kanten umwandeln
-    graph_data = {
-        "nodes": [],
-        "relationships": []
-    }
-
-    lines = response_text.strip().split("\n")
-    for line in lines:
-        if line.startswith("Node:"):
-            node = line.split(":", 1)[1].strip()
-            if node not in graph_data["nodes"]:
-                graph_data["nodes"].append(node)
-        elif line.startswith("Relationship:"):
-            relationship_data = line.split(":", 1)[1].strip()
-            parts = relationship_data.split(",")
-            if len(parts) == 3:
-                source = parts[0].strip()
-                relation = parts[1].strip()
-                target = parts[2].strip()
-                graph_data["relationships"].append((source, relation, target))
-            
-
-    return graph_data
 
 def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
     """
@@ -83,12 +56,14 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
                 "upload_date": meta_data.get('upload_date')
             })
 
-
-                
+def add_relations_to_graphdb(graph_data, driver):
+    """
+    Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
+    """
+    with driver.session() as session:                
         for relationship in graph_data["relationships"]:
             source, relation, target = relationship
             sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
-            #print(f"relationship:{sanitized_relation}")
             query = f"""
                 MATCH (a:Entity {{name: $source}})
                 MATCH (b:Entity {{name: $target}})
@@ -103,39 +78,38 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
             DELETE n
         """)
 
-def add_attributes_to_nodes(driver, meta_data, frames):
+def add_attributes_to_nodes(driver, meta_data, frames, chunks):
+    chunks_times = [chunk['time'] for chunk in chunks]
+    frame_times, frame_file_names, frame_descriptions = zip(*[(frame['time'], frame['file_name'], frame['description']) for frame in frames])
+
+    frame_times = list(frame_times)
+    frame_file_names = list(frame_file_names)
+    frame_descriptions = list(frame_descriptions)
+
+    closest_matches = {}
+
+    for chunk_time in chunks_times:
+        closest_frame_index = min(range(len(frame_times)), key=lambda i: abs(frame_times[i] - chunk_time))
+        closest_matches[chunk_time] = closest_frame_index  # Store the index of the closest frame time
+
     with driver.session() as session:
-        # Insert Frame information to respective nodes
-        if frames:
+
+        for chunk_time, closest_frame_index in closest_matches.items():
             query = """
             MATCH (n:Entity)
-            WITH n, n.url_id AS urlIdArray
-            UNWIND urlIdArray AS urlIdElement
-            WITH n, urlIdElement, 
-                REDUCE(i = -1, idx IN RANGE(0, SIZE(urlIdArray) - 1) 
-                    | CASE WHEN urlIdArray[idx] = urlIdElement THEN idx ELSE i END) AS index
-            MATCH (n:Entity)
-            WHERE urlIdElement = $id
-            WITH n, index, ABS(n.time[index] - $time) AS difference
-            ORDER BY difference ASC
-            LIMIT 1
-            WITH index, n.time[index] AS closestTime
-            MATCH (n:Entity)
-            WHERE $id IN n.url_id AND n.time[index] = closestTime
-            SET n.frame_names = coalesce(n.frame_names, []) + [$frame_name],
-                n.frame_descriptions = coalesce(n.frame_descriptions, []) + [$description]
-            RETURN n
+            WHERE 
+            ANY(i IN RANGE(0, SIZE(n.url_id) - 1) 
+                WHERE n.url_id[i] = $id AND n.time[i] = $time)
+            SET n.frame_name = coalesce(n.frame_name, []) + $frame_name, 
+                n.frame_description = coalesce(n.frame_description, []) + $description
             """
-            for frame in frames:
-                session.run(query, parameters={
-                 "id": meta_data.get('id'),
-                 "time": frame['time'],
-                 "frame_name": frame['file_name'],
-                 "description": frame['description']
-                }) 
-        else:
-            log.error("download_pipeline_youtube: Node frames could not be inserted into graph_db: %s")
-            return 500, "Internal error when trying Insert frames to nodes in graph_db. Please contact a developer."
+        
+            session.run(query, parameters={
+            "id": meta_data.get('id'),
+            "time": chunk_time,
+            "frame_name": frame_file_names[closest_frame_index],
+            "description": frame_descriptions[closest_frame_index]
+            }) 
         
 def load_csv_to_graphdb(meta_data, video_id) -> None:
 
@@ -159,65 +133,103 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
     except Exception as e:
         log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
         return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
-    
-    requests_made = 0
-    
-    model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
-        You are an expert in Machine Learning (ML) and Natural Language Processing (NLP). 
-        Your task is to extract entities and relationships specifically relevant to ML from text.
-
-        Entities include:
-        - ML methods, algorithms, datasets, tools, frameworks, performance metrics, and general concepts.
-
-        Relationships are:
-        - Domain-specific actions or associations (e.g., uses, trains, evaluates, is_based_on).
-
-        Output should strictly follow this format:
-        Node: <Entity1>
-        Node: <Entity2>
-        Relationship: <Entity1>, <Relationship>, <Entity2>
-
-        Focus on extracting only meaningful ML-related entities and relationships.
-        Do not include generic or unrelated information. Adhere to all formatting rules.
-        """)
-
-    for chunk in chunks:
-        user_prompt = f"""
-            Extract all Entities and their relationships from the following text:
-            {chunk}
-            """
-      
-        if requests_made >= 14:
-            log.info("Rate limit reached. Sleeping for 50 seconds.")
-            time.sleep(50)
-            requests_made = 0
-
-        # Extract entities and relation from transcript chunks
-        try:
-            response = model.generate_content(contents=user_prompt)
-            print(response.text)
-            requests_made += 1
-        except Exception as e:
-            log.error("load_csv_to_graphdb: API Call failed: %s", e)
-            return 500, "Internal error when trying get response from API Call for graph_db Entity extraction. Please contact a developer."
-               
-        # Prepare LLM-answer for graph_db
-        try:
-            graph_data = parse_response_to_graph(response.text)
-        except Exception as e:
-            log.error("load_csv_to_graphdb: Data preparation for graph_db failed: %s", e)
-            return 500, "Internal error when trying prepare LLM response for graph_db. Please contact a developer."
-        
-        # Insert Nodes and Relations to graph_db
-        try:
-            add_nodes_to_graphdb(graph_data, driver, chunk, meta_data)
-        except Exception as e:
-            log.error("load_csv_to_graphdb: Node/relation insertion failed: %s", e)
-            return 500, "Internal error when trying to insert nodes and relations into graph_db. Please contact a developer."
     try:
-        add_attributes_to_nodes(driver, meta_data, frames)
+        entities = extract_entities(driver, chunks, meta_data)
+    except Exception as e:
+        log.error("download_pipeline_youtube: Entities could not be extracted: %s", e)
+        return 500, "Internal error when trying to extract Entities from chunks. Please contact a developer."
+    try:
+        relations = create_relations(entities, chunks)
+    except Exception as e:
+        log.error("download_pipeline_youtube: Relations could not be created: %s", e)
+        return 500, "Internal error when trying to create relations. Please contact a developer."
+    try:
+        add_relations_to_graphdb(relations, driver)
+    except Exception as e:
+        log.error("download_pipeline_youtube: Relations could not be inserted to graph_db: %s", e)
+        return 500, "Internal error when trying to insert relations into graph_db. Please contact a developer."
+    try:
+        add_attributes_to_nodes(driver, meta_data, frames, chunks)
     except Exception as e:
         log.error("load_csv_to_graphdb: Node attribute insertion failed: %s", e)
         return 500, "Internal error when trying to insert nodes attributes. Please contact a developer."
     
     driver.close()
+
+def extract_entities(driver, chunks, meta_data):
+    requests_made = 0
+    
+    entity_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
+        You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
+        Your task is to extract entities from a given text. Focus on extracting only meaningful entities from your expert field.
+        Do not include generic or unrelated information.
+
+        Entity examples:
+        - machine learning, neuronal network, alogrithm, data, supervised learning, training data, layer, weight, clustering, feature, ...
+    
+        Rules:
+        - Format entities that are in plural to an entity in singular.
+        
+        Write all entities found in a list as in the following example:
+        ['artificial intelligence', 'algorithm', 'pattern', 'data']""")
+    
+    entities_list = []
+
+    for chunk in chunks:
+        user_prompt = f"""
+            Extract all Entities from the following text:
+            {chunk}
+            """
+        if requests_made >= 14:
+            log.info("Rate limit reached. Sleeping for 60 seconds.")
+            time.sleep(60)
+            requests_made = 0  
+
+        # Extract entities from transcript chunks
+        response = entity_model.generate_content(contents=user_prompt)
+        requests_made += 1 
+        entities = ast.literal_eval(response.text.strip())
+        node_data = {"nodes": entities}
+        print(node_data)
+        entities_list.extend(entities) 
+        cleaned_entities = list(dict.fromkeys(entities_list))
+
+        add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
+
+           
+    return cleaned_entities
+
+def create_relations(entities, chunks):
+    
+    relation_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
+        You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
+        Your task is to create relations between entities based on information from a given text.
+
+        Relation examples:
+        - is_part_of, makes, based_on, extracts, is, from, uses, has, consists_of, maximizes, ...
+            
+        Output should strictly follow this format:
+        Entity1, Relationship, Entity2.
+                                           
+        """)
+    
+    #for chunk in chunks:
+    user_prompt = f"""
+        Create reasonable relations for these entities: {entities}
+        Use the information from this text to find relations between the entities: {chunks}
+        """
+    relationships = {
+        "relationships": []
+    }
+    # Extract entities from transcript chunks
+    response = relation_model.generate_content(contents=user_prompt)
+    lines = response.text.strip().split("\n")
+    for line in lines:
+        parts = line.split(",")
+        source = parts[0].strip()
+        relation = parts[1].strip()
+        target = parts[2].strip()
+        relationships["relationships"].append((source, relation, target))
+
+    return relationships
+    
