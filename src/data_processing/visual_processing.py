@@ -140,8 +140,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
                 }]
             )
             clean_up_logger()
+            if requests_made >= 10:
+                log.info("create_image_descriptions: Successfully created %s image descriptions.", requests_made)
+                requests_made = 0
 
-        log.info("create_image_descriptions: Successfully created %s image descriptions.", requests_made)
         if not os.path.exists(path_dir_frame_desc):
             os.makedirs(path_dir_frame_desc)
 
@@ -155,12 +157,12 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
         else:
             descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
-        log.info("creating_image_description: Successfully created an image description for file %s.", filename)
+        log.debug("creating_image_description: Successfully created an image description for file %s.", filename)
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)
 
-    log.info("creating_image_description: Successfully described all images for video with ID %s.", video_id)
+    log.info("creating_image_description: Successfully described all %s images for video with ID %s.", len(descriptions), video_id)
 
 
 def extract_number(filename):

@@ -297,7 +297,7 @@ def format_llm_chunks(chunk_list):
     log.info("format_llm_chunks: Start to format LLM chunks for %s chunks.", len(chunk_list))
     merged_results = []
     for i, chunk in enumerate(chunk_list):
-        log.info("format_llm_chunks: Processing LLM chunk %s.", i + 1)
+        log.debug("format_llm_chunks: Processing LLM chunk %s.", i + 1)
 
         match = re.search(r"\{(.*?)\}", chunk)
         if match:
@@ -309,8 +309,13 @@ def format_llm_chunks(chunk_list):
         chunk_cleaned_length = len(chunk_cleaned)
 
         merged_results.append({"time": timestamp, "sentence": chunk_cleaned, "length": chunk_cleaned_length})
+        if i % 15 == 0:
+            log.info("format_llm_chunks: Successfully formatted 15 LLM chunks.")
 
-    log.info("format_llm_chunks: Successfully formatted %s LLM chunks.", len(merged_results))
+    if not len(merged_results) % 15 == 0:
+        remaning_chunks_to_log = len(merged_results) % 15
+        log.info("format_llm_chunks: Successfully formatted %s LLM chunks.", remaning_chunks_to_log)
+    log.info("format_llm_chunks: Successfully formatted %s LLM chunks in total.", len(merged_results))
     return merged_results
 
 
