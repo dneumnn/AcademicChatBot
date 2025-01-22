@@ -110,7 +110,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
         if not local_model:
             if requests_made >= 10:
-                log.info("create_image_description: Too many API calls. Sleep for 60 seconds.")
+                log.warning("create_image_description: Too many API calls. Sleep for 60 seconds.")
                 time.sleep(60)
                 requests_made = 0
 

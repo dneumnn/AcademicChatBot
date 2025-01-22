@@ -80,7 +80,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
             max_length = 20000  
             transcript_chunks = split_transcript(raw_combined_transcript, max_length)
             log.info("download_preprocess_youtube_transcript: Splitted raw transcript into %s chunks.", len(transcript_chunks))
-            log.info("download_preprocess_youtube_transcript: Sleeping now for 60 seconds.")
+            log.warning("download_preprocess_youtube_transcript: Too many API calls. Sleep now for 60 seconds.")
             time.sleep(60)
             genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
             model = genai.GenerativeModel(gemini_model)
