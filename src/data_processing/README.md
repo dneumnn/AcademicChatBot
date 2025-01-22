@@ -21,7 +21,7 @@ These pre-processed outputs are structured for further use by the **GraphDB** an
 **9. Transcript Enhancement:** Appends a fitting timestamp for each sentence and enhances the transcript quality through a **LLM**.  
 **10. Create topic**: Create a topic to categorize the video. This helps to get an overview over the analyzed videos.  
 **11. Data Chunking:** Combines processed sentences into structured, manageable chunks for downstream tasks.  
-**12. Embedding:** Use an embedding model to embed chunks of text. **DEPRECATED**.
+**12. Embedding:** Use an embedding model to embed chunks of text. **DEPRECATED**.  
 **13. Return to user:** Return a structured message with key information to the user that called the API.  
 
 Steps 4 to 12 are repeated for every video that should be processed, if a playlist was passed to the pipeline.

@@ -308,7 +308,7 @@ def model_exists(model_name: str):
         result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
         models = result.stdout.splitlines()
         # Check if the specified model is in the list
-        return any(model_name in model for model in models), "Model not found"
+        return any(model_name in model for model in models), "Model not found" # Message here is only used, if False is returned. It does not make sense in the True case.
     except subprocess.CalledProcessError as e:
         # Error occured while checking models
         return False, "Error occured"
