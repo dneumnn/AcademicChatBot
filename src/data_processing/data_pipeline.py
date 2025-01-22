@@ -94,6 +94,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     if max_limit_similarity > 1:
         log.error("download_pipeline_youtube: max_limit_similarity input invalid.")
         return 400, "YouTube content could not be processed: The parameter max_limit_similarity cannot be above 1.0!"
+    log.info("download_pipeline_youtube: All variables checks passed.")
     
     # Validate ENV Variables
     required_env_vars = ["PROCESSED_VIDEOS_PATH", "TOPIC_OVERVIEW_PATH", "LOG_FILE_PATH"]
@@ -116,8 +117,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         if response.status_code == 200:
             log.info("download_pipeline_youtube: Gemini API call test succeeded!")
         else:
-            log.error("download_pipeline_youtube: Gemini API call test failed!: %s", response.status_code)
-            print(response.text)
+            log.error("download_pipeline_youtube: Gemini API call test failed!: %s.", response.status_code)
             return 424, "Error while trying to fetch the Gemini API. Please provide a valid API key and check your internet connection."
     else:
         # Check local ollama models
@@ -190,7 +190,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             remove_duplicate_images(video_id, max_limit_similarity)
             create_image_description(video_id, local_model=local_model)
         except Exception as e:
-            log.error("download_pipeline_youtube: The visual processing failed: %s", e)
+            log.error("download_pipeline_youtube: The visual processing failed: %s.", e)
             return 500, "Internal error when trying to process the video visual. Please contact a developer."
         
         # * Audio Processing: Download and pre-process transcripts
@@ -200,14 +200,14 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             with open(f"media/{video_id}/transcripts/{video_id}.txt", "r", encoding="utf-8") as file: # TODO: maybe directly return through method
                 processed_text_transcript = file.read()
         except Exception as e:
-            log.error("download_pipeline_youtube: The audio processing failed: %s", e)
+            log.error("download_pipeline_youtube: The audio processing failed: %s.", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
         # * Create Video Topic
         try:
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s.", e)
             return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
 
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
@@ -223,7 +223,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
                 chunked_text = add_chunk_overlap(format_detailed_llm_chunks, chunk_overlap_length)
             append_meta_data(meta_data, video_id, chunked_text)
         except Exception as e:
-            log.error("download_pipeline_youtube: The chunking failed: %s", e)
+            log.error("download_pipeline_youtube: The chunking failed: %s.", e)
             return 500, "Internal error when trying to chunk the video content. Please contact a developer."
 
         # * Embed text chunks
@@ -231,14 +231,14 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             embed_text_chunks(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
+            log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s.", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
 
         # * Integrate data into VectorDB
         try:
             generate_vector_db(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
+            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s.", e)
             return 500, "Internal error when trying to generate the vector db. Please contact a developer."
 
         # * Integrate data into GraphDB
@@ -246,7 +246,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             load_csv_to_graphdb(meta_data, video_id)
             log.info("download_pipeline_youtube: Transcripts CSV for video %s successfully inserted into the GraphDB.", video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s", video_id, e)
+            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s.", video_id, e)
             return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
         processed_video_titles.append(meta_data['title']) # Add this video title to the list of successfully processed videos
