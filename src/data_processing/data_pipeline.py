@@ -235,19 +235,19 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
 
         # * Integrate data into VectorDB
-        #try:
-        #    generate_vector_db(video_id)
-        #except Exception as e:
-        #    log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
-        #    return 500, "Internal error when trying to generate the vector db. Please contact a developer."
+        try:
+            generate_vector_db(video_id)
+        except Exception as e:
+            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
+            return 500, "Internal error when trying to generate the vector db. Please contact a developer."
 
         # * Integrate data into GraphDB
-        #try:
-        #    load_csv_to_graphdb(meta_data, video_id)
-        #    log.info("download_pipeline_youtube: Transcripts CSV for video %s successfully inserted into the GraphDB.", video_id)
-        #except Exception as e:
-        #    log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s", video_id, e)
-        #    return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
+        try:
+            load_csv_to_graphdb(meta_data, video_id)
+            log.info("download_pipeline_youtube: Transcripts CSV for video %s successfully inserted into the GraphDB.", video_id)
+        except Exception as e:
+            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s", video_id, e)
+            return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
         processed_video_titles.append(meta_data['title']) # Add this video title to the list of successfully processed videos
 
