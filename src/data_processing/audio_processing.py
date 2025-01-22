@@ -8,7 +8,7 @@ from ollama import ChatResponse
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from .video_metadata_download import extract_youtube_video_id
-from .logger import log
+from .logger import log, clean_up_logger
 
 # Env variables
 load_dotenv() 
@@ -125,6 +125,7 @@ def download_preprocess_youtube_transcript(url: str, language:str="en", gemini_m
                 },
                 ])
                 improved_chunks.append(response.message.content)
+                clean_up_logger()
         
             improved_transcript = " ".join(improved_chunks)
 

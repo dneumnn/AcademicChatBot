@@ -285,12 +285,12 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
 
         new_row = {"video_id": videoid, "video_topic": final_topic}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        log.info("create_topic_video: Appended topic %s for video %s to %s.", final_topic, video_title, csv_path)
+        log.info("create_topic_video: Appended category %s for video %s to %s.", final_topic, video_title, csv_path)
     
     else:
         # Create topic_overview.csv if it does not already exist
         df = pd.DataFrame([{"video_id": videoid, "video_topic": response}])
-        log.info("create_topic_video: Created %s for video %s.", csv_path, video_title)
+        log.info("create_topic_video: Created %s with category %s for video %s.", csv_path, response, video_title)
     
     df.to_csv(csv_path, index=False)
 

@@ -49,3 +49,15 @@ def write_empty_line(filename: str):
     with open(filename, 'a') as file:
         file.write("\n")
 
+
+def clean_up_logger():
+    # Clean up logging
+    # Read file content
+    with open(os.getenv("LOG_FILE_PATH"), "r") as file:
+        lines = file.readlines()
+    # Process lines
+    while lines and "HTTP Request: POST" in lines[-1]:
+        lines.pop()
+    # Write the result back to the file
+    with open(os.getenv("LOG_FILE_PATH"), "w") as file:
+        file.writelines(lines)
