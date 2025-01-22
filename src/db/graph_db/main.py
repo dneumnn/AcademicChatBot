@@ -13,6 +13,7 @@ from src.db.graph_db.utilities import *
 
 
 def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
+    print(graph_data)
     """
     Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
     """
@@ -57,6 +58,7 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
             })
 
 def add_relations_to_graphdb(graph_data, driver):
+    print(graph_data)
     """
     Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
     """
@@ -64,6 +66,8 @@ def add_relations_to_graphdb(graph_data, driver):
         for relationship in graph_data["relationships"]:
             source, relation, target = relationship
             sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
+            print("source:", source, "target:", target)
+            print(sanitized_relation)
             query = f"""
                 MATCH (a:Entity {{name: $source}})
                 MATCH (b:Entity {{name: $target}})
@@ -125,36 +129,15 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
 
     try:
         chunks = read_csv_chunks(video_id, meta_data)
-    except Exception as e:
-        log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
-        return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
-    try:
         frames = read_csv_frames(video_id)
-    except Exception as e:
-        log.error("download_pipeline_youtube: Frame description CSV could not be read: %s", e)
-        return 500, "Internal error when trying to read Frame description CSV File. Please contact a developer."
-    try:
         entities = extract_entities(driver, chunks, meta_data)
-    except Exception as e:
-        log.error("download_pipeline_youtube: Entities could not be extracted: %s", e)
-        return 500, "Internal error when trying to extract Entities from chunks. Please contact a developer."
-    try:
         relations = create_relations(entities, chunks)
-    except Exception as e:
-        log.error("download_pipeline_youtube: Relations could not be created: %s", e)
-        return 500, "Internal error when trying to create relations. Please contact a developer."
-    try:
         add_relations_to_graphdb(relations, driver)
-    except Exception as e:
-        log.error("download_pipeline_youtube: Relations could not be inserted to graph_db: %s", e)
-        return 500, "Internal error when trying to insert relations into graph_db. Please contact a developer."
-    try:
         add_attributes_to_nodes(driver, meta_data, frames, chunks)
+        driver.close()
     except Exception as e:
-        log.error("load_csv_to_graphdb: Node attribute insertion failed: %s", e)
-        return 500, "Internal error when trying to insert nodes attributes. Please contact a developer."
-    
-    driver.close()
+        log.error("graph_db_pipeline: vidoe data for video %s could not be inserted into the GraphDB: %s.", video_id, e)
+        return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
 def extract_entities(driver, chunks, meta_data):
     requests_made = 0
@@ -171,7 +154,8 @@ def extract_entities(driver, chunks, meta_data):
         - Format entities that are in plural to an entity in singular.
         
         Write all entities found in a list as in the following example:
-        ['artificial intelligence', 'algorithm', 'pattern', 'data']""")
+        ['artificial intelligence', 'algorithm', 'pattern', 'data']
+        """)
     
     entities_list = []
 
@@ -190,7 +174,7 @@ def extract_entities(driver, chunks, meta_data):
         requests_made += 1 
         entities = ast.literal_eval(response.text.strip())
         node_data = {"nodes": entities}
-        print(node_data)
+
         entities_list.extend(entities) 
         cleaned_entities = list(dict.fromkeys(entities_list))
 
@@ -209,7 +193,7 @@ def create_relations(entities, chunks):
         - is_part_of, makes, based_on, extracts, is, from, uses, has, consists_of, maximizes, ...
             
         Output should strictly follow this format:
-        Entity1, Relationship, Entity2.
+        Entity1, Relationship, Entity2
                                            
         """)
     
