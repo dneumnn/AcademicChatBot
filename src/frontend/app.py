@@ -339,7 +339,10 @@ styles = {
     },
 }
 
-page = st_navbar(pages, styles=styles)
+options = {
+    "show_menu": False,
+}
+page = st_navbar(pages, styles=styles, options=options)
 
 # Navigation Panel
 st.sidebar.title("Navigation")
