@@ -50,6 +50,7 @@ class AnalyzeRequest(BaseModel):
     chunk_overlap_length: Optional[int] = 50
     embedding_model: Optional[str] = "nomic-embed-text"
     seconds_between_frames: Optional[int] = 30
+    max_limit_similarity: Optional[float] = 0.85
     local_model: Optional[bool] = False
     enabled_detailed_chunking: Optional[bool] = False
 
@@ -117,6 +118,7 @@ def analyze(request: AnalyzeRequest):
     chunk_max_length = request.chunk_max_length
     chunk_overlap_length = request.chunk_overlap_length
     embedding_model = request.embedding_model
+    max_limit_similarity = request.max_limit_similarity
     seconds_between_frames = request.seconds_between_frames
     local_model  = request.local_model
     enabled_detailed_chunking = request.enabled_detailed_chunking
@@ -128,7 +130,7 @@ def analyze(request: AnalyzeRequest):
     response = requests.head(video_input, allow_redirects=True)
     if response.status_code in range(200, 300) and "youtube" in video_input:
         # Valid YouTube URL
-        status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, seconds_between_frames, local_model, enabled_detailed_chunking)
+        status_code, status_message = download_pipeline_youtube(video_input, chunk_max_length, chunk_overlap_length, seconds_between_frames, max_limit_similarity, local_model, enabled_detailed_chunking)
         if status_code in range(200, 300):
             # Pre-Processing was successfull
             return {"message": status_message, "status_code": status_code}
