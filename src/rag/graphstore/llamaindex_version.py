@@ -4,20 +4,21 @@ from llama_index.core.query_engine import RetrieverQueryEngine
 from llama_index.llms.ollama import Ollama
 from llama_index.llms.openai import OpenAI
 from llama_index.graph_stores.neo4j import Neo4jGraphStore
-import os
-from dotenv import load_dotenv
+
+from ..constants.env import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 def mock_load_text_to_graphdb(file_path: str) -> None:
     pass
 
 def ask_question_to_graphdb(question: str) -> str:
     graph_store = Neo4jGraphStore(
-        url="bolt://localhost:7687", 
-        username="neo4j", 
-        password="password",
+        url=NEO4J_URI, 
+        username=NEO4J_USER, 
+        password=NEO4J_PASSWORD,
     )
 
     llm = Ollama(model="llama3.2")
+    #llm = OpenAI(model="gpt-4o")
     #load_dotenv()
     #OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     #llm = IndexOpenAI(api_key=OPENAI_API_KEY)
@@ -31,3 +32,9 @@ def ask_question_to_graphdb(question: str) -> str:
     response = response_synthesizer.synthesize(question, retrieved_context.source_nodes)
 
     return (retrieved_context, response)
+
+def main():
+    print(ask_question_to_graphdb("Who painted the painting?"))
+
+if __name__ == "__main__":
+    main()

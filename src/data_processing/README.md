@@ -11,18 +11,20 @@ These pre-processed outputs are structured for further use by the **GraphDB** an
 ## Data Pipeline
 
 **1. URL validation:** Verifies whether the input is a valid YouTube video or playlist URL.  
-**2. URL Queue Management:** Adds valid video URLs to a list of pending URLs to be processed.  
-**3. Video Download:** Attempts to download the video using **pytube**. If unsuccessful, it falls back to **yt_dlp**.  
-**4. Metadata Extraction:** Extracts essential metadata (such as title, channel, or duration) from the video.  
-**5. Frame Extraction:** Captures key frames from the video at predefined intervals.  
-**6. Frame Description:** Uses a Large Language Model **(LLM)** to generate descriptive captions for each extracted frame.  
-**7. Transcript Extraction:** Retrieves the video transcript or subtitles.  
-**8. Transcript Enhancement:** Appends a fitting timestamp for each sentence and enhances the transcript quality through a **LLM**.  
-**9. Data Chunking:** Combines processed sentences into structured, manageable chunks for downstream tasks.  
-**10. Processing Log:** Records the video URL in a list of processed URLs to prevent duplicate processing.  
-**11. Embedding:** Use an embedding model to embed chunks of text.  
+**2. Input validation:** Validates both the user input for valid values and if the local configuration is properly set.  
+**3. URL Queue Management:** Adds valid video URLs to a list of pending URLs to be processed.  
+**4. Video Download:** Attempts to download the video using **pytube**. If unsuccessful, it falls back to **yt_dlp**.  
+**5. Metadata Extraction:** Extracts essential metadata (such as title, channel, or duration) from the video.  
+**6. Frame Extraction:** Captures key frames from the video at predefined intervals.  
+**7. Frame Description:** Uses a Large Language Model **(LLM)** to generate descriptive captions for each extracted frame.  
+**8. Transcript Extraction:** Retrieves the video transcript or subtitles.  
+**9. Transcript Enhancement:** Appends a fitting timestamp for each sentence and enhances the transcript quality through a **LLM**.  
+**10. Create topic**: Create a topic to categorize the video. This helps to get an overview over the analyzed videos.  
+**11. Data Chunking:** Combines processed sentences into structured, manageable chunks for downstream tasks.  
+**12. Embedding:** Use an embedding model to embed chunks of text. **DEPRECATED**.  
+**13. Return to user:** Return a structured message with key information to the user that called the API.  
 
-Steps 3 to 11 are repeated for every video that should be processed, if a playlist was passed to the pipeline.
+Steps 4 to 12 are repeated for every video that should be processed, if a playlist was passed to the pipeline.
 
 ## Output
 
@@ -39,11 +41,25 @@ Contains a CSV file with the chunked transcripts.
 - `/media/{videoid}/video`
 Stores the downloaded video.
 
+There is another file, which contains an overview over the processed videos and to which overall topic they belong. This can be found at:
+
+- `/media/video_topic_overview.csv`
+Stores the overview over the overall topics.
+
 ## Usage
 
 The usage of this package is streamlined and easy. Ensure the **FastAPI server** is running by starting it from the `main.py` file. Once the server is active, you can make a POST request to the `/analyze` endpoint.
 
-In order for the data pipeline to work properly, please create a `.env` file in your AcademicChatBot directory with your gemine API key, `API_KEY_GOOGLE_GEMINI="your_api_key"`. You can get your key on the following website: <https://aistudio.google.com/app/apikey>. Then, pull the embedding model: `ollama pull nomic-embed-text` (or your preferred model).
+In order for the data pipeline to work properly, please create a `.env` file in your AcademicChatBot directory, which contains the following:
+
+1. A gemine API key, `API_KEY_GOOGLE_GEMINI="your_api_key"`. You can get your key on the following website: <https://aistudio.google.com/app/apikey>.
+2. Set variables `PROCESSED_VIDEOS_PATH`, `TOPIC_OVERVIEW_PATH` and `LOG_FILE_PATH`.
+
+See the .env.example file, which contains recommended values for those variables.
+
+For the embedding, you will need a model from [Ollama](https://ollama.com/).
+Install Ollama and execute `$ ollama pull nomic-embed-test`. If you want to use the local LLM instead of using the Gemini API, you will also need to execute `$ ollama pull llama3.2-vision` (or your preferred model).
+Please ensure, that Ollama is running on port 11434 while you are trying to execute the pipeline.
 
 ### Method
 
@@ -51,24 +67,50 @@ In order for the data pipeline to work properly, please create a `.env` file in 
 
 #### Query Parameter
 
-| Parameter | Type | Description |
-| --- | --- | --- |
-| `video_input` | `string` | The URL of the YouTube video or playlist to analyze. |
-| `chunk_max_length (optional)` | `int` | Specifies the maximum number of characters allowed in each chunk. Defaults to 550. |
-| `chunk_overlap_length (optional)` | `int` | Determines how many characters overlap between consecutive chunks. Defaults to 50. |
-| `embedding_mode (optional)` | `str` | The embeding AI model that gets used for the embedding step (step 11). |
-
-*Important: The optional parameters are currently in work and can not be set through the API call, but directly through adjusting the code in `data_pipeline.py`.*
+| Parameter | Type | Description | Allowed Values |
+| --- | --- | --- | --- |
+| `video_input` | `string` | The URL of the YouTube video or playlist to analyze. | Valid YouTube URLs |
+| `chunk_max_length (optional)` | `int` | Specifies the maximum number of characters allowed in each chunk. Defaults to 550. | X>1 |
+| `chunk_overlap_length (optional)` | `int` | Determines how many characters overlap between consecutive chunks. Defaults to 50. | X>1 |
+| `seconds_between_frames (optional)` | `int` | Decides how many seconds should pass between the extracted and analyzed frames. Defaults to 30. | X>1 |
+| `max_limit_similarity (optional)` | `float` | Decides how similar the extracted frames can be. If they surpass this value, they will be removed and not be analyzed. The lower the value, the higher the chance of removal. Defaults to 0.85. | X>0.1 X<1 |
+| `local_model (optional)` | `bool` | Decides if a local model should be used, instead of using the Gemini API. Defaults to False. | True or False |
+| `enabled_detailed_chunking (optional)` | `bool` | Decides if a detailed, LLM-based chunking should be used, instead of sentence-based chunking. Defaults to False. | True or False |
 
 #### Response
 
 The endpoint will return a status indicating whether the processing was successful. Once completed, the pre-processed data can be found in the `/media` folder.
+
+##### Possible Status Codes
+
+| Status Code | Meaning | Description |
+| ---- | ---- | ---- |
+| 200 | OK | Video or Playlist was already analyzed. |
+| 201 | Created | Video or Playlist successfully analyzed. |
+| 400 | Bad Request | The input parameters or the configuration could not be validated. |
+| 404 | Not Found | The requested video URL does not exist. |
+| 415 | Unsupported Media Type | The video URL exists, but its type is not supported. |
+| 424 | Failed Dependency | Either an env variable is not set, the API key does not work or the local models are not available. |
+| 500 | Internal Server Error | Something went wrong, most propably a backend programming error. |
 
 #### Example Request
 
 Assuming the **FastAPI server** is running locally on its default port `8000`, you can use the following `curl` command to analyze a YouTube video:
 
 `$ curl -X POST "http://127.0.0.1:8000/analyze?video_input=https://www.youtube.com/watch?v=dQw4w9WgXcQ"`
+
+Another example that utilizes the optional parameters `seconds_between_frames` and `local_model`:
+
+`$ curl -X POST "http://127.0.0.1:8000/analyze?video_input=https://www.youtube.com/watch?v=tq-5YkH_5hg&seconds_between_frames=200&local_model=True"`
+
+## Used AI Models
+
+| Language Model   | Function        | Description                                                 |
+| --------------   | --------------- | ----------------------------------------------------------- |
+| gemini-1.5-flash | LLM             | Gemini model that can be used through the API key.          |
+| llama3.2         | LLM             | Local alternative to the gemini model: audio processing.    |
+| llama3.2-vision  | LLM             | Local alternativate to the gemini model: visual processing. |
+| nomic-embed-test | Embedding Model | Model used for the embedding step. **DEPRECATED.**          |
 
 ---
 

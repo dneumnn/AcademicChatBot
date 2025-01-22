@@ -30,7 +30,8 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
         download_youtube_video_pytube("https://www.youtube.com/watch?v=example", resolution="1080p")
     """
     try:
-        save_path = "media/"
+        video_id = extract_youtube_video_id(url)
+        save_path = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/video"
         os.makedirs(save_path, exist_ok=True)
 
         yt = YouTube(url)
@@ -42,7 +43,7 @@ def download_youtube_video_pytube(url: str, resolution: str = "720p") -> None:
         log.info("download_youtube_video_pytube: PyTube video download successfull. Saved file to %s.", save_path)
 
     except Exception as e:
-        log.warning("YouTube video download using pytube was unsuccessful: %s", e)
+        log.warning("download_youtube_video_pytube: YouTube video download using pytube was unsuccessful: %s", e)
         raise e
 
 
@@ -59,11 +60,15 @@ def download_youtube_video_yt_dlp(url: str) -> None:
     Example:
         download_youtube_video_yt_dlp("https://www.youtube.com/watch?v=example")
     """
-    videoid = extract_youtube_video_id(url)
+    video_id = extract_youtube_video_id(url)
+    save_path = f"{os.getenv('PROCESSED_VIDEOS_PATH').replace('_video_id_', video_id)}/video"
+    os.makedirs(save_path, exist_ok=True)
+
+    save_path = f"{save_path}/{video_id}.%(ext)s"
 
     ydl_opts = {
             'format': 'best',
-            'outtmpl': f"media/{videoid}/video/{videoid}.%(ext)s",
+            'outtmpl': save_path,
             'retries': 3,
             'geo_bypass': True,
         }
@@ -72,9 +77,9 @@ def download_youtube_video_yt_dlp(url: str) -> None:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        log.info("download_youtube_video_yt_dlp: yt_dlp video download successfull. Saved file to /media/videos/%s.mp4.", videoid)
+        log.info("download_youtube_video_yt_dlp: yt_dlp video download successfull. Saved file to %s", save_path)
     except Exception as e:
-        log.warning("YouTube video download using yt-dlp was unsuccessful: %s", e)
+        log.warning("download_youtube_video_yt_dlp: YouTube video download using yt-dlp was unsuccessful: %s", e)
         raise e
 
 
@@ -97,11 +102,11 @@ def extract_video_urls_from_playlist(url: str) -> list:
         video_urls = [
             video_url for video_url in playlist.video_urls
         ]
-        log.info("extract_video_urls_from_playlist: Extracted %d videos from the %s URL.", len(video_urls), url)
+        log.info("extract_video_urls_from_playlist: Extracted %d videos from URL %s.", len(video_urls), url)
         return video_urls
     
     except Exception as e:
-        log.warning("Extraction of YouTube URLs from playlist was unsuccessful: %s", e)
+        log.warning("extract_video_urls_from_playlist: Extraction of YouTube URLs from playlist %s was unsuccessful: %s", url, e)
         raise e
 
     
@@ -145,7 +150,7 @@ def extract_meta_data_pytube(url: str) -> dict:
         return meta_data
     
     except Exception as e:
-        log.warning("YouTube meta extraction data using pytube was unsuccessful: %s", e)
+        log.warning("extract_meta_data_pytube: YouTube meta extraction data using pytube was unsuccessful: %s", e)
         raise e
 
 
@@ -159,13 +164,10 @@ def extract_meta_data_yt_dlp(url: str) -> dict:
     Raises:
         Exception: For errors during meta data extraction.
     """
-    videoid = extract_youtube_video_id(url)
-
     meta_data = {}
 
     ydl_opts = {
             'format': 'best',
-            'outtmpl': f"media/{videoid}/video/{videoid}.%(ext)s",
             'retries': 3,
             'geo_bypass': True,
         }
@@ -199,7 +201,7 @@ def extract_meta_data_yt_dlp(url: str) -> dict:
             return meta_data
 
     except Exception as e:
-        log.warning("YouTube meta extraction data using yt-dlp was unsuccessful: %s", e)
+        log.warning("extract_meta_data_yt_dlp: YouTube meta extraction data using yt-dlp was unsuccessful: %s", e)
         raise e
 
 
@@ -238,7 +240,9 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
         List of chunks.
 
     """
+    log.info("create_topic_video: Starting to create video topic for video %s.", video_title)
     transcript_cleaned = re.sub(r'\s+', ' ', re.sub(r'\{.*?\}', '', video_transcript)).strip()[:video_transcript_len].rsplit(' ', 1)[0] if len(video_transcript) > video_transcript_len else video_transcript
+    csv_path = os.getenv("TOPIC_OVERVIEW_PATH")
 
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
@@ -258,8 +262,8 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
     
     response = model.generate_content(prompt)
     response = response.text
+    log.info("create_topic_video: Successfully generated a topic category for video %s.", video_title)
 
-    csv_path = f"media/video_topic_overview.csv"
     if os.path.exists(csv_path):
         df = pd.read_csv(csv_path)
 
@@ -281,9 +285,12 @@ def create_topic_video(videoid: str, video_title: str, video_transcript: str, vi
 
         new_row = {"video_id": videoid, "video_topic": final_topic}
         df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        log.info("create_topic_video: Appended topic %s for video %s to %s.", final_topic, video_title, csv_path)
     
     else:
+        # Create topic_overview.csv if it does not already exist
         df = pd.DataFrame([{"video_id": videoid, "video_topic": response}])
+        log.info("create_topic_video: Created %s for video %s.", csv_path, video_title)
     
     df.to_csv(csv_path, index=False)
 

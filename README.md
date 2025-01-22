@@ -30,7 +30,8 @@ This chatbot functions as an academic tool that processes YouTube videos, enabli
 
 1. Install packages from requirements.txt:
 `pip install -r requirements.txt`
-2. Write new package dependencies into the requirements.txt **without** their following dependencies. They will automatically get installed with `pip install -r`.
+2. Write all packages from your current envrionment to requirements.txt:
+`pip freeze > requirements.txt`
 
 ## Git Branching Modell - Feature Branching
 

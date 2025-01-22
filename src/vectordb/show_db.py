@@ -5,12 +5,14 @@ def list_collections(client):
     collections = client.list_collections()
     if collections:
         print("Collections in the Chroma Database:")
-        for idx, collection_name in enumerate(collections):
-            print(f"{idx + 1}. {collection_name}")
+        for idx, collection_obj in enumerate(collections):
+            # Hier nur den collection_obj.name ausgeben
+            print(f"{idx + 1}. {collection_obj.name}")
         return collections
     else:
         print("No collections found in the Chroma Database.")
         return []
+
 
 def main():
     client = chromadb.PersistentClient(path=DB_DIR)
@@ -23,8 +25,11 @@ def main():
         if choice < 0 or choice >= len(collections):
             print("Invalid choice.")
             return
-        collection_name = collections[choice]
+
+        # Hier auf die name-Eigenschaft zugreifen:
+        collection_name = collections[choice].name
         collection = client.get_collection(name=collection_name)
+
     except Exception as e:
         print(f"Error accessing the collection: {e}")
         return
@@ -37,7 +42,7 @@ def main():
 
     for idx, doc_id in enumerate(ids):
         print(f"ID: {doc_id}")
-        print(f"  Document: {documents[idx][:80]}...")  # Show only part of the document
+        print(f"  Document: {documents[idx]}")  # Show only part of the document
         print(f"  Metadata: {metadatas[idx]}")
         print("---")
 
