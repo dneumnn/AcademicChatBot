@@ -75,7 +75,7 @@ def merge_sentences_based_on_length(result, max_chunk_length) -> list:
     i = 0
     
     while i < len(result):
-        log.info("merge_sentences_based_on_length: Processing chunk starting at sentence index %s.", i)
+        log.debug("merge_sentences_based_on_length: Processing chunk starting at sentence index %s.", i)
         
         current_sentence = result[i]
         combined_sentence = current_sentence['sentence']
@@ -117,7 +117,7 @@ def add_chunk_overlap(data, max_overlap) -> list:
     processed_data = []
 
     for i, entry in enumerate(data):
-        log.info("add_chunk_overlap: Processing chunk %s.", i + 1)
+        log.debug("add_chunk_overlap: Processing chunk %s.", i + 1)
         sentences = re.split(r'(?<=[.!?])\s+', entry['sentence'])
 
         if i > 0:  
@@ -159,7 +159,7 @@ def create_chunk_llm(text: str, gemini_model: str = "gemini-1.5-flash", max_inpu
         List of chunks.
 
     """
-    log.info("create_chunk_llm: ")
+    log.info("create_chunk_llm: Starting with the detailed, LLM-based chunking with max_input_length_llm set to %s.", max_input_length_llm)
     genai.configure(api_key=API_KEY_GOOGLE_GEMINI)
     model = genai.GenerativeModel(gemini_model)
 
@@ -296,8 +296,8 @@ def format_llm_chunks(chunk_list):
     """
     log.info("format_llm_chunks: Start to format LLM chunks for %s chunks.", len(chunk_list))
     merged_results = []
-    for i, chunk in chunk_list:
-        log.info("format_llm_chunks: Processing LLM chunk %s.", i + 1)
+    for i, chunk in enumerate(chunk_list):
+        log.debug("format_llm_chunks: Processing LLM chunk %s.", i + 1)
 
         match = re.search(r"\{(.*?)\}", chunk)
         if match:
@@ -309,8 +309,13 @@ def format_llm_chunks(chunk_list):
         chunk_cleaned_length = len(chunk_cleaned)
 
         merged_results.append({"time": timestamp, "sentence": chunk_cleaned, "length": chunk_cleaned_length})
+        if i % 15 == 0:
+            log.info("format_llm_chunks: Successfully formatted 15 LLM chunks.")
 
-    log.info("format_llm_chunks: Successfully formatted %s LLM chunks.", len(merged_results))
+    if not len(merged_results) % 15 == 0:
+        remaning_chunks_to_log = len(merged_results) % 15
+        log.info("format_llm_chunks: Successfully formatted %s LLM chunks.", remaning_chunks_to_log)
+    log.info("format_llm_chunks: Successfully formatted %s LLM chunks in total.", len(merged_results))
     return merged_results
 
 

@@ -30,6 +30,7 @@ LOG_FILE_PATH = os.getenv("LOG_FILE_PATH")
 # Create log file
 create_log_file(LOG_FILE_PATH)
 
+#! Deprecated
 # Env variables Database Connection
 # GRAPHDB_URI = os.getenv("GRAPHDB_URI")
 # GRAPHDB_USER = os.getenv("GRAPHDB_USER")

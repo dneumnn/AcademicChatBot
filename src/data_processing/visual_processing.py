@@ -11,7 +11,7 @@ import torch
 import clip
 
 # Import other functions of the data_processing package
-from .logger import log
+from .logger import log, clean_up_logger
 
 # Env variables
 load_dotenv() 
@@ -51,15 +51,23 @@ def extract_frames_from_video(video_id: str, interval_in_sec: int = 30):
     success, image = cam.read()
     count = 0
     extracted_frames = 0
+    logging_done = True
     while success:
         if count % interval_in_frames == 0:
-            log.info(f"extract_frames_from_video: Extracting frame {count} for video with ID {video_id}.")
+            log.debug(f"extract_frames_from_video: Extracting frame {count} for video with ID {video_id}.")
             timestamp_ms = cam.get(cv2.CAP_PROP_POS_MSEC)
             cv2.imwrite(f"{frames_folder}/frame{count}_{timestamp_ms}.jpg", image)
             extracted_frames += 1
+            logging_done = False
         success, image = cam.read()
         count += 1
-    log.info("extract_frames_from_video: Successfully extracted %s frames from the video.", extracted_frames)
+        if(extracted_frames % 15) == 0 and not logging_done:
+            log.info("extract_frames_from_video: Successfully extracted 15 frames.")
+            logging_done = True
+    if not extracted_frames % 15 == 0:
+        remaining_frames_to_log = extracted_frames % 15
+        log.info("extract_frames_from_video: Successfully extracted %s frames.", remaining_frames_to_log)
+    log.info("extract_frames_from_video: Successfully extracted %s frames from the video in total.", extracted_frames)
 
 
 def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash", local_model:bool=False, local_llm:str="llama3.2-vision"):
@@ -110,6 +118,7 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
 
         if not local_model:
             if requests_made >= 10:
+                log.info("create_image_descriptions: Successfully created %s image descriptions.", requests_made)
                 log.warning("create_image_description: Too many API calls. Sleep for 60 seconds.")
                 time.sleep(60)
                 requests_made = 0
@@ -130,7 +139,10 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
                     "images": [image_file_path]
                 }]
             )
-
+            clean_up_logger()
+            if requests_made >= 10:
+                log.info("create_image_descriptions: Successfully created %s image descriptions.", requests_made)
+                requests_made = 0
 
         if not os.path.exists(path_dir_frame_desc):
             os.makedirs(path_dir_frame_desc)
@@ -145,12 +157,12 @@ def create_image_description(video_id: str, gemini_model: str="gemini-1.5-flash"
             descriptions.append({"video_id": video_id, "file_name": filename, "description": response.text.strip(), "time_in_s": frame_time_s})
         else:
             descriptions.append({"video_id": video_id, "file_name": filename, "description": response.message.content.strip(), "time_in_s": frame_time_s})
-        log.info("creating_image_description: Successfully created an image description for file %s.", filename)
+        log.debug("creating_image_description: Successfully created an image description for file %s.", filename)
 
     df = pd.DataFrame(descriptions)
     df.to_csv(f"{path_dir_frame_desc}/{file_frame_desc}", index=False)
 
-    log.info("creating_image_description: Successfully described all images for video with ID %s.", video_id)
+    log.info("creating_image_description: Successfully described all %s images for video with ID %s.", len(descriptions), video_id)
 
 
 def extract_number(filename):
