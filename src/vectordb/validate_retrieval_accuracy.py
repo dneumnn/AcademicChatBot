@@ -16,20 +16,19 @@ def compute_recall_at_k(actual_ids, retrieved_ids, k):
     return relevant_count / float(len(actual_ids))
 
 def choose_collection(client):
-    """List collections and let the user pick one by number."""
     collections = client.list_collections()
     if not collections:
         print("No collections found in the Chroma Database.")
         return None
     print("Collections in the Chroma Database:")
-    for idx, name in enumerate(collections):
-        print(f"{idx+1}. {name}")
+    for idx, col in enumerate(collections):
+        print(f"{idx+1}. {col.name}")
     try:
         choice = int(input("Choose a collection by number: ")) - 1
         if choice < 0 or choice >= len(collections):
             print("Invalid choice.")
             return None
-        return collections[choice]
+        return collections[choice].name
     except ValueError:
         print("Invalid input.")
         return None
@@ -54,36 +53,37 @@ def main():
     # Test-Queries mit relevanten IDs
     test_queries = [
         {
-            "query": "What's the difference between artificial intelligence and machine learning?",
+            "query": "How do digital signatures work in Bitcoin?",
             "relevant_ids": [
-                "row_0_1737028307",  # Discusses AI vs. ML distinctions
-                "row_3_1737028307",  # Explains ML as a capability within AI
-                "row_12_1737028308", # Mentions the Venn diagram (ML as a subset of AI)
-                "row_13_1737028308"  # Concludes ML is indeed a subset of AI
+                "row_9_1737477365",
+                "row_10_1737477366",
+                "row_11_1737477366",
+                "row_12_1737477366",
+                "row_13_1737477366",
+                "row_17_1737477366",
+                "frame_17_1737477368",
+                "frame_19_1737477368",
+                "frame_37_1737477369",
+                "frame_44_1737477370"
             ]
         },
         {
-            "query": "How are deep learning and neural networks related?",
+            "query": "How does proof-of-work secure the Bitcoin blockchain?",
             "relevant_ids": [
-                "row_6_1737028307",  # Introduces deep learning as a subfield of ML
-                "row_7_1737028307"   # Explains neural networks and their layers in deep learning
+                "row_28_1737477366",
+                "row_33_1737477367",
+                "row_34_1737477367",
+                "row_35_1737477367",
+                "row_36_1737477367",
+                "row_38_1737477367",
+                "row_51_1737477367",
+                "frame_2_1737477368",
+                "frame_20_1737477369",
+                "frame_36_1737477369"
             ]
-        },
-            {
-        "query": "What's the difference between supervised and unsupervised machine learning?",
-        "relevant_ids": [
-            "row_5_1737028307",  # Mentions supervised vs. unsupervised ML
-            "row_6_1737028307"   # Continues discussing the difference
-        ]
-    },
-    {
-        "query": "What does robotics have to do with AI?",
-        "relevant_ids": [
-            "row_9_1737028307",  # Mentions AI systems being able to see/hear (human-like capabilities)
-            "row_11_1737028307"  # Explicitly references robotics as a subset of AI
-        ]
-    }
+        }
     ]
+
 
 
     precision_values = []
@@ -91,9 +91,9 @@ def main():
 
     for i, test_query in enumerate(test_queries):
         if i == 0:
-            k = 4
+            k = 5
         else:
-            k = 2
+            k = 5
 
         query_text = test_query["query"]
         actual_ids = test_query["relevant_ids"]
