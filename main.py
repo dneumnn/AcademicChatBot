@@ -1,9 +1,11 @@
+import subprocess
 from typing import Dict, List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse, PlainTextResponse
 import requests
 import logging
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 
 from src.data_processing.data_pipeline import download_pipeline_youtube
 from src.rag.app import chat_internal, models_internal, collections_internal
@@ -11,7 +13,15 @@ from src.rag.app import chat_internal, models_internal, collections_internal
 # Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO) # default=INFO (DEBUG, INFO, WARNING, ERROR, CRITICAL)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup event
+    process = subprocess.Popen(["streamlit", "run", "src/frontend/app.py"])
+    yield
+    # Shutdown event
+    process.terminate()
+    
+app = FastAPI(lifespan=lifespan)
 
 # placeholder
 @app.get("/")

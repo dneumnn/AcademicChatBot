@@ -10,7 +10,7 @@ import logging
 import json
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-DB_PATH = "database/chatbot.db"
+DB_PATH = "src/frontend/database/chatbot.db"
 BASE_URL = "http://localhost:8000"
 
 # Database Initialization
