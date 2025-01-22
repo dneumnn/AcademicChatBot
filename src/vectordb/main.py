@@ -21,6 +21,14 @@ def create_embedding(text): # Erstellt die Vektor Embeddings
         print("Fehler beim Generieren des Embeddings:", e)
         return [0.0] * 384
 
+def remove_leading_non_alphabetic_characters(name):
+    # Entfernt Zeichen am Anfang, bis ein Buchstabe (a-z oder A-Z) gefunden wird
+    return re.sub(r'^[^a-zA-Z]+', '', name)
+
+def remove_trailing_non_alphabetic_characters(name):
+    # Entfernt Zeichen am Ende, bis ein Buchstabe (a-z oder A-Z) gefunden wird
+    return re.sub(r'[^a-zA-Z]+$', '', name)
+
 def generate_vector_db(video_id): # Liest die passende Csv Datei aus und erzeugt eine ChromaDB-Collection
     
     csv_path = os.path.join(INPUT_DIR, video_id, "transcripts_chunks", f"{video_id}.csv") # Pfad zur CSV-Datei für Transkript-Chunks
@@ -36,6 +44,9 @@ def generate_vector_db(video_id): # Liest die passende Csv Datei aus und erzeugt
         
         # Ersetzen der Sonderzeichen im Namen der Collection (auch Leerzeichen) und Generierung des Namens für die Collection
         collection_name = first_row["video_topic"].strip()
+        print("Generiere Collection Name")
+        collection_name = remove_leading_non_alphabetic_characters(collection_name)
+        collection_name = remove_trailing_non_alphabetic_characters(collection_name)
         collection_name = re.sub(r'[^a-zA-Z0-9_-]', '_', collection_name)
         file.seek(0) # Zurücksetzen des Lesezeigers
         reader = csv.DictReader(file)
