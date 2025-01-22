@@ -4,18 +4,89 @@ import ast
 import google.generativeai as genai
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
-from langchain_community.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from itertools import chain
 from src.data_processing.logger import log
 from src.db.graph_db.utilities import *
 
+
+def load_csv_to_graphdb(meta_data, video_id) -> None:
+    """
+    Graph database pipeline, starts all important functions.
+    """
+    load_dotenv()
+    API_KEY_GOOGLE_GEMINI_GRAPHDB = os.getenv("API_KEY_GOOGLE_GEMINI_GRAPHDB")
+    genai.configure(api_key=API_KEY_GOOGLE_GEMINI_GRAPHDB)
+
+    # Connection to neo4j database
+    neo4j_uri = os.getenv("NEO4J_URI")
+    neo4j_user = os.getenv("NEO4J_USER")
+    neo4j_password = os.getenv("NEO4J_PASSWORD")
+    driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
+
+    try:
+        chunks = read_csv_chunks(video_id, meta_data)
+        frames = read_csv_frames(video_id)
+        entities = extract_entities(driver, chunks, meta_data)
+        relations = create_relations(entities, chunks)
+        add_relations_to_graphdb(relations, driver)
+        add_frame_attributes_to_nodes(driver, meta_data, frames, chunks)
+        driver.close()
+    except Exception as e:
+        log.error("graph_db_pipeline: vidoe data for video %s could not be inserted into the GraphDB: %s.", video_id, e)
+        return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
+
+
+def extract_entities(driver, chunks, meta_data):
+    """
+    The llm extracts all relevant entities.
+    Returns list of entities: ['artificial intelligence', 'algorithm', 'pattern']
+    """
+    requests_made = 0
+    
+    entity_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
+        You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
+        Your task is to extract entities from a given text. Focus on extracting only meaningful entities from your expert field.
+        Do not include generic or unrelated information.
+
+        Entity examples:
+        - machine learning, neuronal network, alogrithm, data, supervised learning, training data, layer, weight, clustering, feature, ...
+    
+        Rules:
+        - Format entities that are in plural to an entity in singular.
+        
+        Write all entities found in a list as in the following example:
+        ['artificial intelligence', 'algorithm', 'pattern', 'data']
+        """)
+    
+    entities_list = []
+
+    for chunk in chunks:
+        user_prompt = f"""
+            Extract all Entities from the following text:
+            {chunk}
+            """
+        if requests_made >= 14:
+            log.info("Rate limit reached. Sleeping for 60 seconds.")
+            time.sleep(60)
+            requests_made = 0  
+
+        # Extract entities from transcript chunks
+        response = entity_model.generate_content(contents=user_prompt)
+        requests_made += 1 
+        entities = ast.literal_eval(response.text.strip())
+        node_data = {"nodes": entities}
+
+        entities_list.extend(entities) 
+        cleaned_entities = list(dict.fromkeys(entities_list))
+
+        add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
+       
+    return cleaned_entities
 
 
 def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
     print(graph_data)
     """
-    Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
+    Inserts nodes and the associated meta data into the Neo4j database.
     """
     with driver.session() as session:
         for node in graph_data["nodes"]:
@@ -57,134 +128,12 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
                 "upload_date": meta_data.get('upload_date')
             })
 
-def add_relations_to_graphdb(graph_data, driver):
-    print(graph_data)
-    """
-    Fügt Knoten und Beziehungen in die Neo4j-Datenbank ein.
-    """
-    with driver.session() as session:                
-        for relationship in graph_data["relationships"]:
-            source, relation, target = relationship
-            sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
-            print("source:", source, "target:", target)
-            print(sanitized_relation)
-            query = f"""
-                MATCH (a:Entity {{name: $source}})
-                MATCH (b:Entity {{name: $target}})
-                MERGE (a)-[:{sanitized_relation}]->(b)
-            """
-            session.run(query, source=source, target=target)
-        
-        # Lösche Knoten ohne Beziehungen (isolierte Knoten)
-        session.run("""
-            MATCH (n:Entity)
-            WHERE NOT (n)--()  // Knoten ohne Beziehungen
-            DELETE n
-        """)
-
-def add_attributes_to_nodes(driver, meta_data, frames, chunks):
-    chunks_times = [chunk['time'] for chunk in chunks]
-    frame_times, frame_file_names, frame_descriptions = zip(*[(frame['time'], frame['file_name'], frame['description']) for frame in frames])
-
-    frame_times = list(frame_times)
-    frame_file_names = list(frame_file_names)
-    frame_descriptions = list(frame_descriptions)
-
-    closest_matches = {}
-
-    for chunk_time in chunks_times:
-        closest_frame_index = min(range(len(frame_times)), key=lambda i: abs(frame_times[i] - chunk_time))
-        closest_matches[chunk_time] = closest_frame_index  # Store the index of the closest frame time
-
-    with driver.session() as session:
-
-        for chunk_time, closest_frame_index in closest_matches.items():
-            query = """
-            MATCH (n:Entity)
-            WHERE 
-            ANY(i IN RANGE(0, SIZE(n.url_id) - 1) 
-                WHERE n.url_id[i] = $id AND n.time[i] = $time)
-            SET n.frame_name = coalesce(n.frame_name, []) + $frame_name, 
-                n.frame_description = coalesce(n.frame_description, []) + $description
-            """
-        
-            session.run(query, parameters={
-            "id": meta_data.get('id'),
-            "time": chunk_time,
-            "frame_name": frame_file_names[closest_frame_index],
-            "description": frame_descriptions[closest_frame_index]
-            }) 
-        
-def load_csv_to_graphdb(meta_data, video_id) -> None:
-
-    load_dotenv()
-    API_KEY_GOOGLE_GEMINI_GRAPHDB = os.getenv("API_KEY_GOOGLE_GEMINI_GRAPHDB")
-    genai.configure(api_key=API_KEY_GOOGLE_GEMINI_GRAPHDB)
-
-    # Connection to neo4j database
-    neo4j_uri = os.getenv("NEO4J_URI")
-    neo4j_user = os.getenv("NEO4J_USER")
-    neo4j_password = os.getenv("NEO4J_PASSWORD")
-    driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
-
-    try:
-        chunks = read_csv_chunks(video_id, meta_data)
-        frames = read_csv_frames(video_id)
-        entities = extract_entities(driver, chunks, meta_data)
-        relations = create_relations(entities, chunks)
-        add_relations_to_graphdb(relations, driver)
-        add_attributes_to_nodes(driver, meta_data, frames, chunks)
-        driver.close()
-    except Exception as e:
-        log.error("graph_db_pipeline: vidoe data for video %s could not be inserted into the GraphDB: %s.", video_id, e)
-        return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
-
-def extract_entities(driver, chunks, meta_data):
-    requests_made = 0
-    
-    entity_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
-        You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
-        Your task is to extract entities from a given text. Focus on extracting only meaningful entities from your expert field.
-        Do not include generic or unrelated information.
-
-        Entity examples:
-        - machine learning, neuronal network, alogrithm, data, supervised learning, training data, layer, weight, clustering, feature, ...
-    
-        Rules:
-        - Format entities that are in plural to an entity in singular.
-        
-        Write all entities found in a list as in the following example:
-        ['artificial intelligence', 'algorithm', 'pattern', 'data']
-        """)
-    
-    entities_list = []
-
-    for chunk in chunks:
-        user_prompt = f"""
-            Extract all Entities from the following text:
-            {chunk}
-            """
-        if requests_made >= 14:
-            log.info("Rate limit reached. Sleeping for 60 seconds.")
-            time.sleep(60)
-            requests_made = 0  
-
-        # Extract entities from transcript chunks
-        response = entity_model.generate_content(contents=user_prompt)
-        requests_made += 1 
-        entities = ast.literal_eval(response.text.strip())
-        node_data = {"nodes": entities}
-
-        entities_list.extend(entities) 
-        cleaned_entities = list(dict.fromkeys(entities_list))
-
-        add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
-
-           
-    return cleaned_entities
 
 def create_relations(entities, chunks):
-    
+    """
+    The llm extracts all relevant relations.
+    Return all relationships in a dictonary. 
+    """
     relation_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
         You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
         Your task is to create relations between entities based on information from a given text.
@@ -216,4 +165,75 @@ def create_relations(entities, chunks):
         relationships["relationships"].append((source, relation, target))
 
     return relationships
+
+
+def add_relations_to_graphdb(graph_data, driver):
+    #print(graph_data)
+    """
+    Adds relationships to the Neo4j database.
+    """
+    with driver.session() as session:                
+        for relationship in graph_data["relationships"]:
+            source, relation, target = relationship
+            sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
+            #print("source:", source, "target:", target)
+            #print(sanitized_relation)
+            query = f"""
+                MATCH (a:Entity {{name: $source}})
+                MATCH (b:Entity {{name: $target}})
+                MERGE (a)-[:{sanitized_relation}]->(b)
+            """
+            session.run(query, source=source, target=target)
+        
+        session.run("""
+            MATCH (n:Entity)
+            WHERE NOT (n)--()  
+            DELETE n
+        """)
+
+
+def add_frame_attributes_to_nodes(driver, meta_data, frames, chunks):
+    """
+    Each node is mapped to the correct frame via the corresponding time and then the frame attributes are added to the nodes.
+    """
+    chunks_times = [chunk['time'] for chunk in chunks]
+    frame_times, frame_file_names, frame_descriptions = zip(*[(frame['time'], frame['file_name'], frame['description']) for frame in frames])
+
+    frame_times = list(frame_times)
+    frame_file_names = list(frame_file_names)
+    frame_descriptions = list(frame_descriptions)
+
+    closest_matches = {}
+
+    for chunk_time in chunks_times:
+        closest_frame_index = min(range(len(frame_times)), key=lambda i: abs(frame_times[i] - chunk_time))
+        closest_matches[chunk_time] = closest_frame_index  
+
+    with driver.session() as session:
+
+        for chunk_time, closest_frame_index in closest_matches.items():
+            query = """
+            MATCH (n:Entity)
+            WHERE 
+            ANY(i IN RANGE(0, SIZE(n.url_id) - 1) 
+                WHERE n.url_id[i] = $id AND n.time[i] = $time)
+            SET n.frame_name = coalesce(n.frame_name, []) + $frame_name, 
+                n.frame_description = coalesce(n.frame_description, []) + $description
+            """
+        
+            session.run(query, parameters={
+            "id": meta_data.get('id'),
+            "time": chunk_time,
+            "frame_name": frame_file_names[closest_frame_index],
+            "description": frame_descriptions[closest_frame_index]
+            }) 
+        
+
+
+
+
+
+
+
+
     
