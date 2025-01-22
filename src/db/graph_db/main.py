@@ -28,6 +28,7 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
         entities = extract_entities(driver, chunks, meta_data)
         relations = create_relations(entities, chunks)
         add_relations_to_graphdb(relations, driver)
+        delete_unusable_nodes(driver)
         add_frame_attributes_to_nodes(driver, meta_data, frames, chunks)
         driver.close()
     except Exception as e:
@@ -185,6 +186,12 @@ def add_relations_to_graphdb(graph_data, driver):
             """
             session.run(query, source=source, target=target)
         
+       
+def delete_unusable_nodes(driver):
+    """
+    Deletes all nodes which have no relationships to other nodes.
+    """
+    with driver.session() as session: 
         session.run("""
             MATCH (n:Entity)
             WHERE NOT (n)--()  
