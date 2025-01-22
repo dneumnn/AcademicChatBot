@@ -128,7 +128,6 @@ def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, 
     response = requests.post(f"{BASE_URL}/analyze",json=payload)
     return response.iter_lines()
 
-# TO-DO: real timestamps when bot answers
 def save_chat(username, message, response):
     import datetime
     message_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -291,7 +290,7 @@ if st.session_state.page == "Login":
         else:
             st.error("Invalid username or password.")
 
-    # TO-DO: change behavior of on_change logging in -> prioritize register?
+    #TODO: change behavior of on_change logging in -> prioritize register?
     st.text_input("Username", key="login_username")
     st.text_input("Password", type="password", key="login_password", on_change=login_user)
 
@@ -457,7 +456,6 @@ elif page == "Chat":
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # TO-DO: make bot stream response instead of writing all at once
     # User Input
     if prompt := st.chat_input("..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -476,7 +474,7 @@ elif page == "Chat":
                 with st.spinner("Generating response..."):
                     lines = get_chat_response(prompt)
 
-
+            #TODO: stream response instead of writing all at once    
             if st.session_state.settings["plaintext"]== False:
                 combined_content = ""
                 all_sources = set()
@@ -522,7 +520,6 @@ elif page == "Chat":
                             response_placeholder.markdown(response_content)
                             time.sleep(0.05)
                     st.session_state.messages.append({"role": "assistant", "content": response_content})
-                    # TO-DO: timestamp correctly    
                     save_chat(st.session_state.username, prompt, response_content)
 
 elif page == "Support":
