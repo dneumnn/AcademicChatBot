@@ -2,20 +2,14 @@ import chromadb
 from config import DB_DIR
 
 def compute_precision_at_k(actual_ids, retrieved_ids, k):
-    """Gibt die Precision@K zurück (relevante Treffer in Top-K / K)."""
+    # Berechnung, wie viele der abgerufenen Dokumente tatsächlich relevant sind (Quotient relevanter Treffer durch k)
     if k == 0 or not retrieved_ids:
         return 0.0
     relevant_count = sum(1 for rid in retrieved_ids[:k] if rid in actual_ids)
     return relevant_count / float(k)
 
-def compute_recall_at_k(actual_ids, retrieved_ids, k):
-    """Gibt die Recall@K zurück (relevante Treffer in Top-K / Gesamtzahl relevanter IDs)."""
-    if not actual_ids:
-        return 0.0
-    relevant_count = sum(1 for rid in retrieved_ids[:k] if rid in actual_ids)
-    return relevant_count / float(len(actual_ids))
-
 def choose_collection(client):
+    # Auflistung aller Collections und Auswahl einer Collection aus der Chroma-Datenbank (für test Query: Finance)
     collections = client.list_collections()
     if not collections:
         print("No collections found in the Chroma Database.")
@@ -34,13 +28,14 @@ def choose_collection(client):
         return None
 
 def main():
-    # Verbindung zur bestehenden DB
+    # Verbindung zur Datenbank
     try:
         client = chromadb.PersistentClient(path=DB_DIR)
     except Exception as e:
         print(f"Fehler bei der DB-Verbindung: {e}")
         return
 
+    # Verbindung zur Collection
     collection_name = choose_collection(client)
     if not collection_name:
         return
@@ -50,7 +45,7 @@ def main():
         print(f"Fehler beim Zugriff auf die Collection '{collection_name}': {e}")
         return
 
-    # Test-Queries mit relevanten IDs
+    # Test Queries mit relevanten IDs (Basisvideo: But how does Bitcoin actually work?)
     test_queries = [
         {
             "query": "How do digital signatures work in Bitcoin?",
@@ -84,48 +79,38 @@ def main():
         }
     ]
 
-
-
     precision_values = []
-    recall_values = []
 
+    # Iteration über alle Test-Queries
     for i, test_query in enumerate(test_queries):
-        if i == 0:
-            k = 5
-        else:
-            k = 5
+        k = 5 # Parameter zum Einstellen der Top-K Ergebnisse
 
         query_text = test_query["query"]
         actual_ids = test_query["relevant_ids"]
 
-        # Hole Top-K Ergebnisse
+        # Extrahieren der top K Ergebnisse für die aktuelle Abfrage
         try:
             results = collection.query(query_texts=[query_text], n_results=k)
             retrieved_ids = results.get("ids", [[]])[0] if "ids" in results else []
-            # Print document content for each retrieved ID
         except Exception as e:
             print(f"Fehler bei der Abfrage '{query_text}': {e}")
             continue
 
-        # Berechne Precision@K und Recall@K
+        # Ermittlung der Precision@k für die aktuelle Abfrage
         precision = compute_precision_at_k(actual_ids, retrieved_ids, k)
-        recall = compute_recall_at_k(actual_ids, retrieved_ids, k)
 
         print(f"Query: {query_text}")
         print(f"  Relevant IDs: {actual_ids}")
         print(f"  Retrieved IDs (Top-{k}): {retrieved_ids}")
         print(f"  → Precision@{k}: {precision:.2f}")
-        print(f"  → Recall@{k}: {recall:.2f}")
         print("")
 
         precision_values.append(precision)
-        recall_values.append(recall)
 
-    if precision_values and recall_values:
+    # Zusammenfassung des Durchschnitss der Precision über alle Test-Queries.
+    if precision_values:
         avg_precision = sum(precision_values) / len(precision_values)
-        avg_recall = sum(recall_values) / len(recall_values)
         print(f"Durchschnittliche Precision@{k}: {avg_precision:.2f}")
-        print(f"Durchschnittliche Recall@{k}: {avg_recall:.2f}")
     else:
         print("Keine validen Testergebnisse gefunden.")
 
