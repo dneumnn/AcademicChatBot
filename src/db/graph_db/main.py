@@ -8,6 +8,7 @@ from src.data_processing.logger import log
 from src.db.graph_db.utilities import *
 
 
+# Pipeline to call all necessary functions for data insertion to graph_db
 def load_csv_to_graphdb(meta_data, video_id) -> None:
     """
     Graph database pipeline, starts all important functions.
@@ -23,26 +24,42 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
     driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
 
     try:
+
+        # Read video data
         chunks = read_csv_chunks(video_id, meta_data)
         frames = read_csv_frames(video_id)
+
+        # Extract entities from chunks and insert to graph_db
         entities = extract_entities(driver, chunks, meta_data)
+
+        # Create relations and insert to graph_db
         relations = create_relations(entities, chunks)
         add_relations_to_graphdb(relations, driver)
+
+        # Delete extracted entities which have no relations to other entities
         delete_unusable_nodes(driver)
+
+        # Add frame information to respective nodes in graph_db
         add_frame_attributes_to_nodes(driver, meta_data, frames, chunks)
+
+        # close driver connection to graph_db
         driver.close()
+
     except Exception as e:
         log.error("graph_db_pipeline: vidoe data for video %s could not be inserted into the GraphDB: %s.", video_id, e)
         return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
 
+# Extract entities from chunks with help of LLM
 def extract_entities(driver, chunks, meta_data):
     """
     The llm extracts all relevant entities.
     Returns list of entities: ['artificial intelligence', 'algorithm', 'pattern']
     """
+    # initialize request counter for API-Call limit
     requests_made = 0
     
+    # Define LLM Model for entity extraction 
     entity_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
         You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
         Your task is to extract entities from a given text. Focus on extracting only meaningful entities from your expert field.
@@ -58,34 +75,45 @@ def extract_entities(driver, chunks, meta_data):
         ['artificial intelligence', 'algorithm', 'pattern', 'data']
         """)
     
+    # initialize list to append all extracted entities per chunk
     entities_list = []
 
+    # Loop through all given chunks and extract entities
     for chunk in chunks:
         user_prompt = f"""
             Extract all Entities from the following text:
             {chunk}
             """
+        # Sleep to prevent reaching API-call limit
         if requests_made >= 14:
-            log.info("Rate limit reached. Sleeping for 60 seconds.")
+            log.warning("API rate limit reached. Sleeping for 60 seconds.")
             time.sleep(60)
             requests_made = 0  
 
         # Extract entities from transcript chunks
         response = entity_model.generate_content(contents=user_prompt)
+
+        # add request to API-Call limit counter
         requests_made += 1 
+
+        # Parse LLM response as python object
         entities = ast.literal_eval(response.text.strip())
+
+        # Prepare entities for node creation and insert to graph_db
         node_data = {"nodes": entities}
-
-        entities_list.extend(entities) 
-        cleaned_entities = list(dict.fromkeys(entities_list))
-
         add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
+
+        # Append new entities from current chunk to list
+        entities_list.extend(entities) 
+
+        # Convert list to dict and back to list to remove duplicates
+        cleaned_entities = list(dict.fromkeys(entities_list))
        
     return cleaned_entities
 
 
+# Insert entities to graph_db
 def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
-    print(graph_data)
     """
     Inserts nodes and the associated meta data into the Neo4j database.
     """
@@ -130,11 +158,13 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
             })
 
 
+# Create relations for extracted entities with help of LLM
 def create_relations(entities, chunks):
     """
     The llm extracts all relevant relations.
     Return all relationships in a dictonary. 
     """
+    # Define LLM Model for relation creation
     relation_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
         You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
         Your task is to create relations between entities based on information from a given text.
@@ -146,8 +176,7 @@ def create_relations(entities, chunks):
         Entity1, Relationship, Entity2
                                            
         """)
-    
-    #for chunk in chunks:
+    # Compare list of entities with whole text to find relations
     user_prompt = f"""
         Create reasonable relations for these entities: {entities}
         Use the information from this text to find relations between the entities: {chunks}
@@ -155,8 +184,11 @@ def create_relations(entities, chunks):
     relationships = {
         "relationships": []
     }
-    # Extract entities from transcript chunks
+
+    # Create relations
     response = relation_model.generate_content(contents=user_prompt)
+
+    # Format LLM response for graph insertion
     lines = response.text.strip().split("\n")
     for line in lines:
         parts = line.split(",")
@@ -168,8 +200,8 @@ def create_relations(entities, chunks):
     return relationships
 
 
+# Insert relations to graph_db
 def add_relations_to_graphdb(graph_data, driver):
-    #print(graph_data)
     """
     Adds relationships to the Neo4j database.
     """
@@ -177,8 +209,6 @@ def add_relations_to_graphdb(graph_data, driver):
         for relationship in graph_data["relationships"]:
             source, relation, target = relationship
             sanitized_relation = relation.replace(" ", "_").replace("-", "_").upper()
-            #print("source:", source, "target:", target)
-            #print(sanitized_relation)
             query = f"""
                 MATCH (a:Entity {{name: $source}})
                 MATCH (b:Entity {{name: $target}})
@@ -186,7 +216,8 @@ def add_relations_to_graphdb(graph_data, driver):
             """
             session.run(query, source=source, target=target)
         
-       
+
+# Delete all nodes which have no relation to another node
 def delete_unusable_nodes(driver):
     """
     Deletes all nodes which have no relationships to other nodes.
@@ -199,6 +230,7 @@ def delete_unusable_nodes(driver):
         """)
 
 
+# Add frames information to respective node
 def add_frame_attributes_to_nodes(driver, meta_data, frames, chunks):
     """
     Each node is mapped to the correct frame via the corresponding time and then the frame attributes are added to the nodes.

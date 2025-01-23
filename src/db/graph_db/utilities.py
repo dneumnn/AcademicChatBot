@@ -1,5 +1,6 @@
 import csv
 
+# read transcript_csv and format information as needed for graph insertion
 def read_csv_chunks(video_id, meta_data):
     chunks = []
     with open(f"media/{video_id}/transcripts_chunks/{video_id}.csv", mode="r", encoding="utf-8") as file:
@@ -14,6 +15,8 @@ def read_csv_chunks(video_id, meta_data):
             })
     return chunks
 
+
+# read frames_csv and format information as needed for graph insertion
 def read_csv_frames(video_id):
     frames = []
     with open(f"media/{video_id}/frames_description/frame_descriptions.csv", mode="r", encoding="utf-8") as file:
