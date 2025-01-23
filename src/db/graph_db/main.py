@@ -8,7 +8,6 @@ from src.data_processing.logger import log
 from src.db.graph_db.utilities import *
 
 
-# Pipeline to call all necessary functions for data insertion to graph_db
 def load_csv_to_graphdb(meta_data, video_id) -> None:
     """
     Graph database pipeline, starts all important functions.
@@ -24,23 +23,29 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
     driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
 
     try:
-
         # Read video data
         chunks = read_csv_chunks(video_id, meta_data)
+        log.info("chunks read")
         frames = read_csv_frames(video_id)
-
+        log.info("frames read")
+    
         # Extract entities from chunks and insert to graph_db
         entities = extract_entities(driver, chunks, meta_data)
+        log.info("entities extracted")
 
         # Create relations and insert to graph_db
         relations = create_relations(entities, chunks)
+        log.info("relations created")
         add_relations_to_graphdb(relations, driver)
+        log.info("relations inserted")
 
         # Delete extracted entities which have no relations to other entities
         delete_unusable_nodes(driver)
+        log.info("single nodes deleted")
 
         # Add frame information to respective nodes in graph_db
         add_frame_attributes_to_nodes(driver, meta_data, frames, chunks)
+        log.info("attributes added")
 
         # close driver connection to graph_db
         driver.close()
@@ -50,7 +55,6 @@ def load_csv_to_graphdb(meta_data, video_id) -> None:
         return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
 
-# Extract entities from chunks with help of LLM
 def extract_entities(driver, chunks, meta_data):
     """
     The llm extracts all relevant entities.
@@ -71,8 +75,8 @@ def extract_entities(driver, chunks, meta_data):
         Rules:
         - Format entities that are in plural to an entity in singular.
         
-        Write all entities found in a list as in the following example:
-        ['artificial intelligence', 'algorithm', 'pattern', 'data']
+        Write all entities found in a list as in the following example. Strictly follow this output example without adding any further text:
+        ['artificial intelligence', 'algorithm', 'pattern', 'data']    
         """)
     
     # initialize list to append all extracted entities per chunk
@@ -90,10 +94,30 @@ def extract_entities(driver, chunks, meta_data):
             time.sleep(60)
             requests_made = 0  
 
-        # Extract entities from transcript chunks
-        response = entity_model.generate_content(contents=user_prompt)
-
-        # add request to API-Call limit counter
+            # Retry logic
+        max_retries = 5
+        for attempt in range(1, max_retries + 1):
+            try:
+                # Extract entities from transcript chunks
+                response = entity_model.generate_content(contents=user_prompt)
+                
+                # Check if the API response is successful
+                if hasattr(response, "text") and response.text:
+                    print(f"this is the llm response for chunk:{chunk['time']}:",response.text, "\n")
+                    break
+                else:
+                    log.warning(f"Attempt {attempt} unsucessful. Retrying...")
+            except Exception as e:
+                log.error(f"Attempt {attempt}: Error occurred - {e}. Retrying...")
+            
+            # Exponential backoff for retries
+            if attempt < max_retries:
+                wait_time = 2 ** attempt
+                log.warning(f"Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                log.error("Max retries reached. Skipping this chunk.")
+        # Add request to API-Call limit counter
         requests_made += 1 
 
         # Parse LLM response as python object
@@ -101,18 +125,21 @@ def extract_entities(driver, chunks, meta_data):
 
         # Prepare entities for node creation and insert to graph_db
         node_data = {"nodes": entities}
-        add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
+        print("node data:",node_data, "\n")
 
+        add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
+        log.info(f"{chunk['time']} processed")
         # Append new entities from current chunk to list
         entities_list.extend(entities) 
 
         # Convert list to dict and back to list to remove duplicates
         cleaned_entities = list(dict.fromkeys(entities_list))
+        print("this is the cleaned entities", cleaned_entities, "\n")
+
        
     return cleaned_entities
 
 
-# Insert entities to graph_db
 def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
     """
     Inserts nodes and the associated meta data into the Neo4j database.
@@ -158,7 +185,6 @@ def add_nodes_to_graphdb(graph_data, driver, chunk, meta_data):
             })
 
 
-# Create relations for extracted entities with help of LLM
 def create_relations(entities, chunks):
     """
     The llm extracts all relevant relations.
@@ -200,7 +226,6 @@ def create_relations(entities, chunks):
     return relationships
 
 
-# Insert relations to graph_db
 def add_relations_to_graphdb(graph_data, driver):
     """
     Adds relationships to the Neo4j database.
@@ -217,7 +242,6 @@ def add_relations_to_graphdb(graph_data, driver):
             session.run(query, source=source, target=target)
         
 
-# Delete all nodes which have no relation to another node
 def delete_unusable_nodes(driver):
     """
     Deletes all nodes which have no relationships to other nodes.
@@ -230,7 +254,6 @@ def delete_unusable_nodes(driver):
         """)
 
 
-# Add frames information to respective node
 def add_frame_attributes_to_nodes(driver, meta_data, frames, chunks):
     """
     Each node is mapped to the correct frame via the corresponding time and then the frame attributes are added to the nodes.
