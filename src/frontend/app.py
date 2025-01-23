@@ -127,7 +127,26 @@ def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, 
         "chunk_overlap_length": st.session_state.settings["chunk_overlap_length"],
     }
     response = requests.post(f"{BASE_URL}/analyze",json=payload)
+    source_placeholder = st.empty()
+    response_content = ""
+
+    # Error Handling
+    if response.status_code != 200:
+        if response.status_code == 400:
+            response_content = "The input parameters or the configuration could not be validated."     
+        elif response.status_code == 404:
+            response_content = "The requested video URL does not exist."      
+        elif response.status_code == 415:
+            response_content = "The video URL exists, but its type is not supported."  
+        elif response.status_code == 424:
+            response_content = "Either an env variable is not set, the API key does not work or the local models are not available."
+        else:
+            response_content= "Something went wrong, most probably a backend programming error."
+        source_placeholder.markdown(response_content)  
+        st.session_state.messages.append({"role": "assistant", "content": response_content})
+        return
     return response.iter_lines()
+
 
 def save_chat(username, message, response):
     import datetime
@@ -484,50 +503,48 @@ elif page == "Chat":
 
                 with st.spinner("Generating response..."):
                     lines = get_chat_response(prompt)
-                    st.session_state.spinner_active = False 
         
 
             #TODO: stream response instead of writing all at once    
             if st.session_state.settings["plaintext"]== False:
-                combined_content = ""
-                all_sources = set()
+                if lines: 
+                    combined_content = ""
+                    all_sources = set()
 
-                buffer = ""  # Puffer für unvollständige JSON-Objekte
+                    buffer = ""  
 
-                for line in lines:
-                    if line:
-                        try:
-                            # Füge die neue Zeile in den Puffer ein
-                            buffer += line.decode("utf-8")
-                            
-                            # Versuche, JSON zu dekodieren
-                            while buffer:
-                                try:
-                                    # Dekodiere ein JSON-Objekt aus dem Puffer
-                                    data, index = json.JSONDecoder().raw_decode(buffer)
-                                    
-                                    # Verarbeite das JSON-Objekt
-                                    combined_content += data.get("content", "")
-                                    combined_content += data.get("message", "")
-                                    response_placeholder.markdown(combined_content)
-                                    if(data.get("sources", []) != []):
-                                        all_sources.update(data.get("sources", []))
-                                        source_placeholder.markdown("Sources: " + ", ".join(all_sources))
-                                    
-                                    # Entferne das verarbeitete Objekt aus dem Puffer
-                                    buffer = buffer[index:].lstrip()
-                                except json.JSONDecodeError:
-                                    # Falls der Puffer unvollständig ist, warte auf weitere Daten
-                                    break
-                        except Exception as e:
-                            print(f"Fehler beim Verarbeiten der Zeile: {e}")
-                st.session_state.messages.append({"role": "assistant", "content": combined_content, "sources": all_sources})
-                content = combined_content + "Sources: " + ", ".join(all_sources)
-                save_chat(st.session_state.username, prompt, content)
-
-            else:
                     for line in lines:
                         if line:
+                            try:
+
+                                buffer += line.decode("utf-8")
+                            
+                                while buffer:
+                                    try:
+                                        data, index = json.JSONDecoder().raw_decode(buffer)
+
+                                        combined_content += data.get("content", "")
+                                        combined_content += data.get("message", "")
+
+                                        response_placeholder.markdown(combined_content)
+                                        if(data.get("sources", []) != []):
+                                            all_sources.update(data.get("sources", []))
+                                            source_placeholder.markdown("Sources: " + ", ".join(all_sources))
+
+                                        buffer = buffer[index:].lstrip()
+                                    except json.JSONDecodeError:
+                                        break
+                            except Exception as e:
+                                print(f"Fehler beim Verarbeiten der Zeile: {e}")
+                    st.session_state.messages.append({"role": "assistant", "content": combined_content, "sources": all_sources})
+                    content = combined_content + "Sources: " + ", ".join(all_sources)
+                    save_chat(st.session_state.username, prompt, content)
+
+            else:
+                if lines:
+                    for line in lines:
+                        if line:
+                            
                             word = line.decode('utf-8')
                             response_content += word + " "
                             response_placeholder.markdown(response_content)
