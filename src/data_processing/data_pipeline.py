@@ -30,6 +30,7 @@ LOG_FILE_PATH = os.getenv("LOG_FILE_PATH")
 # Create log file
 create_log_file(LOG_FILE_PATH)
 
+#! Deprecated
 # Env variables Database Connection
 # GRAPHDB_URI = os.getenv("GRAPHDB_URI")
 # GRAPHDB_USER = os.getenv("GRAPHDB_USER")
@@ -40,7 +41,7 @@ create_log_file(LOG_FILE_PATH)
 # ********************************************************
 # * Final pipeline function
 
-def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=120, local_model: bool = False, enabled_detailed_chunking: bool = False):
+def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap_length: int=50, seconds_between_frames: int=120, max_limit_similarity: float=0.85, local_model: bool = False, enabled_detailed_chunking: bool = False):
     """
     Pipeline for processing YouTube videos and their content.
 
@@ -71,8 +72,9 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     log.info("download_pipeline_youtube: Parameter 2: chunk_max_length = %s", chunk_max_length)
     log.info("download_pipeline_youtube: Parameter 3: chunk_overlap_length = %s", chunk_overlap_length)
     log.info("download_pipeline_youtube: Parameter 4: seconds_between_frames = %s", seconds_between_frames)
-    log.info("download_pipeline_youtube: Parameter 5: local_model = %s", local_model)
-    log.info("download_pipeline_youtube: Parameter 6: enabled_detailed_chunking = %s", enabled_detailed_chunking)
+    log.info("download_pipeline_youtube: Parameter 5: max_limit_similarity = %s", max_limit_similarity)
+    log.info("download_pipeline_youtube: Parameter 6: local_model = %s", local_model)
+    log.info("download_pipeline_youtube: Parameter 7: enabled_detailed_chunking = %s", enabled_detailed_chunking)
 
     # Check if passed parameters are valid
     if chunk_max_length < 1:
@@ -87,6 +89,13 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
     if seconds_between_frames < 1:
         log.error("download_pipeline_youtube: seconds_between_frames input invalid.")
         return 400, "YouTube content could not be processed: The parameter seconds_between_frames cannot be below 1!"
+    if max_limit_similarity < 0.1:
+        log.error("download_pipeline_youtube: max_limit_similarity input invalid.")
+        return 400, "YouTube content could not be processed: The parameter max_limit_similarity cannot be below 0.1!"
+    if max_limit_similarity > 1:
+        log.error("download_pipeline_youtube: max_limit_similarity input invalid.")
+        return 400, "YouTube content could not be processed: The parameter max_limit_similarity cannot be above 1.0!"
+    log.info("download_pipeline_youtube: All variables checks passed.")
     
     # Validate ENV Variables
     required_env_vars = ["PROCESSED_VIDEOS_PATH", "TOPIC_OVERVIEW_PATH", "LOG_FILE_PATH"]
@@ -109,18 +118,31 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         if response.status_code == 200:
             log.info("download_pipeline_youtube: Gemini API call test succeeded!")
         else:
-            log.error("download_pipeline_youtube: Gemini API call test failed!: %s", response.status_code)
-            print(response.text)
+            log.error("download_pipeline_youtube: Gemini API call test failed!: %s.", response.status_code)
             return 424, "Error while trying to fetch the Gemini API. Please provide a valid API key and check your internet connection."
-    else:
-        # Check local ollama models
-        required_models = ["llama3.2-vision", "nomic-embed-text", "llama3.2"]
-        for model in required_models:
-            check_passed, message = model_exists(model)
-            if not check_passed:
-                log.info("download_pipeline_youtube: Error while validating the local model: %s.", message)
-                return 424, f"Error while validating the local model: {message}. Please contact a developer."
-        log.info("download_pipeline_youtube: Required local models were found.")
+    # Check local ollama models
+    required_models = ["nomic-embed-text"]
+    if local_model:
+        required_models.append("llama3.2-vision")
+        required_models.append("llama3.2")
+    for model in required_models:
+        check_passed, message = model_exists(model)
+        if not check_passed:
+            log.error("download_pipeline_youtube: Error while validating the local model: %s.", message)
+            return 424, f"Error while validating the local model: {message}. Please contact a developer."
+    log.info("download_pipeline_youtube: Required local models were found.")
+
+    # Check if Ollama is running
+    ollama_url = "http://localhost:11434"
+    try:
+        response = requests.get(ollama_url)
+        if not response.status_code == 200:
+            log.error("download_pipeline_youtube: Error while validating that Ollama is running. Ollama was not found under port 11434.")
+            return 424, f"Error while validating that Ollama is running on port 11434 on the server. Please contact a developer."
+    except:
+        log.error("download_pipeline_youtube: Error while validating that Ollama is running. Ollama was not found under port 11434.")
+        return 424, f"Error while validating that Ollama is running on port 11434 on the server. Please contact a developer."
+    log.info("download_pipeline_youtube: Validating Ollama running on port 11434 succeeded.")
 
     chunk_length = chunk_max_length - chunk_overlap_length
     video_urls = []
@@ -180,43 +202,43 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             # extract_frames_from_video(f"media/{video_id}/video/{video_id}.mp4", seconds_between_frames)
             extract_frames_from_video(video_id, seconds_between_frames)
-            remove_duplicate_images(video_id)
+            remove_duplicate_images(video_id, max_limit_similarity)
             create_image_description(video_id, local_model=local_model)
         except Exception as e:
-            log.error("download_pipeline_youtube: The visual processing failed: %s", e)
+            log.error("download_pipeline_youtube: The visual processing failed: %s.", e)
             return 500, "Internal error when trying to process the video visual. Please contact a developer."
         
         # * Audio Processing: Download and pre-process transcripts
         try:
             download_preprocess_youtube_transcript(video_url, local_model=local_model)
             # Read the downloaded transcript into the variable "processed_text_transcript"
-            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r") as file: # TODO: maybe directly return through method
+            with open(f"media/{video_id}/transcripts/{video_id}.txt", "r", encoding="utf-8") as file: # TODO: maybe directly return through method
                 processed_text_transcript = file.read()
         except Exception as e:
-            log.error("download_pipeline_youtube: The audio processing failed: %s", e)
+            log.error("download_pipeline_youtube: The audio processing failed: %s.", e)
             return 500, "Internal error when trying to process the video audio. Please contact a developer."
 
         # * Create Video Topic
         try:
             create_topic_video(video_id, meta_data['title'], processed_text_transcript)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s", e)
+            log.error("download_pipeline_youtube: Transcript CSV could not be read: %s.", e)
             return 500, "Internal error when trying to read Transcript CSV File. Please contact a developer."
 
         # * Chunking: Append timestamps, merge sentences and add chunk overlap
         try:
-            if enabled_detailed_chunking == False:
+            if not enabled_detailed_chunking:
                 extracted_time_sentence = extract_time_and_sentences(processed_text_transcript)
                 merged_sentence = merge_sentences_based_on_length(extracted_time_sentence, chunk_length)
                 chunked_text = add_chunk_overlap(merged_sentence, chunk_overlap_length)
             else:
                 detailed_llm_chunks = create_chunk_llm(processed_text_transcript)
-                check_detailed_llm_chunks = check_llm_chucks(detailed_llm_chunks, chunk_max_length)
+                check_detailed_llm_chunks = check_llm_chuncks(detailed_llm_chunks, chunk_max_length)
                 format_detailed_llm_chunks = format_llm_chunks(check_detailed_llm_chunks)
                 chunked_text = add_chunk_overlap(format_detailed_llm_chunks, chunk_overlap_length)
             append_meta_data(meta_data, video_id, chunked_text)
         except Exception as e:
-            log.error("download_pipeline_youtube: The chunking failed: %s", e)
+            log.error("download_pipeline_youtube: The chunking failed: %s.", e)
             return 500, "Internal error when trying to chunk the video content. Please contact a developer."
 
         # * Embed text chunks
@@ -224,14 +246,14 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         try:
             embed_text_chunks(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s", e)
+            log.error("download_pipeline_youtube: The embedding of the chunked data failed: %s.", e)
             return 500, "Internal error when trying to embed the chunked data. Please contact a developer."
 
         # * Integrate data into VectorDB
         try:
             generate_vector_db(video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s", e)
+            log.error("download_pipeline_youtube: The embedding of the chunked data in VectorDB failed: %s.", e)
             return 500, "Internal error when trying to generate the vector db. Please contact a developer."
 
         # * Integrate data into GraphDB
@@ -239,7 +261,7 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
             load_csv_to_graphdb(meta_data, video_id)
             log.info("download_pipeline_youtube: Transcripts CSV for video %s successfully inserted into the GraphDB.", video_id)
         except Exception as e:
-            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s", video_id, e)
+            log.error("download_pipeline_youtube: Transcripts CSV for video %s could not be inserted into the GraphDB: %s.", video_id, e)
             return 500, "Internal error when trying Insert Data into GraphDB. Please contact a developer."
 
         processed_video_titles.append(meta_data['title']) # Add this video title to the list of successfully processed videos
@@ -250,12 +272,12 @@ def download_pipeline_youtube(url: str, chunk_max_length: int=550, chunk_overlap
         return 200, "YouTube content was already processed."
     elif len(processed_video_titles) == 1:
         log.info("download_pipeline_youtube: YouTube content for video %s successfully processed! ", url)
-        return 200, f"YouTube video with title {processed_video_titles[0]} successfully processed!"
+        return 201, f"YouTube video with title {processed_video_titles[0]} successfully processed!"
     else:
         log.info("download_pipeline_youtube: YouTube content for playlist %s successfully processed!", url)
         response = "YouTube playlist successfully processed!\nProcessed videos:\n\n"
         response += "\n".join([f"{i + 1}. {title}" for i, title in enumerate(processed_video_titles)])
-        return 200, response
+        return 201, response
 
 
 def video_with_id_already_downloaded(id: str):
@@ -301,7 +323,7 @@ def model_exists(model_name: str):
         result = subprocess.run(["ollama", "list"], capture_output=True, text=True, check=True)
         models = result.stdout.splitlines()
         # Check if the specified model is in the list
-        return any(model_name in model for model in models), "Model not found"
+        return any(model_name in model for model in models), "Model not found" # Message here is only used, if False is returned. It does not make sense in the True case.
     except subprocess.CalledProcessError as e:
         # Error occured while checking models
         return False, "Error occured"
