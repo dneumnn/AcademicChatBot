@@ -343,5 +343,18 @@ def append_meta_data(meta_data: dict, video_id: str, chunked_text):
     df["video_duration"] = meta_data["duration"]
     df["channel_url"] = meta_data["uploader_url"]
 
+    for i in range(len(df["time"])):
+    
+        value = str(df.loc[i, "time"])
+        
+        if not value.replace('.', '', 1).isdigit():
+            match = re.search(r'\d+(\.\d+)?', value)
+            df.loc[i, "time"] = float(match.group()) if match else np.nan
+        
+        if pd.isna(df.loc[i, "time"]) and i > 0:
+            df.loc[i, "time"] = float(df.loc[i-1, "time"]) + 20.0
+
+    df = df.dropna(subset=['time'])
+
     df.to_csv(csv_path, index=False)
     log.info("append_meta_data: Appended relevant meta data to %s.", csv_path)
