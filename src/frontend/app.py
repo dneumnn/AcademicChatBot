@@ -289,9 +289,7 @@ if st.session_state.page == "Login":
         if authenticate_user(st.session_state.login_username, st.session_state.login_password):
             st.session_state.username = st.session_state.login_username
             st.session_state.page = "Chat"
-            logging.info(f"User {st.session_state.username} logged in.")
             st.rerun()
-            logging.info(f"Rerun.")
         else:
             st.error("Invalid username or password.")
 
@@ -305,23 +303,12 @@ if st.session_state.page == "Login":
         time.sleep(1)
         login_user()
 
-    #TODO: change behavior of on_change logging in -> prioritize register?
     st.text_input("Username", key="login_username")
     st.text_input("Password", type="password", key="login_password", on_change=fix_on_change)
 
     login_button, register_button = st.columns(2)
     if login_button.button("Login"):
         login_user()
-
-    # def register_user_and_login():
-    #     if register_user(st.session_state.login_username, st.session_state.login_password):
-    #         st.success("Registration successful! You can now log in.")
-    #         st.session_state.username = st.session_state.login_username
-    #         st.session_state.page = "Chat"
-    #         st.session_state.rerun = True
-    #     else:
-    #         st.error("Username already exists.")
-
 
     if register_button.button("Register"):
         register()
@@ -473,6 +460,8 @@ elif page == "Chat":
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+
+    
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
