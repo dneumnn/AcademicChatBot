@@ -6,7 +6,6 @@ def list_collections(client):
     if collections:
         print("Collections in the Chroma Database:")
         for idx, collection_obj in enumerate(collections):
-            # Hier nur den collection_obj.name ausgeben
             print(f"{idx + 1}. {collection_obj.name}")
         return collections
     else:
@@ -25,8 +24,6 @@ def main():
         if choice < 0 or choice >= len(collections):
             print("Invalid choice.")
             return
-
-        # Hier auf die name-Eigenschaft zugreifen:
         collection_name = collections[choice].name
         collection = client.get_collection(name=collection_name)
 
@@ -34,7 +31,6 @@ def main():
         print(f"Error accessing the collection: {e}")
         return
 
-    # Retrieve the entire collection (can be paginated if desired)
     data = collection.get()
     ids = data.get("ids", [])
     documents = data.get("documents", [])
@@ -42,7 +38,7 @@ def main():
 
     for idx, doc_id in enumerate(ids):
         print(f"ID: {doc_id}")
-        print(f"  Document: {documents[idx]}")  # Show only part of the document
+        print(f"  Document: {documents[idx]}") 
         print(f"  Metadata: {metadatas[idx]}")
         print("---")
 
