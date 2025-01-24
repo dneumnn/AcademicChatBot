@@ -58,7 +58,7 @@ In order for the data pipeline to work properly, please create a `.env` file in 
 See the .env.example file, which contains recommended values for those variables.
 
 For the embedding, you will need a model from [Ollama](https://ollama.com/).
-Install Ollama and execute `$ ollama pull nomic-embed-test`. If you want to use the local LLM instead of using the Gemini API, you will also need to execute `$ ollama pull llama3.2` and `$ ollama pull llama3.2-vision` (or your preferred models).
+Install Ollama and execute `$ ollama pull nomic-embed-text`. If you want to use the local LLM instead of using the Gemini API, you will also need to execute `$ ollama pull llama3.2` and `$ ollama pull llama3.2-vision` (or your preferred models).
 Please ensure, that Ollama is running on port 11434 while you are trying to execute the pipeline.
 
 ### Method
