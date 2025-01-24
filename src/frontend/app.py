@@ -300,8 +300,8 @@ if st.session_state.rerun:
 
 # Login/Register Page
 if st.session_state.page == "Login":
-    # not good, but it works
-    st.session_state.models = get_available_models()
+    if 'models' not in st.session_state:
+        st.session_state.models = get_available_models()
     st.title("Login")
 
     def login_user():
