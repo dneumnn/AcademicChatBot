@@ -14,3 +14,4 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 proper_gemini_key = os.getenv("GOOGLE_API_KEY")
 funny_gemini_key = os.getenv("API_KEY_GOOGLE_GEMINI")
 GEMINI_API_KEY = proper_gemini_key or funny_gemini_key
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")

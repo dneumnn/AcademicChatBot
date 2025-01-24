@@ -9,7 +9,9 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 
 from ..rerankers.rerankers import rerank_passages_with_cross_encoder
-from ..constants.config import RETRIEVAL_EMBEDDING_MODEL
+from ..constants.config import RETRIEVAL_EMBEDDING_MODEL, DEFAULT_KNOWLEDGE_BASE
+
+open_default_collection = None
 
 def mock_load_text_to_vectordb_with_ollama_embeddings(database_path: str, file_path: str, collection_name: str) -> None:
     """
@@ -135,15 +137,23 @@ def generate_vector_filter(logger: logging.Logger, video_id: str | None = None, 
     return filter
 
 def retrieve_top_n_documents_chromadb(question: str, subject: str, logger: logging.Logger, top_k: int = 25, filter: dict | None = None):
+    global open_default_collection
+
     logger.info(f"Using embeddings model: {RETRIEVAL_EMBEDDING_MODEL}")
     client = chromadb.PersistentClient(path=get_persistent_chroma_db_directory())
 
     collections = client.list_collections()
 
+    if DEFAULT_KNOWLEDGE_BASE in [collection.name for collection in collections] and open_default_collection is None:
+        open_default_collection = client.get_collection(DEFAULT_KNOWLEDGE_BASE)
+
     for collection in collections:
         logger.info(f"Collection exists: {collection.name}, meta {collection.metadata}")
 
-    collection = client.get_collection(subject)
+    if subject == DEFAULT_KNOWLEDGE_BASE:
+        collection = open_default_collection
+    else:
+        collection = client.get_collection(subject)
 
     model = SentenceTransformer(RETRIEVAL_EMBEDDING_MODEL)
     question_embedding = model.encode(question).tolist()

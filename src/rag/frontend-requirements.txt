@@ -1,0 +1,2 @@
+streamlit
+streamlit-navigation-bar
