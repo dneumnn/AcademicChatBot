@@ -14,7 +14,7 @@ from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chro
     generate_vector_filter
 from ..routing.logical_routing import route_query
 from ..logger.logger import setup_logger
-from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE
+from ..constants.config import DEFAULT_KNOWLEDGE_BASE
 from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
 from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models
 from ..graphstore.graphstore import question_to_graphdb
@@ -107,7 +107,9 @@ def rag(
         playlist_id: str | None = None,
         use_semantic_routing: bool = False,
         plaintext: bool = False,
-        database: str = "all"
+        database: str = "all",
+        vector_top_k: int = 100,
+        rerank_top_k: int = 30
 ):
     if logger is None:
         logger = setup_logger()
@@ -146,7 +148,7 @@ def rag(
 
     logger.info(f"Starting RAG with model: {model_id}")
     logger.info(
-        f"Using top_k values in retrieval: VECTORSTORE_TOP_K={VECTORSTORE_TOP_K}, RERANKER_TOP_K={RERANKING_TOP_K}")
+        f"Using top_k values in retrieval: VECTORSTORE_TOP_K={vector_top_k}, RERANKER_TOP_K={rerank_top_k}")
 
     prompt_template = get_base_template() if not use_semantic_routing else semantic_routing(question)
     logger.info(f"Using prompt template: {prompt_template.template}, use_semantic_routing={use_semantic_routing}")
@@ -162,7 +164,7 @@ def rag(
 
     if database == "vector" or database == "all":
         vector_filter = generate_vector_filter(logger, video_id, playlist_id)
-        vector_context = get_vector_context(question, subject, logger, VECTORSTORE_TOP_K, RERANKING_TOP_K,
+        vector_context = get_vector_context(question, subject, logger, vector_top_k, rerank_top_k,
                                             vector_filter)
 
         vector_context_text = "\n".join([doc["document"] for doc in vector_context])

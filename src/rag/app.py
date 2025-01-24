@@ -2,7 +2,8 @@ from typing import List
 import json
 
 from .constants.config import DEFAULT_DATABASE, DEFAULT_MODEL, DEFAULT_MODEL_PARAMETER_TEMPERATURE, \
-    DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING
+    DEFAULT_MODEL_PARAMETER_TOP_P, DEFAULT_MODEL_PARAMETER_TOP_K, USE_SEMANTIC_ROUTING, USE_LOGICAL_ROUTING, \
+    VECTORSTORE_TOP_K, RERANKING_TOP_K
 from .models.model import get_available_models
 from .graphstore.langchain_version import ask_question_to_graphdb, mock_load_text_to_graphdb
 from .logger.logger import setup_logger
@@ -31,7 +32,9 @@ def chat_internal(
         model_parameters: dict | None = None,
         database: str | None = None,
         stream: bool | None = None,
-        plaintext: bool | None = None
+        plaintext: bool | None = None,
+        vector_top_k: int | None = None,
+        rerank_top_k: int | None = None
 ):
     """
     Respond to the user's prompt
@@ -100,6 +103,14 @@ def chat_internal(
         logger.warning("Plaintext is not provided. Using default value.")
         plaintext = False
 
+    if vector_top_k is None:
+        logger.warning("Vector top k is not provided. Using default value.")
+        vector_top_k = VECTORSTORE_TOP_K
+
+    if rerank_top_k is None:
+        logger.warning("Rerank top k is not provided. Using default value.")
+        rerank_top_k = RERANKING_TOP_K
+
     if stream:
         return rag(
             question=prompt,
@@ -113,7 +124,9 @@ def chat_internal(
             video_id=video_id,
             playlist_id=playlist_id,
             plaintext=plaintext,
-            database=database
+            database=database,
+            vector_top_k=vector_top_k,
+            rerank_top_k=rerank_top_k
         )
     else:
         output = []
@@ -129,7 +142,9 @@ def chat_internal(
                 video_id=video_id,
                 playlist_id=playlist_id,
                 plaintext=plaintext,
-                database=database
+                database=database,
+                vector_top_k=vector_top_k,
+                rerank_top_k=rerank_top_k
         ):
             output.append(chunk)
         if plaintext:
