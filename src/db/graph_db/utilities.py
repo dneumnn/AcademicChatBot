@@ -1,4 +1,5 @@
 import csv
+from src.data_processing.logger import log
 
 # read transcript_csv and format information as needed for graph insertion
 def read_csv_chunks(video_id, meta_data):
@@ -6,15 +7,24 @@ def read_csv_chunks(video_id, meta_data):
     with open(f"media/{video_id}/transcripts_chunks/{video_id}.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
-            if row['time'] != "":
-                chunks.append({
-                    "node_id": meta_data["id"],
-                    "sentence": row["chunks"],
-                    "time": float(row["time"].split()[0]),
-                    "length": int(row["length"]),
-                    "embedding":row["chunks_embedded"]
-                })
-
+            time_value = row.get('time') 
+            length_value = row.get('length')          
+            if (
+                time_value and time_value.replace('.', '', 1).isdigit() 
+                and length_value and length_value.isdigit()
+            ):
+                try:
+                    chunks.append({
+                        "node_id": meta_data["id"],
+                        "sentence": row.get("chunks"),
+                        "time": float(time_value.split()[0]),
+                        "length": int(length_value),
+                        "embedding": row.get("chunks_embedded")
+                    })
+                except Exception as e:
+                    log.error(f"Error processing row: {row}, error: {e}")
+            else:
+                log.info(f"Skipping chunk due to invalid data format: {row}")
     return chunks
 
 
@@ -23,12 +33,18 @@ def read_csv_frames(video_id):
     frames = []
     with open(f"media/{video_id}/frames_description/frame_descriptions.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
-        for row in reader: 
-            if row['time_in_s'] != "":
-                frames.append({
-                    "time": float(row["time_in_s"]),
-                    "file_name": f"{video_id}_{row['file_name']}",
-                    "description": row["description"]
-
-                })
+        for row in reader:
+            time_value = row.get('time_in_s')
+            
+            if time_value and time_value.replace('.', '', 1).isdigit():  
+                try:
+                    frames.append({
+                        "time": float(time_value),
+                        "file_name": f"{video_id}_{row.get('file_name')}",
+                        "description": row.get("description")
+                    })
+                except Exception as e:
+                    log.error(f"Error processing row: {row}, error: {e}")
+            else:
+                log.info(f"Skipping frame due to invalid 'time_in_s': {row}")
     return frames
