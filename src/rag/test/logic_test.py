@@ -169,11 +169,7 @@ model = genai.GenerativeModel(model_name='gemini-1.5-flash')
 test_runs = 5
 max_questions = 100_000_000
 target_models = [
-    'gemini-1.5-flash',
-    'gemini-1.5-pro',
-    'llama3.2',
-    'gpt-4o',
-    'gpt-4o-mini',
+    'deepseek-reasoner',
 ]
 
 q_counter = 0
@@ -251,6 +247,7 @@ try:
             test_obj = q_data.copy()
             test_obj['avg_score'] = str(avg_result)
             test_obj['worst_score'] = str(worst_result)
+            test_obj['best_score'] = str(best_result)
             test_obj['acceptable_score'] = f"{((100 * acceptable_count) / len(scores)):.2f}%"
             test_obj['best_answer'] = best_answer
             test_obj['model'] = t_model
