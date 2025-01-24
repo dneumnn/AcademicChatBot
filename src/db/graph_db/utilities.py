@@ -6,7 +6,6 @@ def read_csv_chunks(video_id, meta_data):
     with open(f"media/{video_id}/transcripts_chunks/{video_id}.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
-            print("chunk time:", row["time"], type(row["time"]))
             if row['time'] != "":
                 chunks.append({
                     "node_id": meta_data["id"],
