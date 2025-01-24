@@ -7,7 +7,7 @@ import hashlib
 import requests
 import logging
 import json
-import tkinter as tk 
+import re
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 DB_PATH = "src/frontend/database/chatbot.db"
@@ -55,6 +55,7 @@ def init_db():
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
+
 def register_user(username, password):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -63,7 +64,7 @@ def register_user(username, password):
         conn.commit()
         return True
     except sqlite3.IntegrityError:
-        return False  # Username already exists
+        return False # User already exists
     finally:
         conn.close()
 
@@ -78,9 +79,9 @@ def authenticate_user(username, password):
         stored_password = result[0]
         return stored_password == hash_password(password)
     return False
-    
-def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None, stream=True, plaintext=False,mode=None, use_logical_routing=False, use_semantic_routing=False):
 
+
+def get_chat_response(prompt, message_history=None, model_id=None, database=None, model_parameters=None, playlist_id=None, video_id=None, knowledge_base=None, stream=True, plaintext=False,mode=None, use_logical_routing=False, use_semantic_routing=False):
     knowledge_base= "fallback"
     model_parameters = {
         "temperature": st.session_state.settings["temperature"],
@@ -115,15 +116,14 @@ def get_chat_response(prompt, message_history=None, model_id=None, database=None
         "mode": st.session_state.settings["mode"],
         "use_logical_routing": st.session_state.settings["use_logical_routing"],
         "use_semantic_routing": st.session_state.settings["use_semantic_routing"]
-
-
     }
     response = requests.post(f"{BASE_URL}/chat", json=payload)
     return response.iter_lines()
 
-def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, embedding_model="nomic-embed-text"):
+
+def get_analyze_response(prompt, ytvideo, chunk_max_length=550, chunk_overlap_length=50, embedding_model="nomic-embed-text"):
     payload = {
-        "video_input": prompt,
+        "video_input": ytvideo,
         "chunk_max_length": st.session_state.settings["chunk_max_length"],
         "chunk_overlap_length": st.session_state.settings["chunk_overlap_length"],
         "max_limit_similarity": st.session_state.settings["max_limit_similarity"],
@@ -149,7 +149,8 @@ def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, 
         else:
             response_content= "Something went wrong, most probably a backend programming error."
         source_placeholder.markdown(response_content)  
-        st.session_state.messages.append({"role": "assistant", "content": response_content})
+        st.session_state.messages.append({"role": "assistant", "content": response_content, "sources": []})
+        save_chat(st.session_state.username, prompt, response_content)
         return
     return response.iter_lines()
 
@@ -261,7 +262,6 @@ if "themes" not in st.session_state:
                  "button_face": "🌜"},
     }
 
-
 if "settings" not in st.session_state:
     st.session_state.settings = {
         "history": False,
@@ -305,7 +305,6 @@ if st.session_state.rerun:
     st.session_state.rerun = False
     st.rerun()
 
-
 # Login/Register Page
 if st.session_state.page == "Login":
     if 'models' not in st.session_state:
@@ -337,10 +336,8 @@ if st.session_state.page == "Login":
     login_button, register_button = st.columns(2)
     if login_button.button("Login"):
         login_user()
-
     if register_button.button("Register"):
         register()
-
 
     st.stop()
 
@@ -376,7 +373,7 @@ st.session_state.page  = st_navbar(pages, styles=styles, options=options)
 # Navigation Panel
 st.sidebar.title("Navigation")
 
-# Begrüßung und Benutzeranzeige
+# User Info
 if st.session_state.username:
     st.sidebar.markdown(f"👤 **User:** {st.session_state.username}")
 else:
@@ -389,18 +386,18 @@ if st.sidebar.button(btn_face, help="Thema wechseln"):
 
 st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
 
-# Info-Bereich
+# Info
 st.sidebar.subheader("ℹ️ About the Bot")
 st.sidebar.info("""
 This chatbot is an academic tool that processes YouTube videos for interactive user engagement.
 """)
 
-
+# Logout Button
 if st.sidebar.button("Logout", key="logout"):
     st.session_state.page = "Login"
     st.session_state.username = None
+    st.session_state.messages = []
     st.rerun()
-
 
 if  st.session_state.page == "Settings":
     st.title("Streamlit Chat Settings")
@@ -434,7 +431,6 @@ if  st.session_state.page == "Settings":
         stream = st.checkbox("Get answer as a stream", st.session_state.settings["stream"])
         plaintext = st.checkbox("Only get text without sources", st.session_state.settings["plaintext"])
         
-
     with spacer:
         st.write("")
 
@@ -473,9 +469,6 @@ if  st.session_state.page == "Settings":
     st.session_state.settings["local_model"] = local_model
     st.session_state.settings["enabled_detailed_chunking"] = enabled_detailed_chunking
 
-
-
-
 # CHAT
 elif  st.session_state.page == "Chat":
     
@@ -485,46 +478,53 @@ elif  st.session_state.page == "Chat":
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-  
-
-    # Platzhalter für Benutzer- und Assistentennachrichten
-    response_container = st.container(height = 650)  # Container für dynamische Inhalte
-    input_container = st.container()  # Container für das Eingabefeld
+    # container for dynamic content
+    response_container = st.container(height = 650)
+    input_container = st.container()  # Container for user input
 
     with response_container:
-        # Response- und Quellen-Platzhalter
+        # placeholder for dynamic content
         user_placeholder = st.empty()
         response_placeholder = st.empty()
         source_placeholder = st.empty()
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.write(message["content"])
-                if message["sources"] != []:
-                    logging.info(f"Message: {message}")
+                if message["sources"] != [] and int(len(message["sources"])) != 0:
+                    logging.info(f"Message: {int(len(message['sources']))}")
                     sources = "Sources: " + ", ".join(message["sources"])
                     st.markdown(sources)
 
-    # Eingabe bleibt unten in einem separaten Container
+    # User input
     with input_container:
         if prompt := st.chat_input("..."):
             st.session_state.messages.append({"role": "user", "content": prompt, "sources": []})
             
             with response_container:
-                # Zeige die Benutzereingabe an
+                # answer
                 with st.chat_message("user"):
                     st.markdown(prompt)
 
-                # Assistentenantwort verarbeiten
                 with st.chat_message("assistant"):
                     response_content = ""
                     if "youtube.com" in prompt or "youtu.be" in prompt:
-                        with st.spinner("Analyzing video..."):
-                            lines = get_analyze_response(prompt)
+                        youtube_regex = r"(https?://(?:www\.)?youtube\.com/watch\?v=[\w-]+|https?://youtu\.be/[\w-]+)"
+                        match = re.search(youtube_regex, prompt)
+                        if match:
+                            logging.info(f"Match: {match.group(0)}")
+                            with st.spinner("Analyzing video..."):
+                                lines = get_analyze_response(prompt, match.group(0))
+                        else:
+                            st.write("Youtube Link is not in the correct format. Please use https:// or backend is not available.")
+                            st.session_state.messages.append(
+                                {"role": "assistant", "content": "Youtube Link is not in the correct format. Please use https:// or backend is not available.", "sources": []}
+                            )
+                            save_chat(st.session_state.username, prompt, "Youtube Link is not in the correct format. Please use https:// or backend is not available.")
+                            lines = None
                     else:
                         with st.spinner("Generating response..."):
                             lines = get_chat_response(prompt)
 
-                    # Dynamisches Streamen der Antwort
                     if st.session_state.settings["plaintext"] == False:
                         if lines:
                             combined_content = ""
@@ -551,14 +551,16 @@ elif  st.session_state.page == "Chat":
                                     except Exception as e:
                                         print(f"Fehler beim Verarbeiten der Zeile: {e}")
 
-                            # Aktualisiere Platzhalter innerhalb des Containers
                             st.write(combined_content)
-                            st.write("Sources: " + ", ".join(all_sources))
+                            if int(len(all_sources)) != 0:
+                                st.write("Sources: " + ", ".join(all_sources))
+                                content = combined_content + "Sources: " + ", ".join(all_sources)
+                            else:
+                                content = combined_content
+
                             st.session_state.messages.append(
                                 {"role": "assistant", "content": combined_content, "sources": all_sources}
                             )
-
-                            content = combined_content + "Sources: " + ", ".join(all_sources)
                             save_chat(st.session_state.username, prompt, content)
 
                     else:
@@ -574,7 +576,6 @@ elif  st.session_state.page == "Chat":
                                 {"role": "assistant", "content": response_content, "sources": []}
                             )
                             save_chat(st.session_state.username, prompt, response_content)
-
 
 elif  st.session_state.page == "Support":
     st.title("Support")
