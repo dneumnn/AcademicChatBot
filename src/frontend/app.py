@@ -341,7 +341,6 @@ if st.session_state.page == "Login":
 
     st.stop()
 
-# TODO: chat page keeps twitching when other page is selected, highlight stays on chat instead of the newly selected page
 # Page navigation
 pages = ["Chat", "Settings", "Support", "Chat History", "Admin Panel"]
 styles = {
@@ -436,8 +435,8 @@ if  st.session_state.page == "Settings":
 
     with col2:
         st.markdown("### Analyze Settings")
-        chunk_max_length = st.slider("Select a value for the chunk size", 250, 1000, st.session_state.settings["chunk_max_length"])
-        chunk_overlap_length = st.slider("Select a value for the chunk overlap length", 0, 100, st.session_state.settings["chunk_overlap_length"])
+        chunk_max_length = st.slider("Select a value for the chunk size", 100, 10000, st.session_state.settings["chunk_max_length"])
+        chunk_overlap_length = st.slider("Select a value for the chunk overlap length", 0, 500, st.session_state.settings["chunk_overlap_length"])
         embedding_model = st.selectbox(
             "Select Embedding Model",
             ["nomic-embed-text"],
