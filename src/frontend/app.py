@@ -7,6 +7,7 @@ import hashlib
 import requests
 import logging
 import json
+import tkinter as tk 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 DB_PATH = "src/frontend/database/chatbot.db"
@@ -298,6 +299,7 @@ if st.session_state.rerun:
     st.session_state.rerun = False
     st.rerun()
 
+
 # Login/Register Page
 if st.session_state.page == "Login":
     if 'models' not in st.session_state:
@@ -309,6 +311,7 @@ if st.session_state.page == "Login":
             st.session_state.username = st.session_state.login_username
             st.session_state.page = "Chat"
             st.rerun()
+            
         else:
             st.error("Invalid username or password.")
 
@@ -362,7 +365,7 @@ styles = {
 options = {
     "show_menu": False,
 }
-page = st_navbar(pages, styles=styles, options=options)
+st.session_state.page  = st_navbar(pages, styles=styles, options=options)
 
 # Navigation Panel
 st.sidebar.title("Navigation")
@@ -378,14 +381,7 @@ btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["bu
 if st.sidebar.button(btn_face, help="Thema wechseln"):
     ChangeTheme()
 
-
-# LLM-search
-search_query = st.sidebar.text_input("🔍 **Search Models**")
-
-# filtered LLMs
-filtered_models = [model for model in st.session_state.models if search_query.lower() in model.lower()]
-
-st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", filtered_models)
+st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
 
 # Info-Bereich
 st.sidebar.subheader("ℹ️ About the Bot")
@@ -400,7 +396,7 @@ if st.sidebar.button("Logout", key="logout"):
     st.rerun()
 
 
-if page == "Settings":
+if  st.session_state.page == "Settings":
     st.title("Streamlit Chat Settings")
 
     col1, spacer, col2 = st.columns([2,1,2])
@@ -469,95 +465,117 @@ if page == "Settings":
     st.session_state.settings["local_model"] = local_model
     st.session_state.settings["enabled_detailed_chunking"] = enabled_detailed_chunking
 
-    
+
+
 
 # CHAT
-elif page == "Chat":
+elif  st.session_state.page == "Chat":
+    
     st.title(f"Welcome, {st.session_state.username}")
 
     # manage session chats
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.write(message["content"])
+  
 
-    # User Input
-    if prompt := st.chat_input("..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    # Platzhalter für Benutzer- und Assistentennachrichten
+    response_container = st.container(height = 650)  # Container für dynamische Inhalte
+    input_container = st.container()  # Container für das Eingabefeld
 
-        with st.chat_message("assistant"):
-            response_placeholder = st.empty()  # placeholder
-            source_placeholder = st.empty()
-            response_content = ""
-            if "youtube.com" in prompt or "youtu.be" in prompt:
-                with st.spinner("Analyzing video..."):
-                    lines = get_analyze_response(prompt)
+    with response_container:
+        # Response- und Quellen-Platzhalter
+        user_placeholder = st.empty()
+        response_placeholder = st.empty()
+        source_placeholder = st.empty()
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.write(message["content"])
+                if message["sources"] != []:
+                    logging.info(f"Message: {message}")
+                    sources = "Sources: " + ", ".join(message["sources"])
+                    st.markdown(sources)
 
-            else:
+    # Eingabe bleibt unten in einem separaten Container
+    with input_container:
+        if prompt := st.chat_input("..."):
+            st.session_state.messages.append({"role": "user", "content": prompt, "sources": []})
+            
+            with response_container:
+                # Zeige die Benutzereingabe an
+                with st.chat_message("user"):
+                    st.markdown(prompt)
 
-                with st.spinner("Generating response..."):
-                    lines = get_chat_response(prompt)
-        
+                # Assistentenantwort verarbeiten
+                with st.chat_message("assistant"):
+                    response_content = ""
+                    if "youtube.com" in prompt or "youtu.be" in prompt:
+                        with st.spinner("Analyzing video..."):
+                            lines = get_analyze_response(prompt)
+                    else:
+                        with st.spinner("Generating response..."):
+                            lines = get_chat_response(prompt)
 
-            #TODO: stream response instead of writing all at once    
-            if st.session_state.settings["plaintext"]== False:
-                if lines: 
-                    combined_content = ""
-                    all_sources = set()
+                    # Dynamisches Streamen der Antwort
+                    if st.session_state.settings["plaintext"] == False:
+                        if lines:
+                            combined_content = ""
+                            all_sources = set()
+                            buffer = ""
 
-                    buffer = ""  
-
-                    for line in lines:
-                        if line:
-                            try:
-
-                                buffer += line.decode("utf-8")
-                            
-                                while buffer:
+                            for line in lines:
+                                if line:
                                     try:
-                                        data, index = json.JSONDecoder().raw_decode(buffer)
+                                        buffer += line.decode("utf-8")
 
-                                        combined_content += data.get("content", "")
-                                        combined_content += data.get("message", "")
+                                        while buffer:
+                                            try:
+                                                data, index = json.JSONDecoder().raw_decode(buffer)
+                                                combined_content += data.get("content", "")
+                                                combined_content += data.get("message", "")
 
-                                        response_placeholder.markdown(combined_content)
-                                        if(data.get("sources", []) != []):
-                                            all_sources.update(data.get("sources", []))
-                                            source_placeholder.markdown("Sources: " + ", ".join(all_sources))
+                                                if data.get("sources", []):
+                                                    all_sources.update(data.get("sources", []))
 
-                                        buffer = buffer[index:].lstrip()
-                                    except json.JSONDecodeError:
-                                        break
-                            except Exception as e:
-                                print(f"Fehler beim Verarbeiten der Zeile: {e}")
-                    st.session_state.messages.append({"role": "assistant", "content": combined_content, "sources": all_sources})
-                    content = combined_content + "Sources: " + ", ".join(all_sources)
-                    save_chat(st.session_state.username, prompt, content)
+                                                buffer = buffer[index:].lstrip()
+                                            except json.JSONDecodeError:
+                                                break
+                                    except Exception as e:
+                                        print(f"Fehler beim Verarbeiten der Zeile: {e}")
 
-            else:
-                if lines:
-                    for line in lines:
-                        if line:
-                            
-                            word = line.decode('utf-8')
-                            response_content += word + " "
-                            response_placeholder.markdown(response_content)
-                            time.sleep(0.05)
-                    st.session_state.messages.append({"role": "assistant", "content": response_content})
-                    save_chat(st.session_state.username, prompt, response_content)
+                            # Aktualisiere Platzhalter innerhalb des Containers
+                            st.write(combined_content)
+                            st.write("Sources: " + ", ".join(all_sources))
+                            st.session_state.messages.append(
+                                {"role": "assistant", "content": combined_content, "sources": all_sources}
+                            )
 
-elif page == "Support":
+                            content = combined_content + "Sources: " + ", ".join(all_sources)
+                            save_chat(st.session_state.username, prompt, content)
+
+                    else:
+                        if lines:
+                            for line in lines:
+                                if line:
+                                    word = line.decode("utf-8")
+                                    response_content += word + " "
+                                    st.markdown(response_content)
+                                    time.sleep(0.05)
+
+                            st.session_state.messages.append(
+                                {"role": "assistant", "content": response_content, "sources": []}
+                            )
+                            save_chat(st.session_state.username, prompt, response_content)
+
+
+elif  st.session_state.page == "Support":
     st.title("Support")
     support_message = st.text_area("Your support request")
     if st.button("Submit"):
         if support_message:
             st.success(send_support_request(st.session_state.username, support_message))
 
-elif page == "Chat History":
+elif  st.session_state.page == "Chat History":
     st.title(f"Chat History - {st.session_state.username}")
     history = get_chat_history(st.session_state.username)
     if history:
@@ -567,7 +585,7 @@ elif page == "Chat History":
     else:
         st.info("No chat history found.")
 
-elif page == "Admin Panel":
+elif  st.session_state.page == "Admin Panel":
     if st.session_state.username == "admin":
         st.title("Admin Panel")
         requests = get_all_support_requests()
