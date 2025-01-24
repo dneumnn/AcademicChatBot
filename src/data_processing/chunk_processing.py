@@ -4,6 +4,7 @@ import time
 from dotenv import load_dotenv
 import google.generativeai as genai
 import pandas as pd
+import numpy as np
 
 from .audio_processing import split_transcript
 from .logger import log
