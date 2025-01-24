@@ -7,21 +7,19 @@ def read_csv_chunks(video_id, meta_data):
     with open(f"media/{video_id}/transcripts_chunks/{video_id}.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
-            # Validate 'time' and 'length' before processing
-            time_value = row.get('time')  # Safely get 'time'
-            length_value = row.get('length')  # Safely get 'length'
-            
+            time_value = row.get('time') 
+            length_value = row.get('length')          
             if (
-                time_value and time_value.replace('.', '', 1).isdigit()  # Check if time is a valid float
-                and length_value and length_value.isdigit()  # Check if length is a valid integer
+                time_value and time_value.replace('.', '', 1).isdigit() 
+                and length_value and length_value.isdigit()
             ):
                 try:
                     chunks.append({
                         "node_id": meta_data["id"],
-                        "sentence": row.get("chunks", ""),  # Default to empty string if 'chunks' is missing
-                        "time": float(time_value.split()[0]),  # Convert time to float
-                        "length": int(length_value),  # Convert length to int
-                        "embedding": row.get("chunks_embedded", "")  # Default to empty string if missing
+                        "sentence": row.get("chunks"),
+                        "time": float(time_value.split()[0]),
+                        "length": int(length_value),
+                        "embedding": row.get("chunks_embedded")
                     })
                 except Exception as e:
                     log.error(f"Error processing row: {row}, error: {e}")
@@ -36,15 +34,14 @@ def read_csv_frames(video_id):
     with open(f"media/{video_id}/frames_description/frame_descriptions.csv", mode="r", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
-            # Validate the 'time_in_s' field
-            time_value = row.get('time_in_s')  # Safely get 'time_in_s'
+            time_value = row.get('time_in_s')
             
-            if time_value and time_value.replace('.', '', 1).isdigit():  # Check if time_in_s is a valid float
+            if time_value and time_value.replace('.', '', 1).isdigit():  
                 try:
                     frames.append({
-                        "time": float(time_value),  # Convert time_in_s to float
-                        "file_name": f"{video_id}_{row.get('file_name', '')}",  # Use file_name as-is (default to empty string)
-                        "description": row.get("description", "")  # Default to empty string if missing
+                        "time": float(time_value),
+                        "file_name": f"{video_id}_{row.get('file_name')}",
+                        "description": row.get("description")
                     })
                 except Exception as e:
                     log.error(f"Error processing row: {row}, error: {e}")
