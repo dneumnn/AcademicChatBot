@@ -56,8 +56,8 @@ def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 
-def register_user(username, password):
-    conn = sqlite3.connect(DB_PATH)
+def register_user(username, password, db_path=DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)",(username, hash_password(password)))
@@ -69,8 +69,8 @@ def register_user(username, password):
         conn.close()
 
 
-def authenticate_user(username, password):
-    conn = sqlite3.connect(DB_PATH)
+def authenticate_user(username, password, db_path=DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT password FROM users WHERE username = ?", (username,))
     result = cursor.fetchone()
@@ -155,20 +155,20 @@ def get_analyze_response(prompt, ytvideo, chunk_max_length=550, chunk_overlap_le
     return response.iter_lines()
 
 
-def save_chat(username, message, response):
+def save_chat(username, message, response, db_path=DB_PATH):
     import datetime
     message_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     response_timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO chat_history (username, message, response, message_timestamp, response_timestamp) VALUES (?, ?, ?, ?, ?)", (username, message, response, message_timestamp, response_timestamp))
     conn.commit()
     conn.close()
 
 
-def get_chat_history(username, forChatParameter: Optional[bool] = False):
-    conn = sqlite3.connect(DB_PATH)
+def get_chat_history(username, forChatParameter: Optional[bool] = False, db_path=DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("""
     SELECT message, response, message_timestamp, response_timestamp
@@ -182,8 +182,8 @@ def get_chat_history(username, forChatParameter: Optional[bool] = False):
         history = [{"message": request[0], "response": request[1]} for request in history]
     return history
 
-def send_support_request(username, message):
-    conn = sqlite3.connect(DB_PATH)
+def send_support_request(username, message, db_path=DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO support_requests (username, message) VALUES (?, ?)", (username, message))
     conn.commit()
@@ -191,8 +191,8 @@ def send_support_request(username, message):
     return "Support request submitted successfully!"
 
 
-def get_all_support_requests():
-    conn = sqlite3.connect(DB_PATH)
+def get_all_support_requests(db_path=DB_PATH):
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("SELECT username, message FROM support_requests")
     requests = cursor.fetchall()
@@ -221,7 +221,7 @@ def get_available_models():
         return []
 
 
-def ChangeTheme():
+def changeTheme():
 
     # Toggle the current theme
     if st.session_state.themes["current_theme"] == "light":
@@ -381,7 +381,7 @@ else:
 # Change Theme Button
 btn_face = st.session_state.themes[st.session_state.themes["current_theme"]]["button_face"]
 if st.sidebar.button(btn_face, help="Thema wechseln"):
-    ChangeTheme()
+    changeTheme()
 
 st.session_state.selectedModel = st.sidebar.selectbox("🧠 **Select LLM Model**", st.session_state.models)
 
