@@ -60,6 +60,7 @@ def extract_entities(driver, chunks, meta_data):
     The llm extracts all relevant entities.
     Returns list of entities: ['artificial intelligence', 'algorithm', 'pattern']
     """
+
     # initialize request counter for API-Call limit
     requests_made = 0
     
@@ -86,7 +87,7 @@ def extract_entities(driver, chunks, meta_data):
     for chunk in chunks:
         user_prompt = f"""
             Extract all Entities from the following text:
-            {chunk}
+            {chunk['sentence']}
             """
         # Sleep to prevent reaching API-call limit
         if requests_made >= 14:
@@ -94,7 +95,7 @@ def extract_entities(driver, chunks, meta_data):
             time.sleep(60)
             requests_made = 0  
 
-            # Retry logic
+        # Retry logic
         max_retries = 5
         for attempt in range(1, max_retries + 1):
             try:
@@ -103,14 +104,13 @@ def extract_entities(driver, chunks, meta_data):
                 
                 # Check if the API response is successful
                 if hasattr(response, "text") and response.text:
-                    print(f"this is the llm response for chunk:{chunk['time']}:",response.text, "\n")
                     break
                 else:
                     log.warning(f"Attempt {attempt} unsucessful. Retrying...")
             except Exception as e:
                 log.error(f"Attempt {attempt}: Error occurred - {e}. Retrying...")
             
-            # Exponential backoff for retries
+            # Backoff for retries
             if attempt < max_retries:
                 wait_time = 2 ** attempt
                 log.warning(f"Retrying in {wait_time} seconds...")
@@ -119,23 +119,19 @@ def extract_entities(driver, chunks, meta_data):
                 log.error("Max retries reached. Skipping this chunk.")
         # Add request to API-Call limit counter
         requests_made += 1 
-
+        log.info(f"Chunk {chunk['time']} processed")
         # Parse LLM response as python object
         entities = ast.literal_eval(response.text.strip())
 
         # Prepare entities for node creation and insert to graph_db
         node_data = {"nodes": entities}
-        print("node data:",node_data, "\n")
 
         add_nodes_to_graphdb(node_data, driver, chunk, meta_data)
-        log.info(f"{chunk['time']} processed")
         # Append new entities from current chunk to list
         entities_list.extend(entities) 
 
         # Convert list to dict and back to list to remove duplicates
         cleaned_entities = list(dict.fromkeys(entities_list))
-        print("this is the cleaned entities", cleaned_entities, "\n")
-
        
     return cleaned_entities
 
@@ -190,6 +186,10 @@ def create_relations(entities, chunks):
     The llm extracts all relevant relations.
     Return all relationships in a dictonary. 
     """
+
+    # Extract sentences from chunks
+    chunks_sentences = [chunk['sentence'] for chunk in chunks]
+
     # Define LLM Model for relation creation
     relation_model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction="""
         You are an expert in Machine Learning (ML), Natural Language Processing (NLP), Artifical Intelligence and Neuronal Networks.
@@ -205,7 +205,7 @@ def create_relations(entities, chunks):
     # Compare list of entities with whole text to find relations
     user_prompt = f"""
         Create reasonable relations for these entities: {entities}
-        Use the information from this text to find relations between the entities: {chunks}
+        Use the information from this text to find relations between the entities: {chunks_sentences}
         """
     relationships = {
         "relationships": []
