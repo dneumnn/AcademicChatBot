@@ -113,6 +113,11 @@
     "Evaluation",
     "Model",
     "Accuracy",
-    "Reliability"
+    "Reliability",
+    "ValidationData",
+    "TestData",
+    "TrainingData",
+    "ModelParameter",
+    "LabeledData"
   ]
 }
