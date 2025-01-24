@@ -126,6 +126,11 @@ def get_analyze_response(prompt, chunk_max_length=550, chunk_overlap_length=50, 
         "video_input": prompt,
         "chunk_max_length": st.session_state.settings["chunk_max_length"],
         "chunk_overlap_length": st.session_state.settings["chunk_overlap_length"],
+        "max_limit_similarity": st.session_state.settings["max_limit_similarity"],
+        "embedding_model": st.session_state.settings["embedding_model"],
+        "seconds_between_frames": st.session_state.settings["seconds_between_frames"],
+        "local_model": st.session_state.settings["local_model"],
+        "enabled_detailed_chunking": st.session_state.settings["enabled_detailed_chunking"]        
     }
     response = requests.post(f"{BASE_URL}/analyze",json=payload)
     source_placeholder = st.empty()
@@ -271,6 +276,7 @@ if "settings" not in st.session_state:
         "mode": "fast",
         "use_logical_routing": False,
         "use_semantic_routing": False,
+        "max_limit_similarity": 0.85,
         "chunk_max_length": 550,
         "chunk_overlap_length": 50,
         "embedding_model": "nomic-embed-text",
@@ -441,7 +447,8 @@ if  st.session_state.page == "Settings":
             ["nomic-embed-text"],
             index=["nomic-embed-text"].index(str(st.session_state.settings["embedding_model"]).strip()))
         
-        seconds_between_frames = st.slider("Select a value for the seconds between frames", 1, 100, st.session_state.settings["seconds_between_frames"])
+        max_limit_similarity = st.slider("Select a value for the maximum limit of similarity (higher = higher chance to remove duplicates)", 0.0, 1.0, st.session_state.settings["max_limit_similarity"])
+        seconds_between_frames = st.slider("Select a value for the seconds between frames", 1, 600, st.session_state.settings["seconds_between_frames"])
         local_model = st.checkbox("Use local model", st.session_state.settings["local_model"])
         enabled_detailed_chunking = st.checkbox("Enable detailed chunking", st.session_state.settings["enabled_detailed_chunking"])
 
@@ -460,6 +467,7 @@ if  st.session_state.page == "Settings":
     st.session_state.settings["mode"] = mode
     st.session_state.settings["use_logical_routing"] = use_logical_routing
     st.session_state.settings["use_semantic_routing"] = use_semantic_routing
+    st.session_state.settings["max_limit_similarity"] = max_limit_similarity
  #   st.session_state.settings["knowledge_base"] = knowledge_base
     st.session_state.settings["seconds_between_frames"] = seconds_between_frames
     st.session_state.settings["local_model"] = local_model
