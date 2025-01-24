@@ -11,8 +11,8 @@ config:
   use_logical_routing: false
   retrieval_embedding_model: all-MiniLM-L6-v2
   reranking_cross_encoder_model: BAAI/bge-reranker-large # cross-encoder/stsb-roberta-base
-  vectorstore_top_k: 40
-  reranking_top_k: 10
+  vectorstore_top_k: 40 # 100
+  reranking_top_k: 10 # 30
   neo4j_fallback:
     uri: bolt://localhost:7687
     user: neo4j

@@ -5,10 +5,19 @@ import google.generativeai as gemini
 
 from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
 
+ollama_cache = []
+openai_cache = []
+gemini_cache = []
+
 def get_available_models():
     return get_local_ollama_models() + get_openai_models() + get_gemini_models()
 
 def get_local_ollama_models() -> List[str]:
+    global ollama_cache
+
+    if ollama_cache and len(ollama_cache) > 0:
+        return ollama_cache
+
     """
     Query local Llama server for available models
    
@@ -21,25 +30,37 @@ def get_local_ollama_models() -> List[str]:
     try:
         response = requests.get("http://localhost:11434/api/tags")
         if response.status_code == 200:
-            models = [model["name"].replace(":latest", "") for model in response.json()["models"]]
-            return models
+            ollama_cache = [model["name"].replace(":latest", "") for model in response.json()["models"]]
+            return ollama_cache
         return []
     except Exception as e:
         print(f"Error getting local ollama models: {e}")
         return []
     
-def get_openai_models():
+def get_openai_models() -> List[str]:
+    global openai_cache
+
+    if openai_cache and len(openai_cache) > 0:
+        return openai_cache
+    
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
-        return [model.id for model in client.models.list()]
+        openai_cache = [model.id for model in client.models.list()]
+        return openai_cache
     except Exception as e:
         print(f"Error getting OpenAI models: {e}")
         return []
 
-def get_gemini_models():
+def get_gemini_models() -> List[str]:
+    global gemini_cache
+
+    if gemini_cache and len(gemini_cache) > 0:
+        return gemini_cache
+
     try:
         gemini.configure(api_key=GEMINI_API_KEY)
-        return [model.name.replace("models/", "") for model in gemini.list_models()]
+        gemini_cache = [model.name.replace("models/", "") for model in gemini.list_models()]
+        return gemini_cache
     except Exception as e:
         print(f"Error getting Gemini models: {e}")
         return []
