@@ -15,7 +15,7 @@ from .embeddings import *
 from .logger import log, create_log_file, write_empty_line
 
 # Import other functions of the DB packages
-from src.db.graph_db.main import *
+from src.db.graph_db.graphdb_main import *
 # from src.db.graph_db.db_handler import GraphHandler
 from src.db.graph_db.utilities import *
 from src.vectordb.main import *
