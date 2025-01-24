@@ -7,6 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import OpenAI, ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai.chat_models.base import BaseChatOpenAI
 
 from ..routing.semantic_routing import get_base_template, semantic_routing
 from ..rerankers.rerankers import rerank_passages_with_cross_encoder
@@ -15,8 +16,8 @@ from ..vectorstore.vectorstore import format_docs, retrieve_top_n_documents_chro
 from ..routing.logical_routing import route_query
 from ..logger.logger import setup_logger
 from ..constants.config import VECTORSTORE_TOP_K, RERANKING_TOP_K, DEFAULT_KNOWLEDGE_BASE, INCLUDE_IMAGE_DESCRIPTIONS
-from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY
-from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models
+from ..constants.env import GEMINI_API_KEY, OPENAI_API_KEY, DEEPSEEK_API_KEY
+from ..models.model import get_local_ollama_models, get_openai_models, get_gemini_models, get_available_models, get_deepseek_models
 from ..graphstore.graphstore import question_to_graphdb
 
 
@@ -143,6 +144,14 @@ def rag(
             top_p=model_parameters["top_p"],
             top_k=model_parameters["top_k"],
             api_key=GEMINI_API_KEY
+        )
+    elif model_id in get_deepseek_models():
+        llm = BaseChatOpenAI(
+            model=model_id,
+            openai_api_key=DEEPSEEK_API_KEY,
+            openai_api_base='https://api.deepseek.com',
+            top_p=model_parameters["top_p"],
+            temperature=model_parameters["temperature"]
         )
     else:
         raise ValueError(f"Invalid model ID: {model_id}. Available models: {get_available_models()}")
